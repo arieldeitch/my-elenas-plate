@@ -351,3 +351,37 @@ Scripts: `npm test`, `npm run test:watch`, `npm run typecheck`.
 - 54 בדיקות: completion, coffee, fasting, weight, quantity, meal-slots, store integration, CoffeeSelector.
 - הרצה מהירה ומבודדת מ-SSR/nitro.
 
+---
+
+## DEC-017 — חשבון Auth משותף אחד + שני פרופילים פנימיים (Supabase כמקור אמת)
+
+- תאריך: 2026-07-23
+- סטטוס: Accepted (מממש את DEC-001 ו-DEC-002)
+
+### הקשר
+
+נדרש Backend אמיתי לסנכרון בין מכשירים, אך ללא ניהול שני משתמשי Auth נפרדים לאריאל ולאלנה.
+
+### החלטה
+
+חשבון Supabase Auth **משותף אחד** למשק הבית, ותחתיו **שני פרופילים פנימיים** (אריאל/אלנה).
+שני הפרופילים נגישים מאותו Session; ההפרדה היא לפי `profile_id`. אין למפות את אריאל/אלנה ל-`auth.users`.
+
+### מימוש
+
+- Migrations: schema (10 טבלאות, UUID, timestamptz, constraints), RLS (פונקציית `is_household_member`
+  SECURITY DEFINER, 35 policies), `bootstrap_household()` idempotent, ו-Realtime ל-8 טבלאות.
+- שכבות: client + generated types + repositories + auth + sync (offline queue, migration, realtime),
+  משולבות ב-Store מאחורי דגל `isSupabaseConfigured()`; במצב דמו הכל אינרטי.
+- `localStorage` יורד מלהיות מקור אמת — משמש רק ל-offline queue / cache / migration marker (מעדכן DEC-015).
+
+### אימות
+
+מול Supabase מקומי (CLI + Docker): כל ה-migrations הוחלו; בדיקת אינטגרציה חיה (5/5) אימתה bootstrap,
+כתיבה/קריאה של שני הפרופילים מהחשבון המשותף, אילוץ הקפה, בידוד בין משקי בית (RLS) ודחיית קריאה אנונימית.
+
+### השלכות / פתוח
+
+- נדרשים `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` (anon בלבד; לעולם לא service_role).
+- אימות end-to-end בדפדפן (התחברות + realtime בין שני sessions) טרם בוצע אוטומטית — דורש credentials אמיתיים או הרצה מקומית.
+

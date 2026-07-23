@@ -20,7 +20,7 @@
 | Icons | lucide-react |
 | Package manager | bun (bun.lock committed); this session used npm to install (bun not present) |
 | Tests | **Vitest + Testing Library (added this session)** |
-| Backend | **None. No Supabase, no env files, no secrets.** State is an in-memory store with interim localStorage persistence. |
+| Backend | **Supabase integration implemented (opt-in via env).** Schema + RLS + realtime + bootstrap migrations under `supabase/`; typed client, repositories, auth UI, gated store sync, offline queue and local→cloud migration. With no env vars the app runs in local demo mode (localStorage). |
 
 ## Quality gate (run this session)
 
@@ -29,8 +29,10 @@
 | Type check | `tsc --noEmit` | PASS — 0 errors |
 | Lint | `eslint .` | PASS — 0 errors, 8 warnings (see "Remaining warnings" below) |
 | Format | `prettier` | PASS — changed + previously-unformatted source files normalised; `endOfLine: auto` added for cross-platform CRLF |
-| Unit/integration tests | `vitest run` | PASS — 77 passed / 16 files |
-| Coverage | `vitest run --coverage` | Statements 66.85% · Branches 79.94% · Functions 62.4% · Lines 66.85% (100% on all pure logic modules) |
+| Unit/integration tests | `vitest run` | PASS — 102 passed / 5 skipped (live RLS, no env) |
+| Live DB (RLS + bootstrap) | `supabase start` + gated integration test | PASS — 5/5 against local Supabase (bootstrap, isolation, anon-denied, coffee CHECK) |
+| Migration validation | `psql < each migration` | PASS — all 4 apply cleanly (10 tables, 35 policies, 8 realtime tables) |
+| Generated types | `supabase gen types --local` | Matches hand-derived aliases; committed as `database.generated.ts` |
 | Accessibility | `vitest-axe` on 5 key components | PASS — 0 violations (MealCard, CoffeeSelector, ProfileSwitcher, DailyCompletionIndicator, WeightBanner) |
 | Build | `vite build` | PASS — SSR + client build succeeds |
 | SSR smoke | `vite dev` + curl | PASS — Home renders; profiles אריאל/אלנה, six slots, RTL; no "אני", no "ארוחת לילה"; no hydration warnings |
@@ -62,10 +64,37 @@ All are `react-refresh/only-export-components` — a Fast-Refresh (HMR) hint wit
 - Calendar full/partial/empty with shape + color; fasting/workout/weight do not affect completeness.
 - **Interim persistence:** localStorage — refresh / date change / profile switch keep data (unit-tested via fresh remount).
 
-## Not present / deferred (honest gaps)
+## Supabase backend (implemented 2026-07-23)
 
-- **No Supabase / auth / RLS / realtime / offline queue.** These docs describe the intended architecture; none is implemented yet. Persistence is client-only localStorage, explicitly interim (see decisions DEC-013).
-- No E2E framework (Playwright) — not added; component/integration coverage via Vitest + Testing Library instead.
+Approved model: **one shared Auth account** for the household with **two internal profiles**
+(אריאל `ariel`, אלנה `alena`). Data is separated by `profile_id`; the shared account edits both.
+Supabase is the source of truth when configured; localStorage is demoted to demo/queue/cache only.
+
+- **Migrations** (`supabase/migrations/`): `schema`, `rls`, `bootstrap`, `realtime`.
+  - 10 tables (households, household_users, profiles, foods, food_preferences, meal_statuses,
+    food_entries, fasting_logs, workout_logs, weigh_ins). UUID PKs, timestamptz, `updated_at` triggers,
+    check constraints (slots, statuses, quantity modes, coffee milk-type compatibility, weight/body-fat).
+  - RLS on all 10 tables via `is_household_member(uuid)` (SECURITY DEFINER); 35 policies (select/insert/update/delete).
+  - `bootstrap_household()` idempotent RPC creates the household + membership + two profiles.
+  - Realtime publication for 8 data tables.
+- **App layer**: `src/lib/supabase/{client,database.types,database.generated,mappers,repositories,auth}`,
+  `src/lib/sync/{queue,migrate-local,supabase-sync,use-supabase-sync}`, `src/components/auth/{SignIn,AuthGate}`.
+- **Gated store sync**: hydrate current day + weigh-ins, dirty-tracked reconciling push, realtime re-hydrate.
+  Optimistic UI = existing synchronous local update; offline queue for durability. Inert in demo mode.
+- **Local verification (Supabase CLI + Docker):** `supabase start` applied all migrations; live integration
+  test (5/5) proved bootstrap (2 profiles, idempotent), shared-account read/write of both profiles, the
+  coffee milk-type CHECK, **household isolation (RLS)** and **anonymous reads denied**.
+
+### Env required to activate
+
+`VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (see `.env.example`). Anon key only — never service_role.
+
+## Not present / not yet live-verified (honest gaps)
+
+- **Browser end-to-end of the live app** (magic-link/password sign-in → realtime across two sessions) is
+  not automated — verified at the SQL/RLS/repository layer, not through the running browser app. This
+  needs real project credentials (or the local stack) + a manual/E2E pass.
+- No E2E framework (Playwright) — component/integration coverage via Vitest + Testing Library instead.
 - Bottom-nav "history"/"more" and quick-add default slot are placeholders.
 
 ## Risks

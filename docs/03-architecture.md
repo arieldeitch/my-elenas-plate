@@ -611,3 +611,37 @@ Local Storage או IndexedDB יכולים לשמש לתור זמני בלבד.
 
 - `src/lib/persistence.ts` שומר/טוען את מפות הנתונים ב-localStorage (מפתח `elenas-plate:v1`),
   SSR-safe. זהו Cache זמני בלבד — Supabase יישאר מקור האמת (DEC-001) ויחליף שכבה זו.
+
+---
+
+## עדכון 2026-07-23 — מימוש Supabase (חשבון משותף, ראו DEC-017)
+
+### סכימה (supabase/migrations/)
+
+- טבלאות: households, household_users, profiles, foods, food_preferences, meal_statuses,
+  food_entries, fasting_logs, workout_logs, weigh_ins. UUID PK, timestamptz, טריגר `updated_at`.
+- Meal slot slugs: `opening_window / first_snack / main_meal / afternoon_snack / dinner / extra_meal`.
+  סטטוסים: `unmarked / logged / skipped`. Quantity: `measured / subjective`.
+  קפה נשמר ב-`food_entries.coffee` (JSONB) עם CHECK: `type` חובה, `milkType` רק כש-milk="עם חלב".
+- אילוצים: משקל חיובי, אחוז שומן 0–100, measured דורש amount+unit, subjective דורש ערך.
+
+### RLS + Bootstrap
+
+- `public.is_household_member(hid uuid)` — SECURITY DEFINER, `search_path=public` (מונע רקורסיה).
+- על כל 10 הטבלאות RLS מופעל; policies ל-select/insert/update/delete לפי `is_household_member(household_id)`.
+- `public.bootstrap_household()` — RPC idempotent, SECURITY DEFINER: יוצר household + חברות + שני פרופילים
+  (ariel/alena) אם אינם קיימים; מחזיר את ה-household הקיים אחרת.
+
+### Realtime + שכבות אפליקציה
+
+- Publication `supabase_realtime` כולל 8 טבלאות נתונים.
+- `src/lib/supabase/*` (client SSR-safe, generated types, mappers טהורים, repositories, auth),
+  `src/lib/sync/*` (offline queue, migrate-local, supabase-sync, use-supabase-sync),
+  `src/components/auth/*` (SignIn, AuthGate). האינטגרציה ב-Store מגודרת ב-`isSupabaseConfigured()`.
+
+### Optimistic + Offline + Migration
+
+- עדכון אופטימי = עדכון ה-state המקומי הסינכרוני הקיים; דחיפה ל-Supabase מגובה ב-offline queue
+  (`elenas-plate:queue:v1`, dedupe לפי client mutation id, quarantine אחרי כשלים).
+- Migration חד-פעמי מ-localStorage (טרנספורם טהור ונבדק) עם marker; אינו מוחק נתונים מקומיים.
+- מיפוי slot/status/subjective/coffee מרוכז ב-`mappers.ts` ונבדק ביחידה.

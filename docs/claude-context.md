@@ -49,9 +49,14 @@ recommendations, or gamification.
 
 ## Backend reality
 
-**No Supabase yet.** No env files, no secrets. Do not fake server persistence. The docs under
-`03-architecture.md` describe the intended Supabase model; treat it as the target, not the current
-state. When adding Supabase, keep the pure domain modules and the store API surface.
+**Supabase implemented, opt-in via env (2026-07-23).** Model: one shared Auth account, two internal
+profiles (אריאל `ariel` / אלנה `alena`), data separated by `profile_id`; the shared account edits both.
+Migrations under `supabase/` (schema + RLS + bootstrap + realtime) were live-verified against a local
+Supabase stack (RLS isolation + bootstrap: 5/5 integration tests). App layer: `src/lib/supabase/*`,
+`src/lib/sync/*`, `src/components/auth/*`, wired into the store behind `isSupabaseConfigured()`.
+Without `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` the app runs in **local demo mode** (localStorage).
+Never put service_role in the client. Not yet done: browser end-to-end sign-in + realtime across two
+sessions (needs live credentials). See DEC-017 and `project-status.md`.
 
 ## Guardrails
 

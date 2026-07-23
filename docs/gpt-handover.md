@@ -11,14 +11,16 @@ communicated by color alone.
 
 ## Current state (verified 2026-07-23)
 
-- Stack: TanStack Start (SSR) + React 19, Vite 8, Tailwind 4, shadcn/ui, lucide-react. Tests:
-  Vitest + Testing Library (added this session).
-- **No backend.** No Supabase, no auth, no env files, no secrets. State is an in-memory store with
-  **interim localStorage persistence** so refresh/date/profile switches keep data. This is explicitly
-  temporary; Supabase (per `03-architecture.md`) is the intended source of truth.
-- Quality gate all green: type check, lint (0 errors, 8 dev-only HMR warnings), 77 tests / 16 files
-  (coverage 66.85% stmts, 100% on pure logic), automated a11y (vitest-axe, 0 violations), build,
-  SSR smoke. Test tooling: Vitest + Testing Library + vitest-axe.
+- Stack: TanStack Start (SSR) + React 19, Vite 8, Tailwind 4, shadcn/ui, lucide-react,
+  @supabase/supabase-js. Tests: Vitest + Testing Library + vitest-axe.
+- **Backend: Supabase implemented, opt-in via env.** One shared Auth account + two internal profiles
+  (אריאל/אלנה), data separated by `profile_id`. Migrations (schema + RLS + bootstrap + realtime) were
+  live-verified on a local Supabase stack (RLS isolation + bootstrap: 5/5). App layer + gated store sync
+  + offline queue + local→cloud migration are in place. Without `VITE_SUPABASE_URL` +
+  `VITE_SUPABASE_ANON_KEY` the app runs in local demo mode (localStorage). See DEC-017.
+- Quality gate all green: type check, lint (0 errors, 8 dev-only HMR warnings), 102 tests (+5 live-RLS
+  skipped without env), automated a11y (0 violations), build, SSR smoke.
+- Not yet done: browser end-to-end (sign-in + realtime across two sessions) — needs live credentials.
 
 ## Latest product decisions (active)
 

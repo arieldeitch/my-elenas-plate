@@ -23,13 +23,21 @@ Updated 2026-07-23 with verified findings from the MVP-hardening session.
 - **T-A12** Warnings triage — Done (documented). 8 `react-refresh` dev-only HMR hints; see `project-status.md`. No global suppression.
 - **T-A13** Package-manager state — Verified. Repo uses bun (`bun.lock`); no `packageManager` field. Installs verified via npm; npm `package-lock.json` is gitignored. `bun.lock` will refresh on the next `bun install` (test devDeps).
 
-## Not Started / Blocked (need backend)
+## Supabase backend (2026-07-23)
 
-- **T-002 (Blocked)** Secrets & data protection setup — no backend yet; `.env.example`, Auth, RLS pending Supabase.
-- **T-003 (Blocked)** Supabase as source of truth — replace localStorage layer behind the store API; add migrations, generated types, RLS.
-- **T-020 (Blocked)** Realtime sync.
-- **T-021 (Blocked)** Offline queue (idempotency, retry, dedupe).
-- **T-022 (Blocked)** Minimal secure auth over shared URL.
+- **T-002 Done** Secrets/data protection — `.env.example`, anon-key-only client, no service_role, RLS on all tables.
+- **T-003 Done** Supabase source of truth — schema + generated types + repositories behind the store API,
+  gated by `isSupabaseConfigured()`; localStorage demoted to demo/queue/cache.
+- **T-020 Done (needs live browser verify)** Realtime — publication + `subscribeHousehold` re-hydrate.
+- **T-021 Done** Offline queue — `src/lib/sync/queue.ts` (dedupe, retry, quarantine), unit-tested.
+- **T-022 Done** Auth — shared-account magic-link + password (`SignIn`, `AuthGate`, `bootstrap_household`).
+- **T-023 Done** Local→cloud migration — pure transform + marker, non-destructive, unit-tested.
+- **T-024 Done** RLS/bootstrap live-verified via local Supabase (5/5 integration tests).
+
+### Remaining (needs real credentials or manual pass)
+
+- **T-025** Browser end-to-end: sign in (magic link/password), confirm hydrate + realtime across two
+  sessions, and the one-time migration on a real project. Blocked only on live credentials.
 
 ## Deferred (P2/P3, not approved for MVP)
 
