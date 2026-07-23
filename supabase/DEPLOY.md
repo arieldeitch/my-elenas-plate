@@ -24,6 +24,14 @@ supabase link --project-ref rqgoiuztphkcvbwtbxbj   # prompts for the DB password
 supabase db push                     # applies supabase/migrations non-destructively
 ```
 
+## Re-run after new migrations
+
+New forward-only migrations are added over time (e.g. `20260723090400_food_prefs_text_id.sql`,
+which lets built-in catalog foods be favorited/recented). Re-apply with either option above —
+`supabase db push` applies only pending migrations, and `deploy_all.sql` is idempotent. Until the
+`food_prefs_text_id` migration is on the remote, **custom-food** favorites/recents sync fine, but
+**built-in-food** favorites/recents do not (the app keeps them locally and retries).
+
 ## After applying (either option)
 
 - Bootstrap is automatic: on first sign-in the app calls the `bootstrap_household()`
