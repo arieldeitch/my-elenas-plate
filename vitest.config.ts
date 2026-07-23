@@ -13,5 +13,18 @@ export default defineConfig({
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
     css: false,
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "json-summary"],
+      // Focus coverage on our own logic + nutrition UI; exclude generated,
+      // vendored shadcn primitives, demo seed and framework glue.
+      include: ["src/lib/**", "src/components/nutrition/**"],
+      exclude: [
+        "src/**/*.test.{ts,tsx}",
+        "src/lib/demo-data.ts",
+        "src/lib/food-catalog.ts",
+        "src/routeTree.gen.ts",
+      ],
+    },
   },
 });

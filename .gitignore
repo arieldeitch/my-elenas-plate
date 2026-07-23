@@ -20,6 +20,9 @@ dist-ssr
 # Repo uses bun (bun.lock). Ignore the npm lockfile from local installs.
 package-lock.json
 
+# Test coverage output
+coverage
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
