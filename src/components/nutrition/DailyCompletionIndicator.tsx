@@ -8,29 +8,34 @@ export function DailyCompletionIndicator({ info }: { info: CompletionInfo }) {
     : info.state === "partial" ? "bg-info"
     : "bg-[#CBD5E0]";
 
+  const message =
+    info.state === "full"
+      ? "כל הכבוד! סיימת לתעד את היום."
+      : info.state === "partial"
+        ? "המשך כך! כמעט סיימת את היום."
+        : "אפשר להתחיל לתעד את הארוחות של היום.";
+
   return (
-    <div className="rounded-3xl bg-white border border-[#E9EEF3] p-6 shadow-soft">
-      <div className="flex items-end justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-sm text-[#708197]">מצב התיעוד</div>
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-3xl font-bold text-foreground leading-none tabular-nums">
+    <div className="rounded-2xl bg-white border border-[#E9EEF3] p-5 shadow-soft">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0 text-right">
+          <div className="text-[15px] font-bold text-foreground">מצב התיעוד</div>
+          <div className="mt-1 text-[12px] text-[#708197] leading-snug">{message}</div>
+        </div>
+        <div className="shrink-0 text-left">
+          <div className="flex items-baseline gap-1 leading-none">
+            <span className="text-[34px] font-extrabold text-info tabular-nums leading-none">
               {info.documented}
             </span>
-            <span className="text-lg font-medium text-[#708197] leading-none tabular-nums">
-              / {info.total}
+            <span className="text-[20px] font-semibold text-[#94A3B4] tabular-nums leading-none">
+              /{info.total}
             </span>
           </div>
-          <div className="mt-1 text-xs text-[#708197]">ארוחות תועדו היום</div>
+          <div className="mt-1 text-[11px] text-[#708197]">ארוחות תועדו</div>
         </div>
-        {info.state === "full" && (
-          <span className="inline-flex h-6 items-center rounded-full bg-[#EDF8F2] px-2.5 text-[11px] font-medium text-primary">
-            הושלם
-          </span>
-        )}
       </div>
       <div
-        className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-[#EEF2F6]"
+        className="mt-4 h-2 w-full overflow-hidden rounded-full bg-[#EEF2F6]"
         role="progressbar"
         aria-valuenow={info.documented}
         aria-valuemin={0}

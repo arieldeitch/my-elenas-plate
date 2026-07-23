@@ -15,6 +15,8 @@ import { WorkoutCard } from "@/components/nutrition/WorkoutCard";
 import { WeightBanner } from "@/components/nutrition/WeightBanner";
 import { WeighInForm } from "@/components/nutrition/WeighInForm";
 import { CalendarView } from "@/components/nutrition/CalendarView";
+import { BottomNav } from "@/components/nutrition/BottomNav";
+import { BrandMark } from "@/components/nutrition/BrandMark";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -41,30 +43,29 @@ function Home() {
   const completion = useMemo(() => calcCompletion(day.meals), [day.meals]);
 
   return (
-    <div className="min-h-screen bg-background pb-36">
-      <div className="mx-auto max-w-[820px] px-6 pt-5 sm:pt-7">
-        {/* Header */}
-        <header className="mb-5 flex items-center justify-between gap-2">
-          <div className="text-[13px] font-medium text-[#708197]">מעקב תזונה</div>
-          <SyncStatus />
+    <div className="min-h-screen bg-background pb-40">
+      <div className="mx-auto max-w-[820px] px-5 pt-5 sm:pt-6">
+        {/* Header: profile switcher + brand */}
+        <header className="mb-4 flex items-center justify-between gap-3">
+          <ProfileSwitcher />
+          <BrandMark />
         </header>
 
-        {/* Profile switcher */}
-        <div className="mb-5 flex justify-center">
-          <ProfileSwitcher />
+        <div className="mb-3 flex justify-end">
+          <SyncStatus />
         </div>
 
         {/* Date */}
         <DateNavigator onOpenCalendar={() => setCalendarOpen(true)} />
 
         {/* Completion */}
-        <div className="mt-5">
+        <div className="mt-4">
           <DailyCompletionIndicator info={completion} />
         </div>
 
         {/* Meals */}
         <section className="mt-5">
-          <h2 className="mb-3 px-1 text-[15px] font-semibold text-foreground">ארוחות היום</h2>
+          <h2 className="mb-3 px-1 text-[15px] font-semibold text-foreground text-right">ארוחות היום</h2>
           <div className="grid grid-cols-3 gap-2.5">
             {MEAL_SLOTS.map((slot) => (
               <MealCard
@@ -76,11 +77,10 @@ function Home() {
           </div>
         </section>
 
-
         {/* Secondary */}
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          <FastingCard />
           <WorkoutCard />
+          <FastingCard />
         </div>
 
         <p className="mt-8 text-center text-[11px] text-[#94A3B4]">
@@ -92,6 +92,12 @@ function Home() {
       <CalendarView open={calendarOpen} onClose={() => setCalendarOpen(false)} />
       <WeighInForm open={weighOpen} onClose={() => setWeighOpen(false)} />
       <WeightBanner onOpen={() => setWeighOpen(true)} />
+      <BottomNav
+        active="home"
+        onCalendar={() => setCalendarOpen(true)}
+        onAdd={() => setOpenSlot("lunch")}
+        onHistory={() => setCalendarOpen(true)}
+      />
     </div>
   );
 }

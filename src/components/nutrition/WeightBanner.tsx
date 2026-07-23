@@ -14,10 +14,11 @@ export function WeightBanner({ onOpen }: Props) {
 
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-background via-background to-transparent pt-4"
-      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      className="fixed inset-x-0 z-30 bg-gradient-to-t from-background via-background to-transparent pt-4"
+      style={{ bottom: "calc(env(safe-area-inset-bottom) + 76px)" }}
     >
-      <div className="mx-auto max-w-[820px] px-6 pb-4">
+      <div className="mx-auto max-w-[820px] px-5 pb-2">
+
         <button
           onClick={onOpen}
           className="w-full rounded-3xl border border-[#E9EEF3] bg-white px-5 py-4 text-right shadow-soft hover:shadow-float transition-shadow duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
