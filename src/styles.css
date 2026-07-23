@@ -60,33 +60,34 @@
 }
 
 :root {
-  --background: #F7F9FB;
-  --foreground: #182A42;
+  --background: #f7f9fb;
+  --foreground: #182a42;
   --muted-fg: #708197;
 
-  --card: #FFFFFF;
-  --surface-2: #F1F5F9;
+  --card: #ffffff;
+  --surface-2: #f1f5f9;
 
-  --primary: #17A668;
-  --primary-soft: #EDF8F2;
+  --primary: #17a668;
+  --primary-soft: #edf8f2;
 
-  --info: #2B84D6;
-  --info-soft: #EDF6FD;
+  --info: #2b84d6;
+  --info-soft: #edf6fd;
 
-  --warn: #F6B54B;
-  --warn-soft: #FFF6E5;
+  --warn: #f6b54b;
+  --warn-soft: #fff6e5;
 
-  --danger: #D75C5C;
-  --danger-soft: #FDECEC;
+  --danger: #d75c5c;
+  --danger-soft: #fdecec;
 
-  --border: #E9EEF3;
+  --border: #e9eef3;
 }
 
 @layer base {
   * {
     border-color: var(--color-border);
   }
-  html, body {
+  html,
+  body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
@@ -98,6 +99,18 @@
   }
   button {
     -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Respect users who prefer reduced motion: neutralise animations/transitions. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 

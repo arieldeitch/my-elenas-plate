@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X, Pencil, Trash2, Star, Plus, MinusCircle, RotateCcw, Check } from "lucide-react";
 import { toast } from "sonner";
 import type { Food, FoodEntry, MealSlotId } from "@/lib/domain";
@@ -25,11 +25,14 @@ type View =
 export function MealEditor({ slot, onClose }: Props) {
   const store = useStore();
   const [view, setView] = useState<View>({ kind: "list" });
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!slot) return;
     // reset view when opening
     setView({ kind: "list" });
+    // Move focus into the dialog for keyboard + screen-reader users.
+    panelRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
@@ -94,8 +97,10 @@ export function MealEditor({ slot, onClose }: Props) {
         aria-hidden
       />
       <div
+        ref={panelRef}
+        tabIndex={-1}
         className={cn(
-          "relative flex flex-col w-full max-w-lg bg-card border border-border shadow-lg",
+          "relative flex flex-col w-full max-w-lg bg-card border border-border shadow-lg outline-none",
           "rounded-t-3xl sm:rounded-3xl max-h-[92vh] sm:max-h-[85vh] sm:my-8",
           "animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200",
         )}
@@ -317,7 +322,7 @@ function EntryRow({
       <button
         onClick={onToggleFavorite}
         aria-label={isFavorite ? "הסרה ממועדפים" : "הוספה למועדפים"}
-        className="grid h-10 w-10 place-items-center rounded-xl hover:bg-muted"
+        className="grid h-11 w-11 place-items-center rounded-xl hover:bg-muted"
       >
         <Star
           className={cn("h-4 w-4", isFavorite ? "text-warn fill-warn" : "text-muted-foreground")}
@@ -326,14 +331,14 @@ function EntryRow({
       <button
         onClick={onEdit}
         aria-label="עריכה"
-        className="grid h-10 w-10 place-items-center rounded-xl hover:bg-muted"
+        className="grid h-11 w-11 place-items-center rounded-xl hover:bg-muted"
       >
         <Pencil className="h-4 w-4" />
       </button>
       <button
         onClick={onDelete}
         aria-label="מחיקה"
-        className="grid h-10 w-10 place-items-center rounded-xl hover:bg-muted text-destructive"
+        className="grid h-11 w-11 place-items-center rounded-xl text-destructive hover:bg-muted"
       >
         <Trash2 className="h-4 w-4" />
       </button>

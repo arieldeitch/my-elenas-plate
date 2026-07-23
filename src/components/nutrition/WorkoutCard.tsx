@@ -69,7 +69,7 @@ export function WorkoutCard() {
           <button
             onClick={() => setEditing(true)}
             aria-label="עריכת אימון"
-            className="grid h-10 w-10 place-items-center rounded-full text-[#708197] hover:bg-[#F1F5F9] transition-colors"
+            className="grid h-11 w-11 place-items-center rounded-full text-[#708197] transition-colors hover:bg-[#F1F5F9]"
           >
             <Pencil className="h-4 w-4" strokeWidth={1.75} />
           </button>
