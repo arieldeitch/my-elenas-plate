@@ -10,9 +10,7 @@ export interface CompletionInfo {
   label: string;
 }
 
-export function calcCompletion(
-  meals: Record<MealSlotId, DailyMeal>,
-): CompletionInfo {
+export function calcCompletion(meals: Record<MealSlotId, DailyMeal>): CompletionInfo {
   const total = MEAL_SLOTS.length;
   const documented = MEAL_SLOTS.filter((s) => meals[s].status !== "empty").length;
   let state: CompletionState = "partial";

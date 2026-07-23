@@ -11,14 +11,26 @@ interface Props {
 }
 
 const HE_MONTHS = [
-  "ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני",
-  "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר",
+  "ינואר",
+  "פברואר",
+  "מרץ",
+  "אפריל",
+  "מאי",
+  "יוני",
+  "יולי",
+  "אוגוסט",
+  "ספטמבר",
+  "אוקטובר",
+  "נובמבר",
+  "דצמבר",
 ];
 const HE_DOW = ["א", "ב", "ג", "ד", "ה", "ו", "ש"];
 
 export function CalendarView({ open, onClose }: Props) {
   const { selectedDate, setSelectedDate, activeProfile, getAllDays } = useStore();
-  const [cursor, setCursor] = useState(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
+  const [cursor, setCursor] = useState(
+    new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1),
+  );
 
   const days = getAllDays(activeProfile);
   const today = new Date();
@@ -29,7 +41,8 @@ export function CalendarView({ open, onClose }: Props) {
     const daysInMonth = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0).getDate();
     const arr: (Date | null)[] = [];
     for (let i = 0; i < dow; i++) arr.push(null);
-    for (let d = 1; d <= daysInMonth; d++) arr.push(new Date(cursor.getFullYear(), cursor.getMonth(), d));
+    for (let d = 1; d <= daysInMonth; d++)
+      arr.push(new Date(cursor.getFullYear(), cursor.getMonth(), d));
     while (arr.length % 7 !== 0) arr.push(null);
     return arr;
   }, [cursor]);
@@ -49,8 +62,17 @@ export function CalendarView({ open, onClose }: Props) {
   }
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="לוח שנה" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-foreground/30 backdrop-blur-sm" onClick={onClose} aria-hidden />
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="לוח שנה"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+    >
+      <div
+        className="absolute inset-0 bg-foreground/30 backdrop-blur-sm"
+        onClick={onClose}
+        aria-hidden
+      />
       <div className="relative w-full max-w-md rounded-t-3xl sm:rounded-3xl bg-card border border-border shadow-lg animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200">
         <div className="flex items-center gap-2 border-b border-border p-3">
           <button
@@ -70,14 +92,20 @@ export function CalendarView({ open, onClose }: Props) {
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
-          <button onClick={onClose} aria-label="סגירה" className="grid h-11 w-11 place-items-center rounded-xl hover:bg-muted">
+          <button
+            onClick={onClose}
+            aria-label="סגירה"
+            className="grid h-11 w-11 place-items-center rounded-xl hover:bg-muted"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <div className="p-3">
           <div className="grid grid-cols-7 gap-1 mb-1 text-center text-xs text-muted-foreground">
-            {HE_DOW.map((d) => <div key={d}>{d}</div>)}
+            {HE_DOW.map((d) => (
+              <div key={d}>{d}</div>
+            ))}
           </div>
           <div className="grid grid-cols-7 gap-1">
             {cells.map((d, i) => {
@@ -122,9 +150,11 @@ function statusLabel(s: string) {
 
 function StatusDot({ status }: { status: "full" | "partial" | "empty" }) {
   const cls =
-    status === "full" ? "bg-success"
-    : status === "partial" ? "bg-warn"
-    : "border border-destructive/60 bg-transparent";
+    status === "full"
+      ? "bg-success"
+      : status === "partial"
+        ? "bg-warn"
+        : "border border-destructive/60 bg-transparent";
   return <span className={cn("h-1.5 w-1.5 rounded-full", cls)} aria-hidden />;
 }
 

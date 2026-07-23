@@ -6,7 +6,15 @@ import { toISODate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const TYPES: WorkoutType[] = [
-  "כוח", "אירובי", "הליכה", "ריצה", "אופניים", "שחייה", "יוגה / גמישות", "ספורט קבוצתי", "אחר",
+  "כוח",
+  "אירובי",
+  "הליכה",
+  "ריצה",
+  "אופניים",
+  "שחייה",
+  "יוגה / גמישות",
+  "ספורט קבוצתי",
+  "אחר",
 ];
 const FEELINGS: WorkoutFeeling[] = ["קל", "טוב", "מאתגר", "קשה", "אחר"];
 
@@ -48,10 +56,15 @@ export function WorkoutCard() {
       className="rounded-3xl bg-white border border-[#E9EEF3] p-6 shadow-soft"
     >
       <div className="flex items-center gap-3">
-        <div className="grid h-12 w-12 place-items-center rounded-full bg-[#EDF8F2] text-[#17A668]" aria-hidden>
+        <div
+          className="grid h-12 w-12 place-items-center rounded-full bg-[#EDF8F2] text-[#17A668]"
+          aria-hidden
+        >
           <Dumbbell className="h-5 w-5" strokeWidth={1.75} />
         </div>
-        <h2 id="workout-title" className="text-[15px] font-semibold flex-1">אימון</h2>
+        <h2 id="workout-title" className="text-[15px] font-semibold flex-1">
+          אימון
+        </h2>
         {isPerformed && !editing && (
           <button
             onClick={() => setEditing(true)}
@@ -66,16 +79,32 @@ export function WorkoutCard() {
       <div className="mt-3">
         <div className="text-sm text-muted-foreground mb-2">האם בוצע אימון?</div>
         <div className="inline-flex rounded-full bg-secondary p-1 border border-border">
-          <ToggleBtn active={isPerformed} onClick={() => setPerformed(true)}>כן</ToggleBtn>
-          <ToggleBtn active={isNot} onClick={() => setPerformed(false)}>לא</ToggleBtn>
-          <ToggleBtn active={isEmpty} onClick={() => store.setWorkout(undefined)}>עוד לא תועד</ToggleBtn>
+          <ToggleBtn active={isPerformed} onClick={() => setPerformed(true)}>
+            כן
+          </ToggleBtn>
+          <ToggleBtn active={isNot} onClick={() => setPerformed(false)}>
+            לא
+          </ToggleBtn>
+          <ToggleBtn active={isEmpty} onClick={() => store.setWorkout(undefined)}>
+            עוד לא תועד
+          </ToggleBtn>
         </div>
       </div>
 
       {isPerformed && (
         <div className="mt-4 space-y-3">
-          <ChipGroup label="סוג האימון" options={TYPES} value={workout?.type} onChange={updateType} />
-          <ChipGroup label="תחושה" options={FEELINGS} value={workout?.feeling} onChange={updateFeeling} />
+          <ChipGroup
+            label="סוג האימון"
+            options={TYPES}
+            value={workout?.type}
+            onChange={updateType}
+          />
+          <ChipGroup
+            label="תחושה"
+            options={FEELINGS}
+            value={workout?.feeling}
+            onChange={updateFeeling}
+          />
           {editing && (
             <div className="pt-1">
               <button
@@ -89,14 +118,20 @@ export function WorkoutCard() {
         </div>
       )}
 
-      {isNot && (
-        <p className="mt-3 text-sm text-muted-foreground">לא בוצע אימון היום.</p>
-      )}
+      {isNot && <p className="mt-3 text-sm text-muted-foreground">לא בוצע אימון היום.</p>}
     </section>
   );
 }
 
-function ToggleBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function ToggleBtn({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
   return (
     <button
       onClick={onClick}
@@ -112,8 +147,16 @@ function ToggleBtn({ active, onClick, children }: { active: boolean; onClick: ()
 }
 
 function ChipGroup<T extends string>({
-  label, options, value, onChange,
-}: { label: string; options: T[]; value?: T; onChange: (v: T) => void }) {
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: T[];
+  value?: T;
+  onChange: (v: T) => void;
+}) {
   return (
     <div>
       <div className="mb-1.5 text-xs font-semibold text-muted-foreground">{label}</div>

@@ -21,11 +21,15 @@ const STYLE: Record<string, string> = {
 export function SyncStatus() {
   const { syncState } = useStore();
   const Icon =
-    syncState === "saved" ? Check
-    : syncState === "saving" ? Loader2
-    : syncState === "offline" ? CloudOff
-    : syncState === "pending" ? RefreshCw
-    : AlertTriangle;
+    syncState === "saved"
+      ? Check
+      : syncState === "saving"
+        ? Loader2
+        : syncState === "offline"
+          ? CloudOff
+          : syncState === "pending"
+            ? RefreshCw
+            : AlertTriangle;
 
   return (
     <div

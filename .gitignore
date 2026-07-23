@@ -14,7 +14,11 @@ dist-ssr
 .vinxi
 .tanstack/**
 .nitro
+.wrangler
 *.local
+
+# Repo uses bun (bun.lock). Ignore the npm lockfile from local installs.
+package-lock.json
 
 # Wrangler / Cloudflare
 .wrangler/
