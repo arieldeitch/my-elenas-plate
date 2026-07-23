@@ -17,31 +17,31 @@ export function MealCard({ meal, onOpen }: Props) {
   const statusText =
     status === "logged" ? "תועד" : status === "skipped" ? "לא נאכלה" : "לא תועד";
 
-  const dimmed = status === "empty";
-
   return (
     <button
       onClick={onOpen}
       aria-label={`${label}: ${statusText}`}
-      className="group flex w-full flex-col items-center gap-2 rounded-2xl p-2 text-center transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.97]"
+      className="group flex min-h-[150px] w-full flex-col items-center justify-between gap-3 rounded-3xl p-3 text-center transition-all duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]"
     >
-      <div className="relative">
+      <div className="relative pt-1">
         <div
           className={cn(
-            "grid h-[68px] w-[68px] place-items-center rounded-full border-4 border-card shadow-soft",
-            status === "skipped" ? "bg-muted text-muted-foreground" : tint,
-            dimmed && "opacity-70 border-dashed border-border bg-muted/40 text-muted-foreground",
+            "grid h-16 w-16 place-items-center rounded-full transition-colors",
+            status === "skipped" ? "bg-[#F1F5F9] text-[#708197]" : tint,
+            status === "empty" && "opacity-90",
           )}
           aria-hidden
         >
-          <Icon className="h-7 w-7" />
+          <Icon className="h-7 w-7" strokeWidth={1.75} />
         </div>
         <StatusBadge status={status} />
       </div>
-      <div className="text-[13px] font-bold text-foreground leading-tight px-1">
-        {label}
+      <div className="flex flex-col items-center gap-1.5">
+        <div className="text-[13px] font-semibold text-foreground leading-tight">
+          {label}
+        </div>
+        <StatusPill status={status} />
       </div>
-      <StatusPill status={status} />
     </button>
   );
 }
@@ -51,9 +51,9 @@ function StatusBadge({ status }: { status: DailyMeal["status"] }) {
     return (
       <span
         aria-hidden
-        className="absolute -top-1 -left-1 grid h-6 w-6 place-items-center rounded-full bg-success text-success-foreground border-2 border-card shadow-soft"
+        className="absolute -top-0.5 -left-0.5 grid h-5 w-5 place-items-center rounded-full bg-primary text-white ring-2 ring-white"
       >
-        <Check className="h-3.5 w-3.5" strokeWidth={3} />
+        <Check className="h-3 w-3" strokeWidth={3} />
       </span>
     );
   }
@@ -61,38 +61,23 @@ function StatusBadge({ status }: { status: DailyMeal["status"] }) {
     return (
       <span
         aria-hidden
-        className="absolute -top-1 -left-1 grid h-6 w-6 place-items-center rounded-full bg-fuchsia-400 text-white border-2 border-card shadow-soft"
+        className="absolute -top-0.5 -left-0.5 grid h-5 w-5 place-items-center rounded-full bg-[#708197] text-white ring-2 ring-white"
       >
-        <X className="h-3.5 w-3.5" strokeWidth={3} />
+        <X className="h-3 w-3" strokeWidth={3} />
       </span>
     );
   }
-  return (
-    <span
-      aria-hidden
-      className="absolute -top-1 -left-1 h-6 w-6 rounded-full bg-card border-2 border-border"
-    />
-  );
+  return null;
 }
 
 function StatusPill({ status }: { status: DailyMeal["status"] }) {
+  const base =
+    "inline-flex h-6 items-center rounded-full px-2.5 text-[11px] font-medium leading-none";
   if (status === "logged") {
-    return (
-      <span className="rounded-full bg-success-soft px-3 py-0.5 text-[11px] font-bold text-success">
-        תועד
-      </span>
-    );
+    return <span className={cn(base, "bg-[#EDF8F2] text-[#17A668]")}>תועד</span>;
   }
   if (status === "skipped") {
-    return (
-      <span className="rounded-full bg-fuchsia-50 px-3 py-0.5 text-[11px] font-bold text-fuchsia-600">
-        לא נאכלה
-      </span>
-    );
+    return <span className={cn(base, "bg-[#F1F5F9] text-[#708197]")}>לא נאכלה</span>;
   }
-  return (
-    <span className="rounded-full px-3 py-0.5 text-[11px] font-bold text-muted-foreground">
-      לא תועד
-    </span>
-  );
+  return <span className={cn(base, "bg-transparent text-[#94A3B4]")}>לא תועד</span>;
 }

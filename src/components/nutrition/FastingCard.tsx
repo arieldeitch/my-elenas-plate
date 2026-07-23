@@ -41,20 +41,20 @@ export function FastingCard() {
   return (
     <section
       aria-labelledby="fasting-title"
-      className="rounded-2xl bg-card border border-border p-4 shadow-soft"
+      className="rounded-3xl bg-white border border-[#E9EEF3] p-6 shadow-soft"
     >
       <div className="flex items-center gap-3">
-        <div className="grid h-10 w-10 place-items-center rounded-xl bg-secondary text-muted-foreground" aria-hidden>
-          <Hourglass className="h-5 w-5" />
+        <div className="grid h-12 w-12 place-items-center rounded-full bg-[#EDF6FD] text-[#2B84D6]" aria-hidden>
+          <Hourglass className="h-5 w-5" strokeWidth={1.75} />
         </div>
-        <h2 id="fasting-title" className="text-base font-semibold flex-1">צום</h2>
+        <h2 id="fasting-title" className="text-[15px] font-semibold flex-1">צום</h2>
         {day.fasting && !editing && (
           <button
             onClick={open}
             aria-label="עריכת צום"
-            className="grid h-10 w-10 place-items-center rounded-xl hover:bg-muted"
+            className="grid h-10 w-10 place-items-center rounded-full text-[#708197] hover:bg-[#F1F5F9] transition-colors"
           >
-            <Pencil className="h-4 w-4" />
+            <Pencil className="h-4 w-4" strokeWidth={1.75} />
           </button>
         )}
       </div>

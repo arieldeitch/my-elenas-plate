@@ -14,13 +14,13 @@ export function WeightBanner({ onOpen }: Props) {
 
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card shadow-banner"
+      className="fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-background via-background to-transparent pt-4"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <div className="mx-auto max-w-2xl px-3 py-3">
+      <div className="mx-auto max-w-[820px] px-6 pb-4">
         <button
           onClick={onOpen}
-          className="w-full rounded-2xl border border-border bg-card px-3 py-2.5 text-right hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="w-full rounded-3xl border border-[#E9EEF3] bg-white px-5 py-4 text-right shadow-soft hover:shadow-float transition-shadow duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label="פתיחת טופס שקילה"
         >
           {!latest ? (
