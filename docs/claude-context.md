@@ -55,11 +55,12 @@ Migrations under `supabase/` (schema + RLS + bootstrap + realtime) were live-ver
 Supabase stack (RLS isolation + bootstrap: 5/5 integration tests). App layer: `src/lib/supabase/*`,
 `src/lib/sync/*`, `src/components/auth/*`, wired into the store behind `isSupabaseConfigured()`.
 Without `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` the app runs in **local demo mode** (localStorage).
-Never put service_role in the client. A remote project is set in `.env` (ref `rqgoiuztphkcvbwtbxbj`)
-and the app gates correctly against it, but the **remote schema is not yet applied** — blocked: the
-agent's CLI account lacks privileges and no DB password is available. Apply `supabase/deploy_all.sql`
-in the Dashboard (or `supabase db push` from the owning account) to unblock live browser E2E. Tests are
-kept hermetic via `vi.stubEnv` in `src/test/setup.ts` regardless of `.env`. See DEC-017 and `project-status.md`.
+Never put service_role in the client. Remote project `rqgoiuztphkcvbwtbxbj` is set in `.env` and the
+**schema is applied + verified** (10 tables, RLS active: anon read `[]` / anon write `42501`,
+`bootstrap_household` present). Remaining blocker for live authed verification (bootstrap/CRUD/realtime/
+offline/migration/E2E): the remote has **"Confirm email" enabled** so no session is obtainable
+programmatically — disable it in the Dashboard (Auth → Providers → Email) to unblock. Tests are kept
+hermetic via `vi.stubEnv` in `src/test/setup.ts` regardless of `.env`. See DEC-017 and `project-status.md`.
 
 ## Guardrails
 

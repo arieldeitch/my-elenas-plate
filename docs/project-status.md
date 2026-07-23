@@ -94,18 +94,32 @@ Supabase is the source of truth when configured; localStorage is demoted to demo
 ### Remote deployment status (2026-07-23)
 
 - **`.env` provided** (project ref `rqgoiuztphkcvbwtbxbj`), anon key verified (`role: anon`, not
-  service_role), and gitignored (`.env`, `.env.*` except `.env.example`). No env/secret is committed.
-- **App wiring verified**: with `.env` present the app enters configured mode — the demo UI is hidden and
-  the sign-in gate (AuthGate → SignIn) renders. Remote Auth (GoTrue) and REST endpoints respond.
-- **Remote schema NOT yet applied** — `public.profiles` and `bootstrap_household()` return 404 on the
-  remote. **Blocked**: the logged-in Supabase CLI account lacks privileges for this project
-  ("your account does not have the necessary privileges"), and no DB password / owning-account token is
-  available. Migrations cannot be pushed by the agent.
-- **Unblock action**: apply `supabase/deploy_all.sql` in the project's Dashboard SQL Editor (idempotent),
-  **or** provide the DB password / log the CLI into the owning account and run `supabase db push`.
-  See `supabase/DEPLOY.md`. After that, bootstrap + CRUD + realtime + the local→cloud migration run
-  automatically on first sign-in; remote RLS can then be re-verified with the gated integration test
-  (point `SUPABASE_TEST_URL/ANON_KEY` at the remote).
+  service_role), gitignored. No env/secret is committed.
+- **Migrations applied to the remote** (user ran `supabase db push`; "Finished supabase db push").
+- **Remote verification (REST layer, without a session):**
+  - All **10 tables exist** (`households, household_users, profiles, foods, food_preferences,
+meal_statuses, food_entries, fasting_logs, workout_logs, weigh_ins`).
+  - **RLS active**: anonymous SELECT returns `[]` on every data table; anonymous INSERT is rejected with
+    `42501 new row violates row-level security policy` (HTTP 401).
+  - **`bootstrap_household()` RPC exists** (present, not 404).
+  - Structure (constraints, indexes, `updated_at` triggers, 35 policies, 8 realtime tables) is confirmed
+    **by equivalence**: the pushed migrations are byte-identical to the ones verified against a local
+    Supabase stack (5/5 RLS integration there). Deeper remote introspection needs DB access (not anon).
+- **App wiring verified**: with `.env` the app enters configured mode — demo UI hidden, AuthGate → SignIn
+  renders. Remote Auth (GoTrue) + REST are live.
+
+### BLOCKER — remote requires email confirmation
+
+The remote project has **"Confirm email" enabled**: sign-up returns `confirmation_sent_at` and **no
+session**. The agent therefore cannot obtain an authenticated session programmatically, which blocks the
+session-dependent verifications: bootstrap execution, CRUD, coffee, fasting/workout/weigh-in, two-context
+realtime, offline queue flush, local→cloud migration, and two-user RLS isolation on the remote.
+
+**One action to unblock full verification:** in the Supabase Dashboard → Authentication → Providers →
+Email, turn **off "Confirm email"** (appropriate for a 2-person shared-account pilot; matches the local
+config). Then the agent can run the remote RLS integration test (set `SUPABASE_TEST_URL`,
+`SUPABASE_TEST_ANON_KEY`, and `SUPABASE_TEST_EMAIL_DOMAIN` to a domain the project accepts — not
+example.com) and the browser E2E. Alternatively, confirm one real mailbox and sign in manually.
 
 ## Not present / not yet live-verified (honest gaps)
 

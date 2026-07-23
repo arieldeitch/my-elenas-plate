@@ -20,11 +20,12 @@ communicated by color alone.
     `VITE_SUPABASE_ANON_KEY` the app runs in local demo mode (localStorage). See DEC-017.
 - Quality gate all green: type check, lint (0 errors, 8 dev-only HMR warnings), 102 tests (+5 live-RLS
   skipped without env), automated a11y (0 violations), build, SSR smoke.
-- Remote project set in `.env` (ref `rqgoiuztphkcvbwtbxbj`); app gates correctly against it and remote
-  Auth/REST are live, but the **remote schema is not yet applied** (blocked: agent's CLI account lacks
-  privileges, no DB password). Unblock: apply `supabase/deploy_all.sql` in the Dashboard or run
-  `supabase db push` from the owning account (`supabase/DEPLOY.md`). Then live browser E2E + realtime +
-  offline + remote RLS run on first sign-in.
+- Remote project `rqgoiuztphkcvbwtbxbj` set in `.env`; **schema applied + verified via REST** (10 tables,
+  RLS active — anon read `[]` / anon write `42501` — `bootstrap_household` present; structure ==
+  locally-verified migrations). App gates correctly against it. **Remaining blocker:** the remote has
+  "Confirm email" ON, so no automated session → live authed flows (bootstrap/CRUD/coffee/fasting/workout/
+  weigh-in/realtime/offline/migration/2-user isolation/browser E2E) are pending. Disable "Confirm email"
+  in the Dashboard (Auth → Providers → Email), then re-run the RLS integration test + E2E.
 
 ## Latest product decisions (active)
 

@@ -13,6 +13,10 @@ import type { Database } from "./database.types";
 
 const URL = process.env.SUPABASE_TEST_URL;
 const ANON = process.env.SUPABASE_TEST_ANON_KEY;
+// Remote projects validate email domains (example.com is rejected) and may
+// require email confirmation. Set SUPABASE_TEST_EMAIL_DOMAIN to an accepted
+// domain and disable "Confirm email" to run this against the remote.
+const EMAIL_DOMAIN = process.env.SUPABASE_TEST_EMAIL_DOMAIN || "example.com";
 const run = Boolean(URL && ANON);
 
 function anonClient(): SupabaseClient<Database> {
@@ -23,9 +27,14 @@ function anonClient(): SupabaseClient<Database> {
 
 async function newUser() {
   const sb = anonClient();
-  const email = `t_${Date.now()}_${Math.floor(Math.random() * 1e6)}@example.com`;
-  const { error } = await sb.auth.signUp({ email, password: "password123" });
+  const email = `t_${Date.now()}_${Math.floor(Math.random() * 1e6)}@${EMAIL_DOMAIN}`;
+  const { data, error } = await sb.auth.signUp({ email, password: "password123" });
   if (error) throw error;
+  if (!data.session) {
+    throw new Error(
+      "sign-up returned no session — the project requires email confirmation; disable it to run this test",
+    );
+  }
   return sb;
 }
 

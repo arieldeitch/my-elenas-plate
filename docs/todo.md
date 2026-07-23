@@ -34,14 +34,16 @@ Updated 2026-07-23 with verified findings from the MVP-hardening session.
 - **T-023 Done** Local→cloud migration — pure transform + marker, non-destructive, unit-tested.
 - **T-024 Done** RLS/bootstrap live-verified via local Supabase (5/5 integration tests).
 
-### Remaining (needs a user action)
+### Remote (2026-07-23)
 
-- **T-025 (Blocked)** Apply the schema to the remote project `rqgoiuztphkcvbwtbxbj`. The agent's
-  Supabase CLI account has no privileges for it and no DB password is available. **Action:** run
-  `supabase/deploy_all.sql` in the Dashboard SQL Editor, or provide the DB password / owning-account
-  login so `supabase db push` can run. See `supabase/DEPLOY.md`.
-- **T-026 (Blocked by T-025)** Live browser end-to-end + realtime (two sessions) + offline queue +
-  remote RLS test — all run automatically once the schema is on the remote.
+- **T-025 Done** Remote schema applied (`supabase db push`). Verified via REST: 10 tables, RLS active
+  (anon read `[]`, anon write `42501`), `bootstrap_household` present; structure == locally-verified.
+- **T-026 (Blocked — email confirmation)** Live authed verification: bootstrap execution, CRUD, coffee,
+  fasting/workout/weigh-in, two-context realtime, offline flush, local→cloud migration, two-user RLS
+  isolation, and browser E2E. All need an authenticated session, which the remote blocks behind
+  "Confirm email". **Action:** disable "Confirm email" in the Dashboard (Auth → Providers → Email), or
+  confirm a mailbox. Then set `SUPABASE_TEST_URL/ANON_KEY/EMAIL_DOMAIN` and re-run the RLS integration
+  test + E2E.
 
 ## Deferred (P2/P3, not approved for MVP)
 
