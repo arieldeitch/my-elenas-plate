@@ -80,10 +80,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { name: "theme-color", content: "#f5f4ef" },
-      { title: "מעקב תזונה משותף" },
-      { name: "description", content: "אפליקציית תיעוד תזונה משותפת בעברית — פשוטה, מהירה ורגועה." },
+      { title: "מעקב תזונה משותף — גרסת הדגמה" },
+      { name: "description", content: "אפליקציית תיעוד תזונה משותפת עם ממשק פשוט, מהיר ורגוע." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { property: "og:title", content: "מעקב תזונה משותף — גרסת הדגמה" },
+      { name: "twitter:title", content: "מעקב תזונה משותף — גרסת הדגמה" },
+      { property: "og:description", content: "אפליקציית תיעוד תזונה משותפת עם ממשק פשוט, מהיר ורגוע." },
+      { name: "twitter:description", content: "אפליקציית תיעוד תזונה משותפת עם ממשק פשוט, מהיר ורגוע." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/15a3d7ed-37f5-4297-a6ea-63883e5641c0/id-preview-8bac4b21--ca9aedab-a0ca-4889-a545-9d673febf3a0.lovable.app-1784774789190.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/15a3d7ed-37f5-4297-a6ea-63883e5641c0/id-preview-8bac4b21--ca9aedab-a0ca-4889-a545-9d673febf3a0.lovable.app-1784774789190.png" },
     ],
     links: [
       {

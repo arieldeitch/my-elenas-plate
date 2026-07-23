@@ -23,8 +23,8 @@ export const Route = createFileRoute("/")({
     meta: [
       { title: "מעקב תזונה משותף — גרסת הדגמה" },
       { name: "description", content: "אפליקציית תיעוד תזונה משותפת עם ממשק פשוט, מהיר ורגוע." },
-      { property: "og:title", content: "מעקב תזונה משותף" },
-      { property: "og:description", content: "תיעוד ארוחות, צום, אימון ושקילות בקצב שלכם." },
+      { property: "og:title", content: "מעקב תזונה משותף — גרסת הדגמה" },
+      { property: "og:description", content: "אפליקציית תיעוד תזונה משותפת עם ממשק פשוט, מהיר ורגוע." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
