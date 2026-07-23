@@ -1,8 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { buildMigrationPayload, totalRows } from "./migrate-local";
+import {
+  buildFoodMigrationPayload,
+  buildMigrationPayload,
+  isCustomFoodId,
+  totalFoodRows,
+  totalRows,
+} from "./migrate-local";
 import { entriesToDelete } from "./supabase-sync";
 import type { PersistedState } from "../persistence";
-import type { DailyMeal, DayData, MealSlotId, ProfileId } from "../domain";
+import type { DailyMeal, DayData, Food, MealSlotId, ProfileId } from "../domain";
 import { MEAL_SLOTS } from "../domain";
 
 function emptyDay(): DayData {
@@ -75,6 +81,50 @@ describe("buildMigrationPayload", () => {
   it("does not assign rows when the profile slug is missing", () => {
     const p = buildMigrationPayload(state(), "H1", {}); // no slugs
     expect(totalRows(p)).toBe(0);
+  });
+});
+
+describe("isCustomFoodId", () => {
+  it("treats built-in 'f_' ids as non-custom", () => {
+    expect(isCustomFoodId("f_coffee")).toBe(false);
+    expect(isCustomFoodId("2b5f...uuid")).toBe(true);
+  });
+});
+
+describe("buildFoodMigrationPayload", () => {
+  function stateWithFoods(): PersistedState {
+    const s = state();
+    const custom: Food = { id: "cust-uuid-1", name: "שייק בננה", category: "משקאות" };
+    return {
+      ...s,
+      foods: [
+        { id: "f_coffee", name: "קפה" }, // built-in — not migrated
+        custom, // custom — migrated
+      ],
+      favorites: { me: ["f_coffee", "cust-uuid-1"], elena: [] },
+      recents: { me: ["cust-uuid-1", "f_coffee"], elena: [] },
+    };
+  }
+
+  it("migrates custom foods only, plus favorites and recents", () => {
+    const p = buildFoodMigrationPayload(stateWithFoods(), "H1", { ariel: "PA", alena: "PB" });
+    // only the custom food
+    expect(p.foods.map((f) => f.id)).toEqual(["cust-uuid-1"]);
+    expect(p.foods[0].normalized_name).toBe("שייק בננה");
+
+    // preferences: f_coffee (favorite + recent), cust-uuid-1 (favorite + recent), profile PA
+    const byFood = Object.fromEntries(p.preferences.map((r) => [r.food_id, r]));
+    expect(byFood["f_coffee"].profile_id).toBe("PA");
+    expect(byFood["f_coffee"].is_favorite).toBe(true);
+    expect(byFood["cust-uuid-1"].is_favorite).toBe(true);
+    // recents newest-first: cust-uuid-1 (index 0) newer than f_coffee (index 1)
+    expect(byFood["cust-uuid-1"].last_used_at! > byFood["f_coffee"].last_used_at!).toBe(true);
+    expect(totalFoodRows(p)).toBeGreaterThan(0);
+  });
+
+  it("skips when the profile slug is missing", () => {
+    const p = buildFoodMigrationPayload(stateWithFoods(), "H1", {});
+    expect(p.preferences).toEqual([]);
   });
 });
 

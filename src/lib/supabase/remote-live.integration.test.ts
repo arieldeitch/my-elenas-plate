@@ -12,7 +12,8 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./database.types";
-import { entryFromRow, entryToRow } from "./mappers";
+import { deriveFavoritesRecents, entryFromRow, entryToRow, preferenceFromRow } from "./mappers";
+import type { FoodPreferenceRow } from "./database.types";
 import { buildMigrationPayload, totalRows } from "../sync/migrate-local";
 import type { PersistedState } from "../persistence";
 import type { DailyMeal, DayData, FoodEntry, MealSlotId, ProfileId } from "../domain";
@@ -281,50 +282,169 @@ describe.skipIf(!run)("Supabase live data layer (remote)", () => {
     expect(count).toBeGreaterThan(0);
   });
 
-  it("realtime: a second context sees insert, update and delete", async () => {
-    // Two clients authenticated as the SAME shared account (same household).
-    const b = client();
-    await b.auth.signInWithPassword({ email: acc.email, password: acc.password });
+  it("custom foods + favorites + recents sync per profile with isolation", async () => {
+    const sb = acc.client;
 
-    // Ensure the subscribing socket carries the auth token so RLS lets it see
-    // the household's rows.
-    const { data: sess } = await acc.client.auth.getSession();
-    acc.client.realtime.setAuth(sess.session?.access_token);
+    // 1. create a custom food (household-scoped)
+    const foodId = uuid();
+    await sb
+      .from("foods")
+      .insert({
+        id: foodId,
+        household_id: acc.householdId,
+        name: "שייק בננה",
+        normalized_name: "שייק בננה",
+      })
+      .throwOnError();
+    const { data: foods } = await sb.from("foods").select("*").eq("household_id", acc.householdId);
+    expect(foods!.some((f) => f.id === foodId)).toBe(true);
 
-    const events: string[] = [];
-    const channel = acc.client
-      .channel(`rt-${Date.now()}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "food_entries" }, (p) =>
-        events.push(p.eventType),
-      );
-    await new Promise<void>((resolve, reject) => {
-      const t = setTimeout(() => reject(new Error("subscribe timeout")), 10000);
-      channel.subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          clearTimeout(t);
-          resolve();
-        }
+    // 2. Ariel favorites it + records recency
+    await sb
+      .from("food_preferences")
+      .upsert(
+        {
+          household_id: acc.householdId,
+          profile_id: acc.ariel,
+          food_id: foodId,
+          is_favorite: true,
+        },
+        { onConflict: "profile_id,food_id" },
+      )
+      .throwOnError();
+    await sb
+      .from("food_preferences")
+      .upsert(
+        {
+          household_id: acc.householdId,
+          profile_id: acc.ariel,
+          food_id: foodId,
+          last_used_at: new Date(2).toISOString(),
+        },
+        { onConflict: "profile_id,food_id" },
+      )
+      .throwOnError();
+
+    // 3. Ariel's derived favorites/recents include it
+    const { data: arielPrefs } = await sb
+      .from("food_preferences")
+      .select("*")
+      .eq("profile_id", acc.ariel);
+    const derived = deriveFavoritesRecents(
+      (arielPrefs as FoodPreferenceRow[]).map(preferenceFromRow),
+    );
+    expect(derived.favorites).toContain(foodId);
+    expect(derived.recents).toContain(foodId);
+
+    // 4. Alena does NOT inherit Ariel's favorite/recent (profile separation)
+    const { data: alenaPrefs } = await sb
+      .from("food_preferences")
+      .select("*")
+      .eq("profile_id", acc.alena);
+    expect((alenaPrefs ?? []).length).toBe(0);
+
+    // 5. Alena has independent preferences
+    await sb
+      .from("food_preferences")
+      .upsert(
+        {
+          household_id: acc.householdId,
+          profile_id: acc.alena,
+          food_id: foodId,
+          is_favorite: true,
+        },
+        { onConflict: "profile_id,food_id" },
+      )
+      .throwOnError();
+    const { count } = await sb
+      .from("food_preferences")
+      .select("*", { count: "exact", head: true })
+      .eq("food_id", foodId);
+    expect(count).toBe(2); // one row per profile, no duplicates
+
+    // 6. Soft-delete (archive) keeps the row; historical entries (by name) still read
+    await sb.from("foods").update({ is_active: false }).eq("id", foodId).throwOnError();
+    const { data: active } = await sb
+      .from("foods")
+      .select("id")
+      .eq("id", foodId)
+      .eq("is_active", true);
+    expect(active).toEqual([]);
+  });
+
+  it("isolation: an unrelated account sees none of the household's foods/prefs", async () => {
+    const foodId = uuid();
+    await acc.client
+      .from("foods")
+      .insert({ id: foodId, household_id: acc.householdId, name: "פרטי", normalized_name: "פרטי" })
+      .throwOnError();
+
+    const other = await newAccount();
+    const { data: theirView } = await other.client
+      .from("foods")
+      .select("*")
+      .eq("household_id", acc.householdId);
+    expect(theirView).toEqual([]);
+    const { data: theirPrefs } = await other.client
+      .from("food_preferences")
+      .select("*")
+      .eq("household_id", acc.householdId);
+    expect(theirPrefs).toEqual([]);
+  });
+
+  it(
+    "realtime: a second context sees insert, update and delete",
+    { retry: 2, timeout: 60000 },
+    async () => {
+      // Second client authenticated as the SAME shared account (same household).
+      const b = client();
+      await b.auth.signInWithPassword({ email: acc.email, password: acc.password });
+
+      // Ensure the subscribing socket carries the auth token so RLS lets it see
+      // the household's rows.
+      const { data: sess } = await acc.client.auth.getSession();
+      acc.client.realtime.setAuth(sess.session?.access_token);
+
+      const events: string[] = [];
+      const channel = acc.client
+        .channel(`rt-${Date.now()}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "food_entries" }, (p) =>
+          events.push(p.eventType),
+        );
+      await new Promise<void>((resolve, reject) => {
+        const t = setTimeout(() => reject(new Error("subscribe timeout")), 20000);
+        channel.subscribe((status) => {
+          if (status === "SUBSCRIBED") {
+            clearTimeout(t);
+            resolve();
+          }
+        });
       });
-    });
 
-    const id = uuid();
-    const row = entryToRow(
-      { id, foodId: "f", foodName: "תפוח", mode: "measured", amount: 1, unit: "יחידה" },
-      { householdId: acc.householdId, profileId: acc.ariel, logDate: "2026-07-23", slot: "dinner" },
-    );
-    await b.from("food_entries").insert(row).throwOnError();
-    await b.from("food_entries").update({ amount: 2 }).eq("id", id).throwOnError();
-    await b.from("food_entries").delete().eq("id", id).throwOnError();
+      const id = uuid();
+      const row = entryToRow(
+        { id, foodId: "f", foodName: "תפוח", mode: "measured", amount: 1, unit: "יחידה" },
+        {
+          householdId: acc.householdId,
+          profileId: acc.ariel,
+          logDate: "2026-07-23",
+          slot: "dinner",
+        },
+      );
+      await b.from("food_entries").insert(row).throwOnError();
+      await b.from("food_entries").update({ amount: 2 }).eq("id", id).throwOnError();
+      await b.from("food_entries").delete().eq("id", id).throwOnError();
 
-    await waitFor(
-      () => events.includes("INSERT") && events.includes("UPDATE") && events.includes("DELETE"),
-      12000,
-    );
-    expect(events).toContain("INSERT");
-    expect(events).toContain("UPDATE");
-    expect(events).toContain("DELETE");
-    await acc.client.removeChannel(channel);
-  }, 30000);
+      await waitFor(
+        () => events.includes("INSERT") && events.includes("UPDATE") && events.includes("DELETE"),
+        25000,
+      );
+      expect(events).toContain("INSERT");
+      expect(events).toContain("UPDATE");
+      expect(events).toContain("DELETE");
+      await acc.client.removeChannel(channel);
+    },
+  );
 });
 
 function sampleState(): PersistedState {

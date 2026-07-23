@@ -1,18 +1,23 @@
 import { describe, it, expect } from "vitest";
 import {
+  deriveFavoritesRecents,
   entryFromRow,
   entryToRow,
+  foodFromRow,
+  foodToRow,
   mealFromRows,
+  preferenceFromRow,
   slotToSlug,
   slugToSlot,
   statusFromDb,
   statusToDb,
   subjectiveFromDb,
   subjectiveToDb,
+  type Preference,
 } from "./mappers";
-import type { FoodEntry, MealSlotId } from "../domain";
+import type { Food, FoodEntry, MealSlotId } from "../domain";
 import { MEAL_SLOTS } from "../domain";
-import type { FoodEntryRow } from "./database.types";
+import type { FoodEntryRow, FoodPreferenceRow, FoodRow } from "./database.types";
 
 describe("slot mapping", () => {
   it("round-trips every slot id through its slug", () => {
@@ -122,6 +127,72 @@ describe("entryToRow / entryFromRow", () => {
     const entry = entryFromRow(row);
     expect(entry.coffee).toEqual({ type: "לאטה", milk: "עם חלב", milkType: "שקדים" });
     expect(entry.unit).toBe("ספל");
+  });
+});
+
+describe("custom food mapping", () => {
+  it("maps a Food to a foods insert with normalized name", () => {
+    const food: Food = { id: "abc", name: "  שייק  בננה ", category: "משקאות", defaultUnit: "כוס" };
+    const row = foodToRow(food, "H1");
+    expect(row).toMatchObject({
+      id: "abc",
+      household_id: "H1",
+      name: "שייק  בננה",
+      normalized_name: "שייק בננה",
+      default_unit: "כוס",
+      kind: "generic",
+      is_active: true,
+    });
+  });
+
+  it("maps a foods row back to a Food", () => {
+    const row = {
+      id: "abc",
+      name: "שייק בננה",
+      category: "משקאות",
+      default_unit: "כוס",
+      kind: "coffee",
+    } as unknown as FoodRow;
+    const food = foodFromRow(row);
+    expect(food.name).toBe("שייק בננה");
+    expect(food.kind).toBe("coffee");
+    expect(food.suggestedUnits).toContain("יחידה");
+  });
+});
+
+describe("deriveFavoritesRecents", () => {
+  const pref = (foodId: string, isFavorite: boolean, lastUsedAt: string | null): Preference => ({
+    foodId,
+    isFavorite,
+    lastUsedAt,
+    useCount: 0,
+  });
+
+  it("separates favorites and orders recents newest-first, capped", () => {
+    const prefs = [
+      pref("a", true, "2026-07-20T10:00:00Z"),
+      pref("b", false, "2026-07-23T10:00:00Z"),
+      pref("c", true, null),
+      pref("d", false, "2026-07-21T10:00:00Z"),
+    ];
+    const { favorites, recents } = deriveFavoritesRecents(prefs, 2);
+    expect(favorites).toEqual(["a", "c"]);
+    expect(recents).toEqual(["b", "d"]); // newest first, limited to 2, null excluded
+  });
+
+  it("reads a preference row", () => {
+    const row = {
+      food_id: "x",
+      is_favorite: true,
+      last_used_at: "2026-07-23T00:00:00Z",
+      use_count: 3,
+    } as unknown as FoodPreferenceRow;
+    expect(preferenceFromRow(row)).toEqual({
+      foodId: "x",
+      isFavorite: true,
+      lastUsedAt: "2026-07-23T00:00:00Z",
+      useCount: 3,
+    });
   });
 });
 
