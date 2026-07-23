@@ -37,6 +37,7 @@ import { FOOD_CATALOG } from "./food-catalog";
 import { initialDays, initialFavorites, initialRecents, initialWeighIns } from "./demo-data";
 import { toISODate } from "./format";
 import { loadState, saveState } from "./persistence";
+import { useSupabaseSync } from "./sync/use-supabase-sync";
 
 export const PROFILES: Profile[] = [
   { id: "me", name: "אריאל", initials: "א" },
@@ -84,7 +85,13 @@ function emptyDay(): DayData {
 }
 
 let localId = 100_000;
-const genId = (p = "x") => `${p}_${++localId}`;
+// UUIDs so a locally-created id is also a valid Supabase primary key (the
+// optimistic id survives the round-trip). Falls back to a counter if the
+// runtime lacks crypto.randomUUID.
+const genId = (p = "x") =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${p}_${++localId}`;
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [activeProfile, setActiveProfile] = useState<ProfileId>("me");
@@ -109,8 +116,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }));
   const [foods, setFoods] = useState<Food[]>(FOOD_CATALOG);
 
-  // Interim demo persistence (localStorage). Hydrate once on the client, then
-  // persist changes so refresh / date change / profile switch keep data.
+  const iso = toISODate(selectedDate);
+
+  // Supabase sync — the source of truth when configured + authenticated.
+  // Inert (returns active=false) in local demo mode, so nothing below changes.
+  const sync = useSupabaseSync({
+    days,
+    setDays,
+    weighInsMap,
+    setWeighInsMap,
+    activeProfile,
+    iso,
+    setSyncState,
+  });
+
+  // Interim demo persistence (localStorage) — used ONLY when Supabase is not the
+  // source of truth. Hydrate once on the client, then persist changes.
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -127,7 +148,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || sync.active) return;
     saveState({
       activeProfile,
       days,
@@ -136,7 +157,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       recents: recentsMap,
       foods,
     });
-  }, [hydrated, activeProfile, days, weighInsMap, favoritesMap, recentsMap, foods]);
+  }, [hydrated, sync.active, activeProfile, days, weighInsMap, favoritesMap, recentsMap, foods]);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -145,8 +166,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => setSyncState("saved"), 650);
   }, []);
-
-  const iso = toISODate(selectedDate);
 
   const getDay = useCallback(
     (profile: ProfileId, isoDate: string): DayData => {
@@ -165,8 +184,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return { ...prev, [profile]: { ...prev[profile], [isoDate]: next } };
       });
       triggerSave();
+      sync.markDayDirty(profile, isoDate);
     },
-    [triggerSave],
+    [triggerSave, sync],
   );
 
   const pushRecent = useCallback(
@@ -282,6 +302,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ),
     }));
     triggerSave();
+    sync.markWeighDirty(activeProfile);
   };
 
   const value = useMemo<StoreValue>(
