@@ -42,8 +42,8 @@ import {
 import { toISODate } from "./format";
 
 export const PROFILES: Profile[] = [
-  { id: "me", name: "אני", initials: "א" },
-  { id: "elena", name: "אלנה", initials: "ל" },
+  { id: "me", name: "אריאל", initials: "א" },
+  { id: "elena", name: "אלנה", initials: "א" },
 ];
 
 type PerProfile<T> = Record<ProfileId, T>;
