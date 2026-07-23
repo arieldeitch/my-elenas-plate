@@ -10,7 +10,14 @@ interface Props {
   onMore?: () => void;
 }
 
-export function BottomNav({ active = "home", onHome, onCalendar, onAdd, onHistory, onMore }: Props) {
+export function BottomNav({
+  active = "home",
+  onHome,
+  onCalendar,
+  onAdd,
+  onHistory,
+  onMore,
+}: Props) {
   return (
     <nav
       dir="rtl"
@@ -19,8 +26,18 @@ export function BottomNav({ active = "home", onHome, onCalendar, onAdd, onHistor
       style={{ boxShadow: "0 -8px 28px rgba(20,40,70,0.06)" }}
     >
       <div className="mx-auto flex max-w-[820px] items-center justify-around px-2 pb-[calc(env(safe-area-inset-bottom)+6px)] pt-2">
-        <NavItem icon={<Home className="h-5 w-5" strokeWidth={2} />} label="בית" active={active === "home"} onClick={onHome} />
-        <NavItem icon={<CalendarDays className="h-5 w-5" strokeWidth={1.75} />} label="לוח שנה" active={active === "calendar"} onClick={onCalendar} />
+        <NavItem
+          icon={<Home className="h-5 w-5" strokeWidth={2} />}
+          label="בית"
+          active={active === "home"}
+          onClick={onHome}
+        />
+        <NavItem
+          icon={<CalendarDays className="h-5 w-5" strokeWidth={1.75} />}
+          label="לוח שנה"
+          active={active === "calendar"}
+          onClick={onCalendar}
+        />
         <button
           onClick={onAdd}
           aria-label="הוספה מהירה"
@@ -29,10 +46,20 @@ export function BottomNav({ active = "home", onHome, onCalendar, onAdd, onHistor
           <span className="grid h-14 w-14 place-items-center rounded-full bg-info text-white shadow-[0_8px_20px_rgba(43,132,214,0.35)] ring-4 ring-white transition-transform active:scale-95">
             <Plus className="h-6 w-6" strokeWidth={2.5} />
           </span>
-          <span className="text-[11px] font-medium text-info">הוספה מהירה</span>
+          <span className="text-xs font-medium text-info">הוספה מהירה</span>
         </button>
-        <NavItem icon={<BarChart3 className="h-5 w-5" strokeWidth={1.75} />} label="היסטוריה" active={active === "history"} onClick={onHistory} />
-        <NavItem icon={<MoreHorizontal className="h-5 w-5" strokeWidth={1.75} />} label="עוד" active={active === "more"} onClick={onMore} />
+        <NavItem
+          icon={<BarChart3 className="h-5 w-5" strokeWidth={1.75} />}
+          label="היסטוריה"
+          active={active === "history"}
+          onClick={onHistory}
+        />
+        <NavItem
+          icon={<MoreHorizontal className="h-5 w-5" strokeWidth={1.75} />}
+          label="עוד"
+          active={active === "more"}
+          onClick={onMore}
+        />
       </div>
     </nav>
   );
@@ -59,7 +86,7 @@ function NavItem({
       aria-current={active ? "page" : undefined}
     >
       {icon}
-      <span className="text-[11px] font-medium">{label}</span>
+      <span className="text-xs font-medium">{label}</span>
     </button>
   );
 }

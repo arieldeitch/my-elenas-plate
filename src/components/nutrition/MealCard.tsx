@@ -14,8 +14,7 @@ export function MealCard({ meal, onOpen }: Props) {
   const status = meal.status;
   const tint = MEAL_TILE_TINT[meal.slot];
 
-  const statusText =
-    status === "logged" ? "תועד" : status === "skipped" ? "לא נאכלה" : "לא תועד";
+  const statusText = status === "logged" ? "תועד" : status === "skipped" ? "לא נאכלה" : "לא תועד";
 
   return (
     <button
@@ -35,9 +34,7 @@ export function MealCard({ meal, onOpen }: Props) {
         </div>
         <StatusBadge status={status} />
       </div>
-      <div className="mt-1 text-[13px] font-semibold text-foreground leading-tight">
-        {label}
-      </div>
+      <div className="mt-1 text-[13px] font-semibold text-foreground leading-tight">{label}</div>
       <StatusPill status={status} />
     </button>
   );
@@ -69,7 +66,7 @@ function StatusBadge({ status }: { status: DailyMeal["status"] }) {
 
 function StatusPill({ status }: { status: DailyMeal["status"] }) {
   const base =
-    "inline-flex h-[22px] items-center rounded-full px-2.5 text-[11px] font-medium leading-none";
+    "inline-flex h-[22px] items-center rounded-full px-2.5 text-xs font-medium leading-none";
   if (status === "logged") {
     return <span className={cn(base, "bg-[#EDF8F2] text-[#17A668]")}>תועד</span>;
   }

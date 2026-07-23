@@ -4,9 +4,7 @@ import { cn } from "@/lib/utils";
 export function DailyCompletionIndicator({ info }: { info: CompletionInfo }) {
   const pct = (info.documented / info.total) * 100;
   const barColor =
-    info.state === "full" ? "bg-primary"
-    : info.state === "partial" ? "bg-info"
-    : "bg-[#CBD5E0]";
+    info.state === "full" ? "bg-primary" : info.state === "partial" ? "bg-info" : "bg-[#CBD5E0]";
 
   const message =
     info.state === "full"
@@ -20,7 +18,7 @@ export function DailyCompletionIndicator({ info }: { info: CompletionInfo }) {
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0 text-right">
           <div className="text-[15px] font-bold text-foreground">מצב התיעוד</div>
-          <div className="mt-1 text-[12px] text-[#708197] leading-snug">{message}</div>
+          <div className="mt-1 text-[13px] leading-snug text-[#708197]">{message}</div>
         </div>
         <div className="shrink-0 text-left">
           <div className="flex items-baseline gap-1 leading-none">
@@ -31,7 +29,7 @@ export function DailyCompletionIndicator({ info }: { info: CompletionInfo }) {
               /{info.total}
             </span>
           </div>
-          <div className="mt-1 text-[11px] text-[#708197]">ארוחות תועדו</div>
+          <div className="mt-1 text-xs text-[#708197]">ארוחות תועדו</div>
         </div>
       </div>
       <div

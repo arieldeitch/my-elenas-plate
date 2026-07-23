@@ -24,7 +24,10 @@ export const Route = createFileRoute("/")({
       { title: "מעקב תזונה משותף — גרסת הדגמה" },
       { name: "description", content: "אפליקציית תיעוד תזונה משותפת עם ממשק פשוט, מהיר ורגוע." },
       { property: "og:title", content: "מעקב תזונה משותף — גרסת הדגמה" },
-      { property: "og:description", content: "אפליקציית תיעוד תזונה משותפת עם ממשק פשוט, מהיר ורגוע." },
+      {
+        property: "og:description",
+        content: "אפליקציית תיעוד תזונה משותפת עם ממשק פשוט, מהיר ורגוע.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -65,14 +68,12 @@ function Home() {
 
         {/* Meals */}
         <section className="mt-5">
-          <h2 className="mb-3 px-1 text-[15px] font-semibold text-foreground text-right">ארוחות היום</h2>
+          <h2 className="mb-3 px-1 text-[15px] font-semibold text-foreground text-right">
+            ארוחות היום
+          </h2>
           <div className="grid grid-cols-3 gap-2.5">
             {MEAL_SLOTS.map((slot) => (
-              <MealCard
-                key={slot}
-                meal={day.meals[slot]}
-                onOpen={() => setOpenSlot(slot)}
-              />
+              <MealCard key={slot} meal={day.meals[slot]} onOpen={() => setOpenSlot(slot)} />
             ))}
           </div>
         </section>
@@ -83,7 +84,7 @@ function Home() {
           <FastingCard />
         </div>
 
-        <p className="mt-8 text-center text-[11px] text-[#94A3B4]">
+        <p className="mt-8 text-center text-xs text-[#94A3B4]">
           הנתונים בגרסת ההדגמה נשמרים באופן זמני בדפדפן בלבד.
         </p>
       </div>
