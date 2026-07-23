@@ -1,30 +1,30 @@
 import {
   Sunrise,
   Apple,
-  Utensils,
+  UtensilsCrossed,
   Coffee,
   Salad,
-  Moon,
+  PlusCircle,
   type LucideIcon,
 } from "lucide-react";
 import type { MealSlotId } from "./domain";
 
 export const MEAL_LABELS: Record<MealSlotId, string> = {
-  breakfast: "ארוחת בוקר",
-  morning_snack: "ביניים בוקר",
-  lunch: "ארוחת צהריים",
-  afternoon_snack: "ביניים אחה״צ",
+  breakfast: "פתיחת חלון אכילה",
+  morning_snack: "נשנוש ראשון",
+  lunch: "ארוחה מרכזית",
+  afternoon_snack: "נשנוש אחר הצהריים",
   dinner: "ארוחת ערב",
-  late: "ארוחת לילה",
+  late: "ארוחה נוספת",
 };
 
 export const MEAL_ICONS: Record<MealSlotId, LucideIcon> = {
   breakfast: Sunrise,
   morning_snack: Apple,
-  lunch: Utensils,
+  lunch: UtensilsCrossed,
   afternoon_snack: Coffee,
   dinner: Salad,
-  late: Moon,
+  late: PlusCircle,
 };
 
 // Soft healthcare pastel per slot

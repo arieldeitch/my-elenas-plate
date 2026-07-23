@@ -1,4 +1,4 @@
-import { Check, X } from "lucide-react";
+import { Check, Minus } from "lucide-react";
 import type { DailyMeal } from "@/lib/domain";
 import { MEAL_ICONS, MEAL_LABELS, MEAL_TILE_TINT } from "@/lib/meal-slots";
 import { cn } from "@/lib/utils";
@@ -21,27 +21,24 @@ export function MealCard({ meal, onOpen }: Props) {
     <button
       onClick={onOpen}
       aria-label={`${label}: ${statusText}`}
-      className="group flex min-h-[150px] w-full flex-col items-center justify-between gap-3 rounded-3xl p-3 text-center transition-all duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]"
+      className="group flex w-full flex-col items-center justify-start gap-2 rounded-[26px] border border-[#E5EBF2] bg-white p-3 pb-3.5 pt-4 text-center shadow-[0_1px_2px_rgba(20,40,70,0.04)] transition-all duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ring hover:shadow-[0_4px_14px_rgba(20,40,70,0.06)] active:scale-[0.98]"
     >
-      <div className="relative pt-1">
+      <div className="relative">
         <div
           className={cn(
-            "grid h-16 w-16 place-items-center rounded-full transition-colors",
+            "grid h-[92px] w-[92px] place-items-center rounded-full transition-colors",
             status === "skipped" ? "bg-[#F1F5F9] text-[#708197]" : tint,
-            status === "empty" && "opacity-90",
           )}
           aria-hidden
         >
-          <Icon className="h-7 w-7" strokeWidth={1.75} />
+          <Icon className="h-[52px] w-[52px]" strokeWidth={1.6} />
         </div>
         <StatusBadge status={status} />
       </div>
-      <div className="flex flex-col items-center gap-1.5">
-        <div className="text-[13px] font-semibold text-foreground leading-tight">
-          {label}
-        </div>
-        <StatusPill status={status} />
+      <div className="mt-1 text-[13px] font-semibold text-foreground leading-tight">
+        {label}
       </div>
+      <StatusPill status={status} />
     </button>
   );
 }
@@ -51,9 +48,9 @@ function StatusBadge({ status }: { status: DailyMeal["status"] }) {
     return (
       <span
         aria-hidden
-        className="absolute -top-0.5 -left-0.5 grid h-5 w-5 place-items-center rounded-full bg-primary text-white ring-2 ring-white"
+        className="absolute -top-1 -left-1 grid h-6 w-6 place-items-center rounded-full bg-primary text-white ring-2 ring-white shadow-sm"
       >
-        <Check className="h-3 w-3" strokeWidth={3} />
+        <Check className="h-3.5 w-3.5" strokeWidth={3} />
       </span>
     );
   }
@@ -61,9 +58,9 @@ function StatusBadge({ status }: { status: DailyMeal["status"] }) {
     return (
       <span
         aria-hidden
-        className="absolute -top-0.5 -left-0.5 grid h-5 w-5 place-items-center rounded-full bg-[#708197] text-white ring-2 ring-white"
+        className="absolute -top-1 -left-1 grid h-6 w-6 place-items-center rounded-full bg-[#94A3B4] text-white ring-2 ring-white shadow-sm"
       >
-        <X className="h-3 w-3" strokeWidth={3} />
+        <Minus className="h-3.5 w-3.5" strokeWidth={3} />
       </span>
     );
   }
@@ -72,7 +69,7 @@ function StatusBadge({ status }: { status: DailyMeal["status"] }) {
 
 function StatusPill({ status }: { status: DailyMeal["status"] }) {
   const base =
-    "inline-flex h-6 items-center rounded-full px-2.5 text-[11px] font-medium leading-none";
+    "inline-flex h-[22px] items-center rounded-full px-2.5 text-[11px] font-medium leading-none";
   if (status === "logged") {
     return <span className={cn(base, "bg-[#EDF8F2] text-[#17A668]")}>תועד</span>;
   }
