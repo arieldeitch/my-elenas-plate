@@ -16,11 +16,15 @@ communicated by color alone.
 - **Backend: Supabase implemented, opt-in via env.** One shared Auth account + two internal profiles
   (אריאל/אלנה), data separated by `profile_id`. Migrations (schema + RLS + bootstrap + realtime) were
   live-verified on a local Supabase stack (RLS isolation + bootstrap: 5/5). App layer + gated store sync
-  + offline queue + local→cloud migration are in place. Without `VITE_SUPABASE_URL` +
-  `VITE_SUPABASE_ANON_KEY` the app runs in local demo mode (localStorage). See DEC-017.
+  - offline queue + local→cloud migration are in place. Without `VITE_SUPABASE_URL` +
+    `VITE_SUPABASE_ANON_KEY` the app runs in local demo mode (localStorage). See DEC-017.
 - Quality gate all green: type check, lint (0 errors, 8 dev-only HMR warnings), 102 tests (+5 live-RLS
   skipped without env), automated a11y (0 violations), build, SSR smoke.
-- Not yet done: browser end-to-end (sign-in + realtime across two sessions) — needs live credentials.
+- Remote project set in `.env` (ref `rqgoiuztphkcvbwtbxbj`); app gates correctly against it and remote
+  Auth/REST are live, but the **remote schema is not yet applied** (blocked: agent's CLI account lacks
+  privileges, no DB password). Unblock: apply `supabase/deploy_all.sql` in the Dashboard or run
+  `supabase db push` from the owning account (`supabase/DEPLOY.md`). Then live browser E2E + realtime +
+  offline + remote RLS run on first sign-in.
 
 ## Latest product decisions (active)
 

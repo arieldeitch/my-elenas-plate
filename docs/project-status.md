@@ -9,42 +9,44 @@
 
 ## Stack (verified from the repo)
 
-| Area | Actual |
-| --- | --- |
-| Framework | TanStack Start (SSR) + React 19 |
-| Router | @tanstack/react-router (file-based, `src/routes`) |
-| Server state | @tanstack/react-query (provider only; app state is a custom store) |
-| Build tool | Vite 8 (`@lovable.dev/vite-tanstack-config`, nitro → Cloudflare target) |
-| Styling | Tailwind CSS v4 + shadcn/ui (Radix) |
-| Forms/validation | react-hook-form + zod present; nutrition screens use controlled inputs + pure validators |
-| Icons | lucide-react |
-| Package manager | bun (bun.lock committed); this session used npm to install (bun not present) |
-| Tests | **Vitest + Testing Library (added this session)** |
-| Backend | **Supabase integration implemented (opt-in via env).** Schema + RLS + realtime + bootstrap migrations under `supabase/`; typed client, repositories, auth UI, gated store sync, offline queue and local→cloud migration. With no env vars the app runs in local demo mode (localStorage). |
+| Area             | Actual                                                                                                                                                                                                                                                                                    |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Framework        | TanStack Start (SSR) + React 19                                                                                                                                                                                                                                                           |
+| Router           | @tanstack/react-router (file-based, `src/routes`)                                                                                                                                                                                                                                         |
+| Server state     | @tanstack/react-query (provider only; app state is a custom store)                                                                                                                                                                                                                        |
+| Build tool       | Vite 8 (`@lovable.dev/vite-tanstack-config`, nitro → Cloudflare target)                                                                                                                                                                                                                   |
+| Styling          | Tailwind CSS v4 + shadcn/ui (Radix)                                                                                                                                                                                                                                                       |
+| Forms/validation | react-hook-form + zod present; nutrition screens use controlled inputs + pure validators                                                                                                                                                                                                  |
+| Icons            | lucide-react                                                                                                                                                                                                                                                                              |
+| Package manager  | bun (bun.lock committed); this session used npm to install (bun not present)                                                                                                                                                                                                              |
+| Tests            | **Vitest + Testing Library (added this session)**                                                                                                                                                                                                                                         |
+| Backend          | **Supabase integration implemented (opt-in via env).** Schema + RLS + realtime + bootstrap migrations under `supabase/`; typed client, repositories, auth UI, gated store sync, offline queue and local→cloud migration. With no env vars the app runs in local demo mode (localStorage). |
 
 ## Quality gate (run this session)
 
-| Check | Command | Result |
-| --- | --- | --- |
-| Type check | `tsc --noEmit` | PASS — 0 errors |
-| Lint | `eslint .` | PASS — 0 errors, 8 warnings (see "Remaining warnings" below) |
-| Format | `prettier` | PASS — changed + previously-unformatted source files normalised; `endOfLine: auto` added for cross-platform CRLF |
-| Unit/integration tests | `vitest run` | PASS — 102 passed / 5 skipped (live RLS, no env) |
-| Live DB (RLS + bootstrap) | `supabase start` + gated integration test | PASS — 5/5 against local Supabase (bootstrap, isolation, anon-denied, coffee CHECK) |
-| Migration validation | `psql < each migration` | PASS — all 4 apply cleanly (10 tables, 35 policies, 8 realtime tables) |
-| Generated types | `supabase gen types --local` | Matches hand-derived aliases; committed as `database.generated.ts` |
-| Accessibility | `vitest-axe` on 5 key components | PASS — 0 violations (MealCard, CoffeeSelector, ProfileSwitcher, DailyCompletionIndicator, WeightBanner) |
-| Build | `vite build` | PASS — SSR + client build succeeds |
-| SSR smoke | `vite dev` + curl | PASS — Home renders; profiles אריאל/אלנה, six slots, RTL; no "אני", no "ארוחת לילה"; no hydration warnings |
-| Secret scan | grep | PASS — no secrets, no `.env`, no service_role |
+| Check                     | Command                                   | Result                                                                                                           |
+| ------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Type check                | `tsc --noEmit`                            | PASS — 0 errors                                                                                                  |
+| Lint                      | `eslint .`                                | PASS — 0 errors, 8 warnings (see "Remaining warnings" below)                                                     |
+| Format                    | `prettier`                                | PASS — changed + previously-unformatted source files normalised; `endOfLine: auto` added for cross-platform CRLF |
+| Unit/integration tests    | `vitest run`                              | PASS — 102 passed / 5 skipped (live RLS, no env)                                                                 |
+| Live DB (RLS + bootstrap) | `supabase start` + gated integration test | PASS — 5/5 against local Supabase (bootstrap, isolation, anon-denied, coffee CHECK)                              |
+| Migration validation      | `psql < each migration`                   | PASS — all 4 apply cleanly (10 tables, 35 policies, 8 realtime tables)                                           |
+| Generated types           | `supabase gen types --local`              | Matches hand-derived aliases; committed as `database.generated.ts`                                               |
+| Accessibility             | `vitest-axe` on 5 key components          | PASS — 0 violations (MealCard, CoffeeSelector, ProfileSwitcher, DailyCompletionIndicator, WeightBanner)          |
+| Build                     | `vite build`                              | PASS — SSR + client build succeeds                                                                               |
+| SSR smoke                 | `vite dev` + curl                         | PASS — Home renders; profiles אריאל/אלנה, six slots, RTL; no "אני", no "ארוחת לילה"; no hydration warnings       |
+| Secret scan               | grep                                      | PASS — no secrets, no `.env`, no service_role                                                                    |
 
 ### Remaining warnings (8, non-blocking, dev-only)
 
 All are `react-refresh/only-export-components` — a Fast-Refresh (HMR) hint with **no runtime or production impact**. Not suppressed globally.
+
 - 6 in vendored shadcn/ui files that export a variance/util next to the component: `ui/badge.tsx`, `ui/button.tsx`, `ui/form.tsx`, `ui/navigation-menu.tsx`, `ui/sidebar.tsx`, `ui/toggle.tsx`.
 - 2 in `src/lib/store.tsx` (the `StoreProvider` component colocated with the `useStore` hook and `PROFILES` const). Kept colocated deliberately — splitting would churn 9+ import sites (the public `@/lib/store` API) for a dev-only hint.
 
 ### Accessibility / QA improvements this pass
+
 - `prefers-reduced-motion` reset added to `styles.css` (neutralises animations/transitions).
 - Icon-only interactive controls raised to 44px (entry-row favorite/edit/delete, fasting/workout edit).
 - MealEditor moves focus into the dialog on open (keyboard + screen-reader).
@@ -88,6 +90,22 @@ Supabase is the source of truth when configured; localStorage is demoted to demo
 ### Env required to activate
 
 `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (see `.env.example`). Anon key only — never service_role.
+
+### Remote deployment status (2026-07-23)
+
+- **`.env` provided** (project ref `rqgoiuztphkcvbwtbxbj`), anon key verified (`role: anon`, not
+  service_role), and gitignored (`.env`, `.env.*` except `.env.example`). No env/secret is committed.
+- **App wiring verified**: with `.env` present the app enters configured mode — the demo UI is hidden and
+  the sign-in gate (AuthGate → SignIn) renders. Remote Auth (GoTrue) and REST endpoints respond.
+- **Remote schema NOT yet applied** — `public.profiles` and `bootstrap_household()` return 404 on the
+  remote. **Blocked**: the logged-in Supabase CLI account lacks privileges for this project
+  ("your account does not have the necessary privileges"), and no DB password / owning-account token is
+  available. Migrations cannot be pushed by the agent.
+- **Unblock action**: apply `supabase/deploy_all.sql` in the project's Dashboard SQL Editor (idempotent),
+  **or** provide the DB password / log the CLI into the owning account and run `supabase db push`.
+  See `supabase/DEPLOY.md`. After that, bootstrap + CRUD + realtime + the local→cloud migration run
+  automatically on first sign-in; remote RLS can then be re-verified with the gated integration test
+  (point `SUPABASE_TEST_URL/ANON_KEY` at the remote).
 
 ## Not present / not yet live-verified (honest gaps)
 

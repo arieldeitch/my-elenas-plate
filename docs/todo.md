@@ -34,10 +34,14 @@ Updated 2026-07-23 with verified findings from the MVP-hardening session.
 - **T-023 Done** Local→cloud migration — pure transform + marker, non-destructive, unit-tested.
 - **T-024 Done** RLS/bootstrap live-verified via local Supabase (5/5 integration tests).
 
-### Remaining (needs real credentials or manual pass)
+### Remaining (needs a user action)
 
-- **T-025** Browser end-to-end: sign in (magic link/password), confirm hydrate + realtime across two
-  sessions, and the one-time migration on a real project. Blocked only on live credentials.
+- **T-025 (Blocked)** Apply the schema to the remote project `rqgoiuztphkcvbwtbxbj`. The agent's
+  Supabase CLI account has no privileges for it and no DB password is available. **Action:** run
+  `supabase/deploy_all.sql` in the Dashboard SQL Editor, or provide the DB password / owning-account
+  login so `supabase db push` can run. See `supabase/DEPLOY.md`.
+- **T-026 (Blocked by T-025)** Live browser end-to-end + realtime (two sessions) + offline queue +
+  remote RLS test — all run automatically once the schema is on the remote.
 
 ## Deferred (P2/P3, not approved for MVP)
 

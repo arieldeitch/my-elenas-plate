@@ -55,8 +55,11 @@ Migrations under `supabase/` (schema + RLS + bootstrap + realtime) were live-ver
 Supabase stack (RLS isolation + bootstrap: 5/5 integration tests). App layer: `src/lib/supabase/*`,
 `src/lib/sync/*`, `src/components/auth/*`, wired into the store behind `isSupabaseConfigured()`.
 Without `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` the app runs in **local demo mode** (localStorage).
-Never put service_role in the client. Not yet done: browser end-to-end sign-in + realtime across two
-sessions (needs live credentials). See DEC-017 and `project-status.md`.
+Never put service_role in the client. A remote project is set in `.env` (ref `rqgoiuztphkcvbwtbxbj`)
+and the app gates correctly against it, but the **remote schema is not yet applied** — blocked: the
+agent's CLI account lacks privileges and no DB password is available. Apply `supabase/deploy_all.sql`
+in the Dashboard (or `supabase db push` from the owning account) to unblock live browser E2E. Tests are
+kept hermetic via `vi.stubEnv` in `src/test/setup.ts` regardless of `.env`. See DEC-017 and `project-status.md`.
 
 ## Guardrails
 

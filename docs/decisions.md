@@ -384,4 +384,3 @@ Scripts: `npm test`, `npm run test:watch`, `npm run typecheck`.
 
 - נדרשים `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` (anon בלבד; לעולם לא service_role).
 - אימות end-to-end בדפדפן (התחברות + realtime בין שני sessions) טרם בוצע אוטומטית — דורש credentials אמיתיים או הרצה מקומית.
-
