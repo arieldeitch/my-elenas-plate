@@ -26,7 +26,7 @@ export const FOOD_CATALOG: Food[] = [
   { id: "f_pasta", name: "פסטה", category: "דגנים", defaultUnit: "מנה", suggestedUnits: ["מנה", "גרם", "כוס"] },
   { id: "f_fish", name: "דג", category: "בשר", defaultUnit: "גרם", suggestedUnits: commonMass },
   { id: "f_chocolate", name: "שוקולד", category: "מתוקים", defaultUnit: "גרם", suggestedUnits: ["גרם", "יחידה"] },
-  { id: "f_icecream", name: "גלידה", category: "מתוקים", defaultUnit: "כדור", suggestedUnits: ["כוס", "קערה", "גרם"] as any },
+  { id: "f_icecream", name: "גלידה", category: "מתוקים", defaultUnit: "כוס", suggestedUnits: ["כוס", "קערה", "גרם"] },
 ];
 
 export function normalize(s: string): string {
