@@ -5,24 +5,24 @@ export function DailyCompletionIndicator({ info }: { info: CompletionInfo }) {
   const pct = (info.documented / info.total) * 100;
   const barColor =
     info.state === "full" ? "bg-primary"
-    : info.state === "partial" ? "bg-warn"
-    : "bg-muted-foreground/40";
+    : info.state === "partial" ? "bg-info"
+    : "bg-muted-foreground/30";
 
   return (
     <div className="rounded-2xl bg-card border border-border p-4 shadow-soft">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-sm text-muted-foreground">{info.label}</div>
-          <div className="text-lg font-bold text-foreground">
+          <div className="text-sm text-muted-foreground">מצב התיעוד</div>
+          <div className="text-base font-bold text-foreground">
             {info.documented} מתוך {info.total} ארוחות תועדו
           </div>
         </div>
         <div
           aria-hidden
           className={cn(
-            "shrink-0 grid h-11 w-11 place-items-center rounded-full text-sm font-bold",
+            "shrink-0 grid h-11 min-w-11 px-2 place-items-center rounded-full text-sm font-bold",
             info.state === "full" && "bg-success-soft text-success",
-            info.state === "partial" && "bg-warn-soft text-warn-foreground",
+            info.state === "partial" && "bg-info-soft text-info",
             info.state === "empty" && "bg-muted text-muted-foreground",
           )}
         >

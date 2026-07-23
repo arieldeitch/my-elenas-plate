@@ -70,19 +70,22 @@ function Home() {
           <DailyCompletionIndicator info={completion} />
         </div>
 
-        {/* Meals */}
-        <div className="mt-4 space-y-2.5">
-          {MEAL_SLOTS.map((slot) => (
-            <MealCard
-              key={slot}
-              meal={day.meals[slot]}
-              onOpen={() => setOpenSlot(slot)}
-            />
-          ))}
+        {/* Meals matrix */}
+        <div className="mt-5">
+          <h2 className="mb-2 text-base font-bold text-foreground">ארוחות היום</h2>
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+            {MEAL_SLOTS.map((slot) => (
+              <MealCard
+                key={slot}
+                meal={day.meals[slot]}
+                onOpen={() => setOpenSlot(slot)}
+              />
+            ))}
+          </div>
         </div>
 
         {/* Secondary sections */}
-        <div className="mt-6 space-y-3">
+        <div className="mt-6 grid gap-3 sm:grid-cols-2">
           <FastingCard />
           <WorkoutCard />
         </div>
