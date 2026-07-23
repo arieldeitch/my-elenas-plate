@@ -23,9 +23,11 @@ communicated by color alone.
 - Remote project `rqgoiuztphkcvbwtbxbj` set in `.env`; schema applied and **live-verified end-to-end**
   (2 gated suites, 10/10 vs remote): auth/session, bootstrap (אריאל/אלנה, idempotent), RLS isolation,
   CRUD on all tables, coffee round-trip + CHECK, idempotency (no duplication), local→cloud migration, and
-  two-context realtime (insert/update/delete). App gates correctly against remote. **Known gaps
-  (follow-ups, not blockers):** the app's sync covers days + weigh-ins — favorites/recents/custom-foods
-  stay client-local (T-027); browser UI E2E via Playwright is not yet automated (T-028).
+  two-context realtime (insert/update/delete). App gates correctly against remote. **T-027 done:** custom
+  foods + favorites + recents now sync (`foods`/`food_preferences`, per profile) with optimistic UI,
+  realtime, offline queue and migration; forward migration `090400` (`food_id`→text) — re-run
+  `supabase db push` on the remote so built-in-food favorites sync there too (custom foods already do).
+  **Next:** T-028 Playwright browser E2E + browser-level offline.
 
 ## Latest product decisions (active)
 

@@ -384,3 +384,36 @@ Scripts: `npm test`, `npm run test:watch`, `npm run typecheck`.
 
 - נדרשים `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` (anon בלבד; לעולם לא service_role).
 - אימות end-to-end בדפדפן (התחברות + realtime בין שני sessions) טרם בוצע אוטומטית — דורש credentials אמיתיים או הרצה מקומית.
+
+---
+
+## DEC-018 — סנכרון מאכלים מותאמים + מועדפים + אחרונים; `food_preferences.food_id` כ-text
+
+- תאריך: 2026-07-23
+- סטטוס: Accepted (מממש T-027; מרחיב DEC-017)
+
+### הקשר
+
+מועדפים/אחרונים/מאכלים מותאמים היו client-local. נדרש ש-Supabase יהיה מקור האמת גם עבורם, לשני סוגי
+המאכלים: קטלוג מובנה (מזהי מחרוזת כמו `f_coffee`) ומאכלים מותאמים (UUID).
+
+### החלטה
+
+- מאכלים מותאמים נשמרים ב-`foods` (household-scoped, `is_active` ל-soft-delete). הקטלוג המובנה נשאר
+  קבוע בצד הלקוח; החיפוש ממזג מובנה + מותאם.
+- מועדפים/אחרונים ב-`food_preferences` לפי `profile_id` + `food_id`, כאשר `is_favorite` ו-`last_used_at`
+  מגדירים מועדף/אחרון. `deriveFavoritesRecents` גוזר את הרשימות (אחרונים לפי `last_used_at` יורד, מוגבל ל-12).
+- **Migration `20260723090400`**: `food_preferences.food_id` הפך ל-`text` (ללא FK) כדי שגם מאכלי קטלוג
+  מובנים (מזהי מחרוזת) וגם מותאמים (UUID) יהיו ניתנים לסימון אחיד.
+
+### מימוש
+
+- `useSupabaseSync` מבצע hydrate/push ל-foods ול-preferences (dirty-tracking, optimistic, offline queue,
+  realtime ל-`foods`+`food_preferences`), עם marker migration נפרד (`foods:v1`) כדי לתמוך במי שכבר הריץ
+  את migration נתוני-הארוחות (v1).
+
+### אימות / פתוח
+
+- אומת חי (7/7 remote-live): יצירת מאכל מותאם, מועדפים/אחרונים לפי פרופיל, בידוד, soft-delete, realtime.
+- ה-remote עדיין עם `food_id` uuid עד ש-`supabase db push` יריץ את migration `090400`; עד אז מועדפי
+  **מאכלים מובנים** נשארים מקומיים (מאכלים מותאמים מסתנכרנים). הנתונים ההיסטוריים אינם נפגעים.

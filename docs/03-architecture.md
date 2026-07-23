@@ -645,3 +645,11 @@ Local Storage או IndexedDB יכולים לשמש לתור זמני בלבד.
   (`elenas-plate:queue:v1`, dedupe לפי client mutation id, quarantine אחרי כשלים).
 - Migration חד-פעמי מ-localStorage (טרנספורם טהור ונבדק) עם marker; אינו מוחק נתונים מקומיים.
 - מיפוי slot/status/subjective/coffee מרוכז ב-`mappers.ts` ונבדק ביחידה.
+
+### עדכון T-027 — מאכלים מותאמים + מועדפים + אחרונים (DEC-018)
+
+- `useSupabaseSync` מסנכרן גם `foods` (מאכלים מותאמים, household-scoped, soft-delete ב-`is_active`) וגם
+  `food_preferences` (מועדפים/אחרונים לפי פרופיל). Hydrate ממזג קטלוג מובנה + מותאם; `deriveFavoritesRecents`
+  גוזר את הרשימות. Push עם dirty-tracking נפרד ל-foods/prefs; realtime מנוי גם ל-`foods`+`food_preferences`.
+- Migration `20260723090400`: `food_preferences.food_id` → `text` (ללא FK) כדי לתמוך במזהי מאכל מובנים ומותאמים.
+- Migration מקומי→ענן הורחב (marker נפרד `foods:v1`) לייבוא מאכלים מותאמים + מועדפים + אחרונים.

@@ -43,12 +43,15 @@ Updated 2026-07-23 with verified findings from the MVP-hardening session.
   all tables, coffee round-trip + CHECK, idempotency (no duplication), local→cloud migration, and
   two-context realtime (insert/update/delete). See `project-status.md`.
 
-### Follow-ups (not blockers)
+### Follow-ups
 
-- **T-027** Extend `useSupabaseSync` to also sync **favorites, recents and custom foods**
-  (`food_preferences`/`foods`) — currently client-local. Tables + direct CRUD already verified.
-- **T-028** Add Playwright browser E2E (SignIn → MealEditor → CRUD/coffee/fasting/workout/weigh-in →
-  refresh → sign-out/in) and a browser-level offline test, driven against the remote.
+- **T-027 Done (2026-07-23)** Sync custom foods + favorites + recents with Supabase. Forward migration
+  `090400` (food_id→text); `useSupabaseSync` hydrates/pushes foods + preferences (per profile), with
+  optimistic UI, dirty-tracking, realtime, offline queue and a separate migration marker. Verified live
+  (7/7 remote-live). **Remote note:** re-run `supabase db push` so built-in-food favorites/recents sync
+  on the remote too (custom foods already do). See `project-status.md` / `supabase/DEPLOY.md`.
+- **T-028 (next)** Playwright browser E2E (SignIn → MealEditor → CRUD/coffee/fasting/workout/weigh-in →
+  refresh → sign-out/in → profile switch) and a browser-level offline test, driven against the remote.
 
 ## Deferred (P2/P3, not approved for MVP)
 
