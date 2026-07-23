@@ -48,9 +48,9 @@ function StatusBadge({ status }: { status: DailyMeal["status"] }) {
     return (
       <span
         aria-hidden
-        className="absolute -top-1 -left-1 grid h-6 w-6 place-items-center rounded-full bg-primary text-white ring-2 ring-white shadow-sm"
+        className="absolute -top-1.5 -left-1.5 grid h-7 w-7 place-items-center rounded-full bg-primary text-white ring-[3px] ring-white shadow-[0_2px_6px_rgba(23,166,104,0.35)]"
       >
-        <Check className="h-3.5 w-3.5" strokeWidth={3} />
+        <Check className="h-4 w-4" strokeWidth={3} />
       </span>
     );
   }
@@ -58,9 +58,9 @@ function StatusBadge({ status }: { status: DailyMeal["status"] }) {
     return (
       <span
         aria-hidden
-        className="absolute -top-1 -left-1 grid h-6 w-6 place-items-center rounded-full bg-[#94A3B4] text-white ring-2 ring-white shadow-sm"
+        className="absolute -top-1.5 -left-1.5 grid h-7 w-7 place-items-center rounded-full bg-[#94A3B4] text-white ring-[3px] ring-white shadow-sm"
       >
-        <Minus className="h-3.5 w-3.5" strokeWidth={3} />
+        <Minus className="h-4 w-4" strokeWidth={3} />
       </span>
     );
   }
