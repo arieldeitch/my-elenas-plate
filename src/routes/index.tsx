@@ -63,9 +63,9 @@ function Home() {
         </div>
 
         {/* Meals */}
-        <section className="mt-5 rounded-3xl bg-white border border-[#E9EEF3] p-6 shadow-soft">
-          <h2 className="mb-4 text-[15px] font-semibold text-foreground">ארוחות היום</h2>
-          <div className="grid grid-cols-3 gap-y-2 gap-x-1">
+        <section className="mt-5">
+          <h2 className="mb-3 px-1 text-[15px] font-semibold text-foreground">ארוחות היום</h2>
+          <div className="grid grid-cols-3 gap-2.5">
             {MEAL_SLOTS.map((slot) => (
               <MealCard
                 key={slot}
@@ -75,6 +75,7 @@ function Home() {
             ))}
           </div>
         </section>
+
 
         {/* Secondary */}
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
