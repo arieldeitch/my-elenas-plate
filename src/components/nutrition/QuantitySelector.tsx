@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Food, FoodEntry, QuantityMode, SubjectiveAmount, Unit } from "@/lib/domain";
 import { ALL_UNITS } from "@/lib/domain";
+import { parseAmount, validateMeasured } from "@/lib/quantity";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -13,17 +14,19 @@ interface Props {
 
 const SUBJECTIVES: SubjectiveAmount[] = ["מעט", "במידה", "הרבה", "מוגזם"];
 
-export function QuantitySelector({ food, initial, onSubmit, onCancel, submitLabel = "הוספת המאכל" }: Props) {
+export function QuantitySelector({
+  food,
+  initial,
+  onSubmit,
+  onCancel,
+  submitLabel = "הוספת המאכל",
+}: Props) {
   const [mode, setMode] = useState<QuantityMode>(initial?.mode ?? "measured");
   const [amount, setAmount] = useState<string>(
     initial?.amount != null ? String(initial.amount) : "1",
   );
-  const [unit, setUnit] = useState<Unit>(
-    (initial?.unit ?? food.defaultUnit ?? "יחידה") as Unit,
-  );
-  const [subjective, setSubjective] = useState<SubjectiveAmount>(
-    initial?.subjective ?? "במידה",
-  );
+  const [unit, setUnit] = useState<Unit>((initial?.unit ?? food.defaultUnit ?? "יחידה") as Unit);
+  const [subjective, setSubjective] = useState<SubjectiveAmount>(initial?.subjective ?? "במידה");
   const [showAllUnits, setShowAllUnits] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,12 +35,13 @@ export function QuantitySelector({ food, initial, onSubmit, onCancel, submitLabe
 
   function handleSubmit() {
     if (mode === "measured") {
-      const n = Number(amount.replace(",", "."));
-      if (!isFinite(n) || n <= 0) {
+      const n = parseAmount(amount);
+      const errs = validateMeasured({ amount: n, unit });
+      if (errs.includes("amount")) {
         setError("יש להזין כמות חיובית");
         return;
       }
-      if (!unit) {
+      if (errs.includes("unit")) {
         setError("יש לבחור יחידה");
         return;
       }
@@ -75,7 +79,10 @@ export function QuantitySelector({ food, initial, onSubmit, onCancel, submitLabe
             key={m}
             role="tab"
             aria-selected={mode === m}
-            onClick={() => { setMode(m); setError(null); }}
+            onClick={() => {
+              setMode(m);
+              setError(null);
+            }}
             className={cn(
               "min-w-[92px] rounded-full px-4 py-2 text-sm font-semibold",
               mode === m ? "bg-card text-foreground shadow-soft" : "text-muted-foreground",
@@ -89,7 +96,9 @@ export function QuantitySelector({ food, initial, onSubmit, onCancel, submitLabe
       {mode === "measured" ? (
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium mb-1" htmlFor="amt">כמות</label>
+            <label className="block text-sm font-medium mb-1" htmlFor="amt">
+              כמות
+            </label>
             <input
               id="amt"
               type="number"
@@ -97,7 +106,10 @@ export function QuantitySelector({ food, initial, onSubmit, onCancel, submitLabe
               step="0.1"
               min="0"
               value={amount}
-              onChange={(e) => { setAmount(e.target.value); setError(null); }}
+              onChange={(e) => {
+                setAmount(e.target.value);
+                setError(null);
+              }}
               className="w-full rounded-xl border border-input bg-card px-3 py-3 text-base outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
@@ -107,7 +119,10 @@ export function QuantitySelector({ food, initial, onSubmit, onCancel, submitLabe
               {unitList.map((u) => (
                 <button
                   key={u}
-                  onClick={() => { setUnit(u); setError(null); }}
+                  onClick={() => {
+                    setUnit(u);
+                    setError(null);
+                  }}
                   className={cn(
                     "rounded-full border px-3 py-2 text-sm",
                     unit === u

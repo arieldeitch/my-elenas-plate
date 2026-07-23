@@ -3,6 +3,8 @@ import { X } from "lucide-react";
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
 import { toISODate, formatNumber } from "@/lib/format";
+import { calcFatMass } from "@/lib/weight";
+import { parseAmount } from "@/lib/quantity";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -38,12 +40,9 @@ export function WeighInForm({ open, onClose }: Props) {
 
   if (!open) return null;
 
-  const wNum = Number(weight.replace(",", "."));
-  const bfNum = bodyFat ? Number(bodyFat.replace(",", ".")) : undefined;
-  const fatMass =
-    isFinite(wNum) && wNum > 0 && bfNum != null && isFinite(bfNum) && bfNum > 0 && bfNum < 100
-      ? (wNum * bfNum) / 100
-      : null;
+  const wNum = parseAmount(weight);
+  const bfNum = bodyFat ? parseAmount(bodyFat) : undefined;
+  const fatMass = calcFatMass(wNum, bfNum);
 
   function submit() {
     const errs: Record<string, string> = {};
@@ -71,19 +70,31 @@ export function WeighInForm({ open, onClose }: Props) {
       aria-label="הוספת שקילה"
       className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
     >
-      <div className="absolute inset-0 bg-foreground/30 backdrop-blur-sm" onClick={onClose} aria-hidden />
+      <div
+        className="absolute inset-0 bg-foreground/30 backdrop-blur-sm"
+        onClick={onClose}
+        aria-hidden
+      />
       <div className="relative w-full max-w-md rounded-t-3xl sm:rounded-3xl bg-card border border-border shadow-lg animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200">
         <div className="flex items-center gap-3 border-b border-border p-4">
           <div className="font-bold flex-1">הוספת שקילה</div>
-          <button onClick={onClose} aria-label="סגירה" className="grid h-11 w-11 place-items-center rounded-xl hover:bg-muted">
+          <button
+            onClick={onClose}
+            aria-label="סגירה"
+            className="grid h-11 w-11 place-items-center rounded-xl hover:bg-muted"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
         <div className="p-4 space-y-3">
           <Field label="משקל בק״ג" error={errors.weight}>
             <input
-              type="number" inputMode="decimal" step="0.1" min="0"
-              value={weight} onChange={(e) => setWeight(e.target.value)}
+              type="number"
+              inputMode="decimal"
+              step="0.1"
+              min="0"
+              value={weight}
+              onChange={(e) => setWeight(e.target.value)}
               className={inputCls(!!errors.weight)}
               autoFocus
             />
@@ -91,21 +102,30 @@ export function WeighInForm({ open, onClose }: Props) {
           <div className="grid grid-cols-2 gap-3">
             <Field label="תאריך" error={errors.date}>
               <input
-                type="date" value={date} onChange={(e) => setDate(e.target.value)}
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
                 className={inputCls(!!errors.date)}
               />
             </Field>
             <Field label="שעה (לא חובה)">
               <input
-                type="time" value={time} onChange={(e) => setTime(e.target.value)}
+                type="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
                 className={inputCls(false)}
               />
             </Field>
           </div>
           <Field label="אחוז שומן (לא חובה)" error={errors.bf}>
             <input
-              type="number" inputMode="decimal" step="0.1" min="0" max="100"
-              value={bodyFat} onChange={(e) => setBodyFat(e.target.value)}
+              type="number"
+              inputMode="decimal"
+              step="0.1"
+              min="0"
+              max="100"
+              value={bodyFat}
+              onChange={(e) => setBodyFat(e.target.value)}
               className={inputCls(!!errors.bf)}
             />
           </Field>
@@ -134,7 +154,15 @@ export function WeighInForm({ open, onClose }: Props) {
   );
 }
 
-function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
+function Field({
+  label,
+  error,
+  children,
+}: {
+  label: string;
+  error?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div>
       <label className="block text-sm font-medium mb-1">{label}</label>

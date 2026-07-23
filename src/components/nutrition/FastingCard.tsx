@@ -3,14 +3,7 @@ import { Hourglass, Plus, X, Pencil, RotateCcw } from "lucide-react";
 import type { FastingLog } from "@/lib/domain";
 import { useStore } from "@/lib/store";
 import { toISODate } from "@/lib/format";
-
-function calcHours(start: string, end: string): number {
-  const [sh, sm] = start.split(":").map(Number);
-  const [eh, em] = end.split(":").map(Number);
-  let mins = eh * 60 + em - (sh * 60 + sm);
-  if (mins <= 0) mins += 24 * 60;
-  return Math.round((mins / 60) * 10) / 10;
-}
+import { calcFastingHours as calcHours } from "@/lib/fasting";
 
 export function FastingCard() {
   const store = useStore();
@@ -44,10 +37,15 @@ export function FastingCard() {
       className="rounded-3xl bg-white border border-[#E9EEF3] p-6 shadow-soft"
     >
       <div className="flex items-center gap-3">
-        <div className="grid h-12 w-12 place-items-center rounded-full bg-[#EDF6FD] text-[#2B84D6]" aria-hidden>
+        <div
+          className="grid h-12 w-12 place-items-center rounded-full bg-[#EDF6FD] text-[#2B84D6]"
+          aria-hidden
+        >
           <Hourglass className="h-5 w-5" strokeWidth={1.75} />
         </div>
-        <h2 id="fasting-title" className="text-[15px] font-semibold flex-1">צום</h2>
+        <h2 id="fasting-title" className="text-[15px] font-semibold flex-1">
+          צום
+        </h2>
         {day.fasting && !editing && (
           <button
             onClick={open}
@@ -83,21 +81,33 @@ export function FastingCard() {
         <div className="mt-4 space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="fstart">תחילת הצום</label>
+              <label className="block text-sm font-medium mb-1" htmlFor="fstart">
+                תחילת הצום
+              </label>
               <input
-                id="fstart" type="time" value={start} onChange={(e) => setStart(e.target.value)}
+                id="fstart"
+                type="time"
+                value={start}
+                onChange={(e) => setStart(e.target.value)}
                 className="w-full rounded-xl border border-input bg-card px-3 py-3 text-base outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="fend">סיום הצום</label>
+              <label className="block text-sm font-medium mb-1" htmlFor="fend">
+                סיום הצום
+              </label>
               <input
-                id="fend" type="time" value={end} onChange={(e) => setEnd(e.target.value)}
+                id="fend"
+                type="time"
+                value={end}
+                onChange={(e) => setEnd(e.target.value)}
                 className="w-full rounded-xl border border-input bg-card px-3 py-3 text-base outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
           </div>
-          <div className="text-sm text-muted-foreground">משך הצום: {calcHours(start, end)} שעות</div>
+          <div className="text-sm text-muted-foreground">
+            משך הצום: {calcHours(start, end)} שעות
+          </div>
           <div className="flex gap-2">
             <button
               onClick={save}
@@ -129,8 +139,10 @@ export function FastingCard() {
 
 function Stat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
-    <div className={`rounded-xl px-3 py-2 ${highlight ? "bg-primary-soft text-primary" : "bg-secondary text-foreground"}`}>
-      <div className="text-[11px] text-muted-foreground">{label}</div>
+    <div
+      className={`rounded-xl px-3 py-2 ${highlight ? "bg-primary-soft text-primary" : "bg-secondary text-foreground"}`}
+    >
+      <div className="text-xs text-muted-foreground">{label}</div>
       <div className="font-semibold">{value}</div>
     </div>
   );
