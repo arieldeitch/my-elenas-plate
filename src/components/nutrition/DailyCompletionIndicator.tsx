@@ -6,31 +6,31 @@ export function DailyCompletionIndicator({ info }: { info: CompletionInfo }) {
   const barColor =
     info.state === "full" ? "bg-primary"
     : info.state === "partial" ? "bg-info"
-    : "bg-muted-foreground/30";
+    : "bg-[#CBD5E0]";
 
   return (
-    <div className="rounded-2xl bg-card border border-border p-4 shadow-soft">
-      <div className="flex items-center justify-between gap-3">
+    <div className="rounded-3xl bg-white border border-[#E9EEF3] p-6 shadow-soft">
+      <div className="flex items-end justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-sm text-muted-foreground">מצב התיעוד</div>
-          <div className="text-base font-bold text-foreground">
-            {info.documented} מתוך {info.total} ארוחות תועדו
+          <div className="text-sm text-[#708197]">מצב התיעוד</div>
+          <div className="mt-1 flex items-baseline gap-1.5">
+            <span className="text-3xl font-bold text-foreground leading-none tabular-nums">
+              {info.documented}
+            </span>
+            <span className="text-lg font-medium text-[#708197] leading-none tabular-nums">
+              / {info.total}
+            </span>
           </div>
+          <div className="mt-1 text-xs text-[#708197]">ארוחות תועדו היום</div>
         </div>
-        <div
-          aria-hidden
-          className={cn(
-            "shrink-0 grid h-11 min-w-11 px-2 place-items-center rounded-full text-sm font-bold",
-            info.state === "full" && "bg-success-soft text-success",
-            info.state === "partial" && "bg-info-soft text-info",
-            info.state === "empty" && "bg-muted text-muted-foreground",
-          )}
-        >
-          {info.documented}/{info.total}
-        </div>
+        {info.state === "full" && (
+          <span className="inline-flex h-6 items-center rounded-full bg-[#EDF8F2] px-2.5 text-[11px] font-medium text-primary">
+            הושלם
+          </span>
+        )}
       </div>
       <div
-        className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted"
+        className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-[#EEF2F6]"
         role="progressbar"
         aria-valuenow={info.documented}
         aria-valuemin={0}
@@ -38,13 +38,10 @@ export function DailyCompletionIndicator({ info }: { info: CompletionInfo }) {
         aria-label="התקדמות תיעוד יומי"
       >
         <div
-          className={cn("h-full rounded-full transition-all", barColor)}
+          className={cn("h-full rounded-full transition-all duration-300 ease-out", barColor)}
           style={{ width: `${pct}%` }}
         />
       </div>
-      {info.state !== "full" && (
-        <div className="mt-2 text-xs text-muted-foreground">אפשר להשלים בהמשך</div>
-      )}
     </div>
   );
 }

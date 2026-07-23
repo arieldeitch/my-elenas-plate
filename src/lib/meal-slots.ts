@@ -3,7 +3,7 @@ import {
   Apple,
   Utensils,
   Coffee,
-  Soup,
+  Salad,
   Moon,
   type LucideIcon,
 } from "lucide-react";
@@ -13,7 +13,7 @@ export const MEAL_LABELS: Record<MealSlotId, string> = {
   breakfast: "ארוחת בוקר",
   morning_snack: "ביניים בוקר",
   lunch: "ארוחת צהריים",
-  afternoon_snack: "ביניים אחר הצהריים",
+  afternoon_snack: "ביניים אחה״צ",
   dinner: "ארוחת ערב",
   late: "ארוחת לילה",
 };
@@ -23,16 +23,16 @@ export const MEAL_ICONS: Record<MealSlotId, LucideIcon> = {
   morning_snack: Apple,
   lunch: Utensils,
   afternoon_snack: Coffee,
-  dinner: Soup,
+  dinner: Salad,
   late: Moon,
 };
 
-// Soft tinted background per slot for the round meal tile
+// Soft healthcare pastel per slot
 export const MEAL_TILE_TINT: Record<MealSlotId, string> = {
-  breakfast: "bg-amber-50 text-amber-600",
-  morning_snack: "bg-rose-50 text-rose-500",
-  lunch: "bg-emerald-50 text-emerald-600",
-  afternoon_snack: "bg-orange-50 text-orange-500",
-  dinner: "bg-sky-50 text-sky-600",
-  late: "bg-indigo-50 text-indigo-500",
+  breakfast: "bg-[#FFF4E0] text-[#C88A2E]",
+  morning_snack: "bg-[#FDECEC] text-[#C85454]",
+  lunch: "bg-[#EDF8F2] text-[#17A668]",
+  afternoon_snack: "bg-[#FFF0E0] text-[#D18544]",
+  dinner: "bg-[#EDF6FD] text-[#2B84D6]",
+  late: "bg-[#EEEEFB] text-[#6A6DCB]",
 };

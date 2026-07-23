@@ -41,44 +41,31 @@ function Home() {
   const completion = useMemo(() => calcCompletion(day.meals), [day.meals]);
 
   return (
-    <div className="min-h-screen bg-background pb-32">
-      <div className="mx-auto max-w-2xl px-4 pt-4 sm:pt-6">
+    <div className="min-h-screen bg-background pb-36">
+      <div className="mx-auto max-w-[820px] px-6 pt-5 sm:pt-7">
         {/* Header */}
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <div className="text-sm font-semibold text-muted-foreground">מעקב תזונה</div>
-          <div className="flex items-center gap-2">
-            <span
-              className="hidden sm:inline text-[10px] uppercase tracking-wide font-medium text-muted-foreground bg-secondary rounded-full px-2 py-0.5"
-              title="גרסת הדגמה — הנתונים נשמרים באופן זמני בדפדפן"
-            >
-              גרסת הדגמה
-            </span>
-            <SyncStatus />
-          </div>
-        </div>
+        <header className="mb-5 flex items-center justify-between gap-2">
+          <div className="text-[13px] font-medium text-[#708197]">מעקב תזונה</div>
+          <SyncStatus />
+        </header>
 
-        <div className="flex justify-center mb-3">
+        {/* Profile switcher */}
+        <div className="mb-5 flex justify-center">
           <ProfileSwitcher />
         </div>
-        <span className="sm:hidden mx-auto mb-3 block text-center text-[10px] uppercase tracking-wide font-medium text-muted-foreground">
-          גרסת הדגמה
-        </span>
 
+        {/* Date */}
         <DateNavigator onOpenCalendar={() => setCalendarOpen(true)} />
 
-        <div className="mt-4">
+        {/* Completion */}
+        <div className="mt-5">
           <DailyCompletionIndicator info={completion} />
         </div>
 
-        {/* Meals matrix */}
-        <div className="mt-5 rounded-3xl bg-card border border-border p-4 sm:p-5 shadow-soft">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-base font-bold text-foreground">ארוחות היום</h2>
-            <span aria-hidden className="grid h-9 w-9 place-items-center rounded-xl bg-primary-soft text-primary">
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-            </span>
-          </div>
-          <div className="grid grid-cols-3 gap-y-5 gap-x-1">
+        {/* Meals */}
+        <section className="mt-5 rounded-3xl bg-white border border-[#E9EEF3] p-6 shadow-soft">
+          <h2 className="mb-4 text-[15px] font-semibold text-foreground">ארוחות היום</h2>
+          <div className="grid grid-cols-3 gap-y-2 gap-x-1">
             {MEAL_SLOTS.map((slot) => (
               <MealCard
                 key={slot}
@@ -87,15 +74,15 @@ function Home() {
               />
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* Secondary sections */}
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+        {/* Secondary */}
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <FastingCard />
           <WorkoutCard />
         </div>
 
-        <p className="mt-6 text-center text-xs text-muted-foreground">
+        <p className="mt-8 text-center text-[11px] text-[#94A3B4]">
           הנתונים בגרסת ההדגמה נשמרים באופן זמני בדפדפן בלבד.
         </p>
       </div>
