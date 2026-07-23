@@ -7,12 +7,7 @@ export interface Profile {
 }
 
 export type MealSlotId =
-  | "breakfast"
-  | "morning_snack"
-  | "lunch"
-  | "afternoon_snack"
-  | "dinner"
-  | "late";
+  "breakfast" | "morning_snack" | "lunch" | "afternoon_snack" | "dinner" | "late";
 
 export const MEAL_SLOTS: MealSlotId[] = [
   "breakfast",
@@ -38,6 +33,7 @@ export type Unit =
   | "כף"
   | "כפית"
   | "כוס"
+  | "ספל"
   | "פרוסה"
   | "קערה"
   | "מנה";
@@ -52,10 +48,23 @@ export const ALL_UNITS: Unit[] = [
   "כף",
   "כפית",
   "כוס",
+  "ספל",
   "פרוסה",
   "קערה",
   "מנה",
 ];
+
+/**
+ * Practical measured units offered for a coffee entry. Subset of {@link ALL_UNITS}
+ * so coffee stays a normal measured food entry without a parallel unit system.
+ */
+export const COFFEE_UNITS: Unit[] = ["כוס", "ספל", "יחידה", "מ״ל"];
+
+/**
+ * Distinguishes foods that need a specialised entry flow. A `coffee` food opens
+ * the coffee editor (type + milk) instead of the generic quantity selector.
+ */
+export type FoodKind = "generic" | "coffee";
 
 export interface Food {
   id: string;
@@ -63,6 +72,59 @@ export interface Food {
   category?: string;
   defaultUnit?: Unit;
   suggestedUnits?: Unit[];
+  kind?: FoodKind;
+}
+
+// --- Coffee ---------------------------------------------------------------
+// Coffee is a normal food entry with structured, future-safe attributes stored
+// on `FoodEntry.coffee` (not buried in a free-text note). Daily completeness is
+// unaffected — coffee only matters as an entry inside a meal slot.
+
+export type CoffeeType =
+  | "אספרסו"
+  | "אספרסו כפול"
+  | "אמריקנו"
+  | "קפה שחור"
+  | "נס קפה"
+  | "קפוצ׳ינו"
+  | "לאטה"
+  | "פילטר"
+  | "אחר";
+
+export const COFFEE_TYPES: CoffeeType[] = [
+  "אספרסו",
+  "אספרסו כפול",
+  "אמריקנו",
+  "קפה שחור",
+  "נס קפה",
+  "קפוצ׳ינו",
+  "לאטה",
+  "פילטר",
+  "אחר",
+];
+
+export type MilkChoice = "ללא חלב" | "עם חלב";
+export const MILK_CHOICES: MilkChoice[] = ["ללא חלב", "עם חלב"];
+
+export type MilkType =
+  "חלב רגיל" | "חלב דל שומן" | "חלב ללא לקטוז" | "סויה" | "שקדים" | "שיבולת שועל" | "אחר";
+
+export const MILK_TYPES: MilkType[] = [
+  "חלב רגיל",
+  "חלב דל שומן",
+  "חלב ללא לקטוז",
+  "סויה",
+  "שקדים",
+  "שיבולת שועל",
+  "אחר",
+];
+
+export interface CoffeeMeta {
+  type: CoffeeType;
+  milk: MilkChoice;
+  /** Only meaningful when `milk === "עם חלב"`; must be cleared otherwise. */
+  milkType?: MilkType;
+  note?: string;
 }
 
 export interface FoodEntry {
@@ -73,6 +135,8 @@ export interface FoodEntry {
   amount?: number;
   unit?: Unit;
   subjective?: SubjectiveAmount;
+  /** Present only for coffee entries. */
+  coffee?: CoffeeMeta;
 }
 
 export interface DailyMeal {

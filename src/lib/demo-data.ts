@@ -1,8 +1,11 @@
 import type {
+  DailyMeal,
   DayData,
   FoodEntry,
   MealSlotId,
   ProfileId,
+  SubjectiveAmount,
+  Unit,
   WeighIn,
 } from "./domain";
 import { MEAL_SLOTS } from "./domain";
@@ -12,15 +15,15 @@ let idCounter = 1;
 const nid = (p = "e") => `${p}_${idCounter++}`;
 
 function emptyDay(): DayData {
-  const meals = {} as Record<MealSlotId, any>;
+  const meals = {} as Record<MealSlotId, DailyMeal>;
   for (const s of MEAL_SLOTS) meals[s] = { slot: s, status: "empty", entries: [] };
   return { meals };
 }
 
-function measured(foodId: string, foodName: string, amount: number, unit: any): FoodEntry {
+function measured(foodId: string, foodName: string, amount: number, unit: Unit): FoodEntry {
   return { id: nid(), foodId, foodName, mode: "measured", amount, unit };
 }
-function subj(foodId: string, foodName: string, s: any): FoodEntry {
+function subj(foodId: string, foodName: string, s: SubjectiveAmount): FoodEntry {
   return { id: nid(), foodId, foodName, mode: "subjective", subjective: s };
 }
 
@@ -31,7 +34,8 @@ const TODAY = toISODate(today);
 function meDay(): DayData {
   const d = emptyDay();
   d.meals.breakfast = {
-    slot: "breakfast", status: "logged",
+    slot: "breakfast",
+    status: "logged",
     entries: [
       measured("f_omelette", "חביתה", 2, "יחידה"),
       subj("f_veg_salad", "סלט ירקות", "במידה"),
@@ -39,14 +43,28 @@ function meDay(): DayData {
     ],
   };
   d.meals.morning_snack = {
-    slot: "morning_snack", status: "logged",
+    slot: "morning_snack",
+    status: "logged",
     entries: [
-      measured("f_coffee", "קפה", 1, "כוס"),
-      measured("f_milk", "חלב", 50, "מ״ל"),
+      {
+        ...measured("f_coffee", "קפה", 1, "כוס"),
+        coffee: { type: "אמריקנו", milk: "עם חלב", milkType: "שקדים" },
+      },
+    ],
+  };
+  d.meals.afternoon_snack = {
+    slot: "afternoon_snack",
+    status: "logged",
+    entries: [
+      {
+        ...measured("f_coffee", "קפה", 1, "ספל"),
+        coffee: { type: "קפוצ׳ינו", milk: "עם חלב", milkType: "חלב דל שומן" },
+      },
     ],
   };
   d.meals.lunch = {
-    slot: "lunch", status: "logged",
+    slot: "lunch",
+    status: "logged",
     entries: [
       measured("f_chicken_breast", "חזה עוף", 180, "גרם"),
       measured("f_rice", "אורז", 1, "כוס"),
@@ -62,7 +80,8 @@ function meDay(): DayData {
 function elenaDay(): DayData {
   const d = emptyDay();
   d.meals.breakfast = {
-    slot: "breakfast", status: "logged",
+    slot: "breakfast",
+    status: "logged",
     entries: [
       measured("f_yogurt", "יוגורט", 1, "יחידה"),
       measured("f_granola", "גרנולה", 3, "כף"),
@@ -71,18 +90,17 @@ function elenaDay(): DayData {
   };
   d.meals.morning_snack = { slot: "morning_snack", status: "skipped", entries: [] };
   d.meals.lunch = {
-    slot: "lunch", status: "logged",
+    slot: "lunch",
+    status: "logged",
     entries: [
       subj("f_veg_salad", "סלט ירקות", "הרבה"),
       measured("f_white_cheese", "גבינה לבנה", 100, "גרם"),
     ],
   };
   d.meals.afternoon_snack = {
-    slot: "afternoon_snack", status: "logged",
-    entries: [
-      measured("f_apple", "תפוח", 1, "יחידה"),
-      subj("f_almonds", "שקדים", "מעט"),
-    ],
+    slot: "afternoon_snack",
+    status: "logged",
+    entries: [measured("f_apple", "תפוח", 1, "יחידה"), subj("f_almonds", "שקדים", "מעט")],
   };
   d.workout = { performed: null };
   return d;
@@ -92,7 +110,8 @@ function fullSampleDay(): DayData {
   const d = emptyDay();
   for (const s of MEAL_SLOTS) {
     d.meals[s] = {
-      slot: s, status: "logged",
+      slot: s,
+      status: "logged",
       entries: [measured("f_apple", "תפוח", 1, "יחידה")],
     };
   }
@@ -103,11 +122,13 @@ function fullSampleDay(): DayData {
 function partialSampleDay(): DayData {
   const d = emptyDay();
   d.meals.breakfast = {
-    slot: "breakfast", status: "logged",
+    slot: "breakfast",
+    status: "logged",
     entries: [measured("f_coffee", "קפה", 1, "כוס")],
   };
   d.meals.lunch = {
-    slot: "lunch", status: "logged",
+    slot: "lunch",
+    status: "logged",
     entries: [subj("f_veg_salad", "סלט ירקות", "במידה")],
   };
   d.meals.dinner = { slot: "dinner", status: "skipped", entries: [] };
@@ -148,9 +169,7 @@ export function initialWeighIns(profile: ProfileId): WeighIn[] {
       { id: nid("w"), dateISO: TODAY, weightKg: 82.4, bodyFatPct: 24.1 },
     ];
   }
-  return [
-    { id: nid("w"), dateISO: TODAY, weightKg: 64.8 },
-  ];
+  return [{ id: nid("w"), dateISO: TODAY, weightKg: 64.8 }];
 }
 
 export function initialFavorites(profile: ProfileId): string[] {

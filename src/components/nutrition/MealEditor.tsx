@@ -5,9 +5,11 @@ import type { Food, FoodEntry, MealSlotId } from "@/lib/domain";
 import { MEAL_ICONS, MEAL_LABELS } from "@/lib/meal-slots";
 import { useStore, PROFILES } from "@/lib/store";
 import { formatShortDate } from "@/lib/format";
+import { coffeeSummary } from "@/lib/coffee";
 import { cn } from "@/lib/utils";
 import { FoodSearch } from "./FoodSearch";
 import { QuantitySelector } from "./QuantitySelector";
+import { CoffeeSelector } from "./CoffeeSelector";
 
 interface Props {
   slot: MealSlotId | null;
@@ -17,7 +19,8 @@ interface Props {
 type View =
   | { kind: "list" }
   | { kind: "search" }
-  | { kind: "quantity"; food: Food; editing?: FoodEntry };
+  | { kind: "quantity"; food: Food; editing?: FoodEntry }
+  | { kind: "coffee"; editing?: FoodEntry };
 
 export function MealEditor({ slot, onClose }: Props) {
   const store = useStore();
@@ -73,6 +76,11 @@ export function MealEditor({ slot, onClose }: Props) {
     setView({ kind: "quantity", food: f });
   }
 
+  function handlePick(food: Food) {
+    if (food.kind === "coffee") setView({ kind: "coffee" });
+    else setView({ kind: "quantity", food });
+  }
+
   return (
     <div
       role="dialog"
@@ -94,7 +102,10 @@ export function MealEditor({ slot, onClose }: Props) {
       >
         {/* Header */}
         <div className="flex items-start gap-3 border-b border-border p-4">
-          <div className="grid h-11 w-11 place-items-center rounded-xl bg-primary-soft text-primary shrink-0" aria-hidden>
+          <div
+            className="grid h-11 w-11 place-items-center rounded-xl bg-primary-soft text-primary shrink-0"
+            aria-hidden
+          >
             <Icon className="h-5 w-5" />
           </div>
           <div className="min-w-0 flex-1">
@@ -132,6 +143,10 @@ export function MealEditor({ slot, onClose }: Props) {
                       isFavorite={store.favorites.includes(e.foodId)}
                       onToggleFavorite={() => store.toggleFavorite(e.foodId)}
                       onEdit={() => {
+                        if (e.coffee) {
+                          setView({ kind: "coffee", editing: e });
+                          return;
+                        }
                         const food = store.foods.find((f) => f.id === e.foodId);
                         if (food) setView({ kind: "quantity", food, editing: e });
                       }}
@@ -145,8 +160,9 @@ export function MealEditor({ slot, onClose }: Props) {
 
           {view.kind === "search" && (
             <FoodSearch
-              onPick={(food) => setView({ kind: "quantity", food })}
+              onPick={handlePick}
               onCreate={handleCreateFood}
+              onAddCoffee={() => setView({ kind: "coffee" })}
             />
           )}
 
@@ -155,6 +171,18 @@ export function MealEditor({ slot, onClose }: Props) {
               food={view.food}
               initial={view.editing}
               submitLabel={view.editing ? "עדכון" : "הוספת המאכל"}
+              onSubmit={(entry) => {
+                if (view.editing) handleUpdate({ ...view.editing, ...entry });
+                else handleAdd(entry);
+              }}
+              onCancel={() => setView(view.editing ? { kind: "list" } : { kind: "search" })}
+            />
+          )}
+
+          {view.kind === "coffee" && (
+            <CoffeeSelector
+              initial={view.editing}
+              submitLabel={view.editing ? "עדכון" : "הוספת הקפה"}
               onSubmit={(entry) => {
                 if (view.editing) handleUpdate({ ...view.editing, ...entry });
                 else handleAdd(entry);
@@ -258,7 +286,11 @@ function SkippedState({ onUndo }: { onUndo: () => void }) {
 }
 
 function EntryRow({
-  entry, isFavorite, onToggleFavorite, onEdit, onDelete,
+  entry,
+  isFavorite,
+  onToggleFavorite,
+  onEdit,
+  onDelete,
 }: {
   entry: FoodEntry;
   isFavorite: boolean;
@@ -266,22 +298,30 @@ function EntryRow({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const detail =
+  const quantityText =
     entry.mode === "measured"
       ? `${entry.amount} ${entry.unit ?? ""}`.trim()
-      : entry.subjective ?? "";
+      : (entry.subjective ?? "");
+  const detail = entry.coffee
+    ? [coffeeSummary(entry.coffee), quantityText].filter(Boolean).join(" · ")
+    : quantityText;
   return (
     <div className="flex items-center gap-2 rounded-2xl border border-border bg-card p-3">
       <div className="min-w-0 flex-1">
-        <div className="font-medium text-foreground truncate">{entry.foodName}</div>
+        <div className="truncate font-medium text-foreground">{entry.foodName}</div>
         <div className="text-sm text-muted-foreground">{detail}</div>
+        {entry.coffee?.note && (
+          <div className="truncate text-xs text-muted-foreground/80">{entry.coffee.note}</div>
+        )}
       </div>
       <button
         onClick={onToggleFavorite}
         aria-label={isFavorite ? "הסרה ממועדפים" : "הוספה למועדפים"}
         className="grid h-10 w-10 place-items-center rounded-xl hover:bg-muted"
       >
-        <Star className={cn("h-4 w-4", isFavorite ? "text-warn fill-warn" : "text-muted-foreground")} />
+        <Star
+          className={cn("h-4 w-4", isFavorite ? "text-warn fill-warn" : "text-muted-foreground")}
+        />
       </button>
       <button
         onClick={onEdit}
