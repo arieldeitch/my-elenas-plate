@@ -24,19 +24,20 @@
 
 ## Quality gate (run this session)
 
-| Check                     | Command                                   | Result                                                                                                           |
-| ------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Type check                | `tsc --noEmit`                            | PASS — 0 errors                                                                                                  |
-| Lint                      | `eslint .`                                | PASS — 0 errors, 8 warnings (see "Remaining warnings" below)                                                     |
-| Format                    | `prettier`                                | PASS — changed + previously-unformatted source files normalised; `endOfLine: auto` added for cross-platform CRLF |
-| Unit/integration tests    | `vitest run`                              | PASS — 102 passed / 5 skipped (live RLS, no env)                                                                 |
-| Live DB (RLS + bootstrap) | `supabase start` + gated integration test | PASS — 5/5 against local Supabase (bootstrap, isolation, anon-denied, coffee CHECK)                              |
-| Migration validation      | `psql < each migration`                   | PASS — all 4 apply cleanly (10 tables, 35 policies, 8 realtime tables)                                           |
-| Generated types           | `supabase gen types --local`              | Matches hand-derived aliases; committed as `database.generated.ts`                                               |
-| Accessibility             | `vitest-axe` on 5 key components          | PASS — 0 violations (MealCard, CoffeeSelector, ProfileSwitcher, DailyCompletionIndicator, WeightBanner)          |
-| Build                     | `vite build`                              | PASS — SSR + client build succeeds                                                                               |
-| SSR smoke                 | `vite dev` + curl                         | PASS — Home renders; profiles אריאל/אלנה, six slots, RTL; no "אני", no "ארוחת לילה"; no hydration warnings       |
-| Secret scan               | grep                                      | PASS — no secrets, no `.env`, no service_role                                                                    |
+| Check                     | Command                                   | Result                                                                                                             |
+| ------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Type check                | `tsc --noEmit`                            | PASS — 0 errors                                                                                                    |
+| Lint                      | `eslint .`                                | PASS — 0 errors, 8 warnings (see "Remaining warnings" below)                                                       |
+| Format                    | `prettier`                                | PASS — changed + previously-unformatted source files normalised; `endOfLine: auto` added for cross-platform CRLF   |
+| Unit/integration tests    | `vitest run`                              | PASS — 102 passed / 5 skipped (live RLS, no env)                                                                   |
+| Live DB (RLS + bootstrap) | `supabase start` + gated integration test | PASS — 5/5 against local Supabase (bootstrap, isolation, anon-denied, coffee CHECK)                                |
+| Live remote (RLS+CRUD+RT) | 2 gated suites vs remote project          | PASS — 10/10 (auth, bootstrap, RLS isolation, CRUD all tables, coffee, idempotency, migration, 2-context realtime) |
+| Migration validation      | `psql < each migration`                   | PASS — all 4 apply cleanly (10 tables, 35 policies, 8 realtime tables)                                             |
+| Generated types           | `supabase gen types --local`              | Matches hand-derived aliases; committed as `database.generated.ts`                                                 |
+| Accessibility             | `vitest-axe` on 5 key components          | PASS — 0 violations (MealCard, CoffeeSelector, ProfileSwitcher, DailyCompletionIndicator, WeightBanner)            |
+| Build                     | `vite build`                              | PASS — SSR + client build succeeds                                                                                 |
+| SSR smoke                 | `vite dev` + curl                         | PASS — Home renders; profiles אריאל/אלנה, six slots, RTL; no "אני", no "ארוחת לילה"; no hydration warnings         |
+| Secret scan               | grep                                      | PASS — no secrets, no `.env`, no service_role                                                                      |
 
 ### Remaining warnings (8, non-blocking, dev-only)
 
@@ -108,18 +109,40 @@ meal_statuses, food_entries, fasting_logs, workout_logs, weigh_ins`).
 - **App wiring verified**: with `.env` the app enters configured mode — demo UI hidden, AuthGate → SignIn
   renders. Remote Auth (GoTrue) + REST are live.
 
-### BLOCKER — remote requires email confirmation
+### Live remote verification (2026-07-23, "Confirm email" disabled)
 
-The remote project has **"Confirm email" enabled**: sign-up returns `confirmation_sent_at` and **no
-session**. The agent therefore cannot obtain an authenticated session programmatically, which blocks the
-session-dependent verifications: bootstrap execution, CRUD, coffee, fasting/workout/weigh-in, two-context
-realtime, offline queue flush, local→cloud migration, and two-user RLS isolation on the remote.
+Two gated live suites ran against the **remote** project (`rqgoiuztphkcvbwtbxbj`) — **10/10 passing**,
+realtime stable across 3 consecutive runs:
 
-**One action to unblock full verification:** in the Supabase Dashboard → Authentication → Providers →
-Email, turn **off "Confirm email"** (appropriate for a 2-person shared-account pilot; matches the local
-config). Then the agent can run the remote RLS integration test (set `SUPABASE_TEST_URL`,
-`SUPABASE_TEST_ANON_KEY`, and `SUPABASE_TEST_EMAIL_DOMAIN` to a domain the project accepts — not
-example.com) and the browser E2E. Alternatively, confirm one real mailbox and sign in manually.
+- **Auth**: sign-up returns a real session (autoconfirm); `nutritiontracker.dev` accepted (example.com is
+  rejected by the project).
+- **Bootstrap**: creates exactly one household + two profiles (אריאל `ariel`, אלנה `alena`); repeated call
+  returns the same household (idempotent, no duplicates).
+- **RLS**: anonymous denied (read `[]`, write `42501`); an unrelated authenticated account sees none of
+  another household's rows; the shared account reads/writes **both** profiles; no cross-household access.
+- **CRUD (all tables)**: `meal_statuses`, `food_entries`, `fasting_logs`, `workout_logs`, `weigh_ins`,
+  `foods`, `food_preferences` — insert / update / delete / read verified.
+- **Coffee**: round-trips through the DB (`entryToRow`→row→`entryFromRow`); the DB CHECK rejects a raw
+  milk-type-without-milk row; `entryToRow` also sanitises it (defence in depth).
+- **Idempotency / no optimistic duplication**: upserting the same UUID twice yields one row.
+- **Local→cloud migration**: `buildMigrationPayload` + upload lands the expected rows.
+- **Two-context Realtime**: a second client authenticated as the same shared account receives INSERT,
+  UPDATE and DELETE events (auth token set on the realtime socket).
+
+Run locally with `SUPABASE_TEST_URL`, `SUPABASE_TEST_ANON_KEY`, `SUPABASE_TEST_EMAIL_DOMAIN` set (these
+files skip in the hermetic `npm test`).
+
+### Honest gaps in the live pass
+
+- **App sync scope**: `useSupabaseSync` currently pushes **days** (meal statuses + food entries incl.
+  coffee + fasting + workout) and **weigh-ins**. **Favorites, recents and custom foods stay client-local**
+  — the `food_preferences`/`foods` tables exist and were CRUD-verified directly, but the app's sync hook
+  does not yet write them. Follow-up: extend the sync to preferences/foods.
+- **Browser UI E2E** (Playwright driving SignIn → MealEditor → … against remote) and **browser-level
+  offline** (network throttle in a real browser) are **not automated**. Coverage is instead: the live
+  data-layer suites against the real remote (same mappers/migration/RLS the app uses) + hermetic component
+  tests + the app booting and gating correctly against the remote. Adding Playwright is the recommended
+  next step; risk is low since each layer is independently verified.
 
 ## Not present / not yet live-verified (honest gaps)
 

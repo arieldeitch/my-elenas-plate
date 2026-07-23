@@ -20,12 +20,12 @@ communicated by color alone.
     `VITE_SUPABASE_ANON_KEY` the app runs in local demo mode (localStorage). See DEC-017.
 - Quality gate all green: type check, lint (0 errors, 8 dev-only HMR warnings), 102 tests (+5 live-RLS
   skipped without env), automated a11y (0 violations), build, SSR smoke.
-- Remote project `rqgoiuztphkcvbwtbxbj` set in `.env`; **schema applied + verified via REST** (10 tables,
-  RLS active — anon read `[]` / anon write `42501` — `bootstrap_household` present; structure ==
-  locally-verified migrations). App gates correctly against it. **Remaining blocker:** the remote has
-  "Confirm email" ON, so no automated session → live authed flows (bootstrap/CRUD/coffee/fasting/workout/
-  weigh-in/realtime/offline/migration/2-user isolation/browser E2E) are pending. Disable "Confirm email"
-  in the Dashboard (Auth → Providers → Email), then re-run the RLS integration test + E2E.
+- Remote project `rqgoiuztphkcvbwtbxbj` set in `.env`; schema applied and **live-verified end-to-end**
+  (2 gated suites, 10/10 vs remote): auth/session, bootstrap (אריאל/אלנה, idempotent), RLS isolation,
+  CRUD on all tables, coffee round-trip + CHECK, idempotency (no duplication), local→cloud migration, and
+  two-context realtime (insert/update/delete). App gates correctly against remote. **Known gaps
+  (follow-ups, not blockers):** the app's sync covers days + weigh-ins — favorites/recents/custom-foods
+  stay client-local (T-027); browser UI E2E via Playwright is not yet automated (T-028).
 
 ## Latest product decisions (active)
 

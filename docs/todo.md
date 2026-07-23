@@ -38,12 +38,17 @@ Updated 2026-07-23 with verified findings from the MVP-hardening session.
 
 - **T-025 Done** Remote schema applied (`supabase db push`). Verified via REST: 10 tables, RLS active
   (anon read `[]`, anon write `42501`), `bootstrap_household` present; structure == locally-verified.
-- **T-026 (Blocked — email confirmation)** Live authed verification: bootstrap execution, CRUD, coffee,
-  fasting/workout/weigh-in, two-context realtime, offline flush, local→cloud migration, two-user RLS
-  isolation, and browser E2E. All need an authenticated session, which the remote blocks behind
-  "Confirm email". **Action:** disable "Confirm email" in the Dashboard (Auth → Providers → Email), or
-  confirm a mailbox. Then set `SUPABASE_TEST_URL/ANON_KEY/EMAIL_DOMAIN` and re-run the RLS integration
-  test + E2E.
+- **T-026 Done (live, remote)** With "Confirm email" disabled, two gated suites verified against the
+  remote (10/10): auth/session, bootstrap (1 household + אריאל/אלנה, idempotent), RLS isolation, CRUD on
+  all tables, coffee round-trip + CHECK, idempotency (no duplication), local→cloud migration, and
+  two-context realtime (insert/update/delete). See `project-status.md`.
+
+### Follow-ups (not blockers)
+
+- **T-027** Extend `useSupabaseSync` to also sync **favorites, recents and custom foods**
+  (`food_preferences`/`foods`) — currently client-local. Tables + direct CRUD already verified.
+- **T-028** Add Playwright browser E2E (SignIn → MealEditor → CRUD/coffee/fasting/workout/weigh-in →
+  refresh → sign-out/in) and a browser-level offline test, driven against the remote.
 
 ## Deferred (P2/P3, not approved for MVP)
 

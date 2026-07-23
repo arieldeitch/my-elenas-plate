@@ -55,12 +55,14 @@ Migrations under `supabase/` (schema + RLS + bootstrap + realtime) were live-ver
 Supabase stack (RLS isolation + bootstrap: 5/5 integration tests). App layer: `src/lib/supabase/*`,
 `src/lib/sync/*`, `src/components/auth/*`, wired into the store behind `isSupabaseConfigured()`.
 Without `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` the app runs in **local demo mode** (localStorage).
-Never put service_role in the client. Remote project `rqgoiuztphkcvbwtbxbj` is set in `.env` and the
-**schema is applied + verified** (10 tables, RLS active: anon read `[]` / anon write `42501`,
-`bootstrap_household` present). Remaining blocker for live authed verification (bootstrap/CRUD/realtime/
-offline/migration/E2E): the remote has **"Confirm email" enabled** so no session is obtainable
-programmatically — disable it in the Dashboard (Auth → Providers → Email) to unblock. Tests are kept
-hermetic via `vi.stubEnv` in `src/test/setup.ts` regardless of `.env`. See DEC-017 and `project-status.md`.
+Never put service_role in the client. Remote project `rqgoiuztphkcvbwtbxbj` is set in `.env`, schema
+applied, and **live-verified end-to-end** (2 gated suites, 10/10 vs remote): auth/session, bootstrap
+(אריאל/אלנה, idempotent), RLS isolation, CRUD on all tables, coffee round-trip + CHECK, idempotency,
+local→cloud migration, two-context realtime. Known gap: the app's `useSupabaseSync` syncs days +
+weigh-ins; **favorites/recents/custom-foods stay client-local** (follow-up T-027). Browser UI E2E
+(Playwright) not yet automated (T-028). Tests stay hermetic via `vi.stubEnv` in `src/test/setup.ts`; the
+live suites (`*.integration.test.ts`) skip unless `SUPABASE_TEST_URL/ANON_KEY/EMAIL_DOMAIN` are set. See
+DEC-017 and `project-status.md`.
 
 ## Guardrails
 
