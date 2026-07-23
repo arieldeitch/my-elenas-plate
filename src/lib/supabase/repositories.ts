@@ -4,10 +4,26 @@
  * require a configured, authenticated client (see requireSupabase()).
  */
 import { requireSupabase } from "./client";
-import type { DayData, MealSlotId, WeighIn, WorkoutFeeling, WorkoutType } from "../domain";
+import type { DayData, Food, MealSlotId, WeighIn, WorkoutFeeling, WorkoutType } from "../domain";
 import { MEAL_SLOTS } from "../domain";
-import type { FoodEntryRow, MealStatusRow, ProfileRow } from "./database.types";
-import { entryToRow, mealFromRows, slotToSlug, statusToDb, slugToSlot } from "./mappers";
+import type {
+  FoodEntryRow,
+  FoodPreferenceRow,
+  FoodRow,
+  MealStatusRow,
+  ProfileRow,
+} from "./database.types";
+import {
+  entryToRow,
+  foodFromRow,
+  foodToRow,
+  mealFromRows,
+  preferenceFromRow,
+  slotToSlug,
+  statusToDb,
+  slugToSlot,
+  type Preference,
+} from "./mappers";
 
 export interface HouseholdContext {
   householdId: string;
@@ -173,5 +189,79 @@ export async function insertWeighIn(
     weight_kg: w.weightKg,
     body_fat_pct: w.bodyFatPct ?? null,
   });
+  if (error) throw error;
+}
+
+// --- custom foods -----------------------------------------------------------
+
+/** Household-scoped active custom foods. */
+export async function loadFoods(householdId: string): Promise<Food[]> {
+  const sb = requireSupabase();
+  const { data, error } = await sb
+    .from("foods")
+    .select("*")
+    .eq("household_id", householdId)
+    .eq("is_active", true)
+    .order("created_at");
+  if (error) throw error;
+  return ((data ?? []) as FoodRow[]).map(foodFromRow);
+}
+
+export async function upsertFood(householdId: string, food: Food): Promise<void> {
+  const sb = requireSupabase();
+  const { error } = await sb.from("foods").upsert(foodToRow(food, householdId));
+  if (error) throw error;
+}
+
+/** Soft-delete: keep the row so historical entries (stored by name) still read. */
+export async function archiveFood(foodId: string): Promise<void> {
+  const sb = requireSupabase();
+  const { error } = await sb.from("foods").update({ is_active: false }).eq("id", foodId);
+  if (error) throw error;
+}
+
+// --- favorites + recents (food_preferences) ---------------------------------
+
+export async function loadPreferences(profileId: string): Promise<Preference[]> {
+  const sb = requireSupabase();
+  const { data, error } = await sb.from("food_preferences").select("*").eq("profile_id", profileId);
+  if (error) throw error;
+  return ((data ?? []) as FoodPreferenceRow[]).map(preferenceFromRow);
+}
+
+/** Sets the favorite flag without touching recency. */
+export async function setFavorite(
+  householdId: string,
+  profileId: string,
+  foodId: string,
+  isFavorite: boolean,
+): Promise<void> {
+  const sb = requireSupabase();
+  const { error } = await sb.from("food_preferences").upsert(
+    {
+      household_id: householdId,
+      profile_id: profileId,
+      food_id: foodId,
+      is_favorite: isFavorite,
+    },
+    { onConflict: "profile_id,food_id" },
+  );
+  if (error) throw error;
+}
+
+/** Bumps recency (last_used_at) without touching the favorite flag. */
+export async function bumpRecent(
+  householdId: string,
+  profileId: string,
+  foodId: string,
+  whenISO: string,
+): Promise<void> {
+  const sb = requireSupabase();
+  const { error } = await sb
+    .from("food_preferences")
+    .upsert(
+      { household_id: householdId, profile_id: profileId, food_id: foodId, last_used_at: whenISO },
+      { onConflict: "profile_id,food_id" },
+    );
   if (error) throw error;
 }

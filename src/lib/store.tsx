@@ -125,6 +125,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setDays,
     weighInsMap,
     setWeighInsMap,
+    foods,
+    setFoods,
+    setFavoritesMap,
+    setRecentsMap,
     activeProfile,
     iso,
     setSyncState,
@@ -196,8 +200,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         list.unshift(foodId);
         return { ...prev, [activeProfile]: list.slice(0, 12) };
       });
+      sync.markRecentDirty(activeProfile, foodId, new Date().toISOString());
     },
-    [activeProfile],
+    [activeProfile, sync],
   );
 
   const addEntry: StoreValue["addEntry"] = (slot, entry) => {
@@ -281,16 +286,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       suggestedUnits: ["יחידה", "גרם", "מנה"],
     };
     setFoods((prev) => [f, ...prev]);
+    sync.markFoodDirty(f);
     return f;
   };
 
   const toggleFavorite: StoreValue["toggleFavorite"] = (foodId) => {
+    const isNowFavorite = !favoritesMap[activeProfile].includes(foodId);
     setFavoritesMap((prev) => {
       const list = prev[activeProfile];
-      const next = list.includes(foodId) ? list.filter((x) => x !== foodId) : [foodId, ...list];
+      const next = isNowFavorite ? [foodId, ...list] : list.filter((x) => x !== foodId);
       return { ...prev, [activeProfile]: next };
     });
     triggerSave();
+    sync.markFavoriteDirty(activeProfile, foodId, isNowFavorite);
   };
 
   const addWeighIn: StoreValue["addWeighIn"] = (w) => {

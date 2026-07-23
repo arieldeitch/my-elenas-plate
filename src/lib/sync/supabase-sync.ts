@@ -8,11 +8,19 @@
  * via the offline queue + sync state.
  */
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import type { DayData, MealSlotId, ProfileId } from "../domain";
+import type { DayData, Food, MealSlotId, ProfileId } from "../domain";
 import { MEAL_SLOTS } from "../domain";
 import { requireSupabase } from "../supabase/client";
-import { entryToRow, slotToSlug, statusToDb } from "../supabase/mappers";
-import { loadDay, type HouseholdContext } from "../supabase/repositories";
+import { entryToRow, slotToSlug, statusToDb, type Preference } from "../supabase/mappers";
+import {
+  bumpRecent,
+  loadDay,
+  loadFoods,
+  loadPreferences,
+  setFavorite,
+  upsertFood,
+  type HouseholdContext,
+} from "../supabase/repositories";
 import { SLUG_BY_LOCAL_PROFILE } from "./migrate-local";
 
 export function profileIdFor(ctx: HouseholdContext, local: ProfileId): string | undefined {
@@ -114,27 +122,72 @@ export async function pushDay(
   }
 }
 
+// --- custom foods + favorites/recents --------------------------------------
+
+/** Loads the household's custom foods. */
+export function hydrateFoods(ctx: HouseholdContext): Promise<Food[]> {
+  return loadFoods(ctx.householdId);
+}
+
+/** Loads a profile's preference rows (favorites + recents). */
+export function hydratePreferences(ctx: HouseholdContext, local: ProfileId): Promise<Preference[]> {
+  const profileId = profileIdFor(ctx, local);
+  if (!profileId) return Promise.resolve([]);
+  return loadPreferences(profileId);
+}
+
+/** Upserts custom foods (household-scoped). Built-in catalog foods are skipped. */
+export async function pushFoods(ctx: HouseholdContext, foods: Food[]): Promise<void> {
+  for (const food of foods) await upsertFood(ctx.householdId, food);
+}
+
+export interface PrefMutation {
+  foodId: string;
+  isFavorite?: boolean;
+  recentAt?: string;
+}
+
+/** Applies favorite / recency changes for one profile. */
+export async function pushPreferences(
+  ctx: HouseholdContext,
+  local: ProfileId,
+  mutations: PrefMutation[],
+): Promise<void> {
+  const profileId = profileIdFor(ctx, local);
+  if (!profileId) return;
+  for (const m of mutations) {
+    if (m.isFavorite !== undefined) {
+      await setFavorite(ctx.householdId, profileId, m.foodId, m.isFavorite);
+    }
+    if (m.recentAt) {
+      await bumpRecent(ctx.householdId, profileId, m.foodId, m.recentAt);
+    }
+  }
+}
+
 /**
  * Subscribes to realtime changes for the household's data tables and calls
- * `onChange` with the affected local slot table name. Returns an unsubscribe fn.
+ * `onChange` with the affected table name. Returns an unsubscribe fn.
  */
 export function subscribeHousehold(
   ctx: HouseholdContext,
   onChange: (table: string) => void,
 ): () => void {
   const sb = requireSupabase();
-  const channel: RealtimeChannel = sb
-    .channel(`household:${ctx.householdId}`)
-    .on("postgres_changes", { event: "*", schema: "public", table: "food_entries" }, () =>
-      onChange("food_entries"),
-    )
-    .on("postgres_changes", { event: "*", schema: "public", table: "meal_statuses" }, () =>
-      onChange("meal_statuses"),
-    )
-    .on("postgres_changes", { event: "*", schema: "public", table: "weigh_ins" }, () =>
-      onChange("weigh_ins"),
-    )
-    .subscribe();
+  const tables = [
+    "food_entries",
+    "meal_statuses",
+    "weigh_ins",
+    "foods",
+    "food_preferences",
+  ] as const;
+  let channel: RealtimeChannel = sb.channel(`household:${ctx.householdId}`);
+  for (const table of tables) {
+    channel = channel.on("postgres_changes", { event: "*", schema: "public", table }, () =>
+      onChange(table),
+    );
+  }
+  channel.subscribe();
   return () => {
     void sb.removeChannel(channel);
   };

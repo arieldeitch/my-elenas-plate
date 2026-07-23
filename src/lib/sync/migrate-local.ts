@@ -8,10 +8,21 @@
 import type { ProfileId } from "../domain";
 import { MEAL_SLOTS } from "../domain";
 import type { PersistedState } from "../persistence";
-import type { FoodEntryInsert, MealSlotSlug, MealStatusValue } from "../supabase/database.types";
-import { entryToRow, slotToSlug, statusToDb } from "../supabase/mappers";
+import type {
+  FoodEntryInsert,
+  FoodInsert,
+  FoodPreferenceInsert,
+  MealSlotSlug,
+  MealStatusValue,
+} from "../supabase/database.types";
+import { entryToRow, foodToRow, slotToSlug, statusToDb } from "../supabase/mappers";
 
 const MIGRATION_MARKER = "elenas-plate:migrated:v1";
+// Separate marker so users who already ran the meal-data migration still get
+// the new foods/favorites/recents migration exactly once (no meal-data re-import).
+const FOODS_MIGRATION_MARKER = "elenas-plate:migrated:foods:v1";
+// Fixed epoch so synthesised recency ordering is deterministic (testable).
+const RECENCY_BASE_MS = 1_784_000_000_000;
 
 /** Maps the two local profile ids to their DB profile slugs. */
 export const SLUG_BY_LOCAL_PROFILE: Record<ProfileId, string> = {
@@ -126,6 +137,81 @@ export function buildMigrationPayload(
   }
 
   return out;
+}
+
+/** A local food id is "custom" (user-created UUID) rather than a built-in catalog id. */
+export function isCustomFoodId(id: string): boolean {
+  return !id.startsWith("f_");
+}
+
+export interface FoodMigrationPayload {
+  foods: FoodInsert[];
+  preferences: FoodPreferenceInsert[];
+}
+
+/**
+ * Transforms local custom foods + per-profile favorites/recents into Supabase
+ * payloads. Built-in catalog foods are not imported (they are client constants);
+ * their favorite/recent state IS imported (preferences are keyed by app food id).
+ */
+export function buildFoodMigrationPayload(
+  state: PersistedState,
+  householdId: string,
+  profileIdBySlug: Record<string, string>,
+): FoodMigrationPayload {
+  const out: FoodMigrationPayload = { foods: [], preferences: [] };
+
+  for (const food of state.foods) {
+    if (isCustomFoodId(food.id)) out.foods.push(foodToRow(food, householdId));
+  }
+
+  for (const local of Object.keys(state.favorites) as ProfileId[]) {
+    const profileId = profileIdBySlug[SLUG_BY_LOCAL_PROFILE[local]];
+    if (!profileId) continue;
+
+    const byFood = new Map<string, FoodPreferenceInsert>();
+    const ensure = (foodId: string): FoodPreferenceInsert => {
+      let row = byFood.get(foodId);
+      if (!row) {
+        row = { household_id: householdId, profile_id: profileId, food_id: foodId };
+        byFood.set(foodId, row);
+      }
+      return row;
+    };
+
+    for (const foodId of state.favorites[local] ?? []) ensure(foodId).is_favorite = true;
+    // recents are newest-first; synthesise decreasing timestamps to keep order.
+    const recents = state.recents[local] ?? [];
+    recents.forEach((foodId, i) => {
+      ensure(foodId).last_used_at = new Date(RECENCY_BASE_MS - i * 60_000).toISOString();
+    });
+
+    out.preferences.push(...byFood.values());
+  }
+
+  return out;
+}
+
+export function isFoodsMigrated(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(FOODS_MIGRATION_MARKER) === "done";
+  } catch {
+    return false;
+  }
+}
+
+export function markFoodsMigrated(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(FOODS_MIGRATION_MARKER, "done");
+  } catch (err) {
+    console.warn("Failed to set foods migration marker", err);
+  }
+}
+
+export function totalFoodRows(p: FoodMigrationPayload): number {
+  return p.foods.length + p.preferences.length;
 }
 
 export function isMigrated(): boolean {

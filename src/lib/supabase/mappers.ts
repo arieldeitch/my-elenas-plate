@@ -10,7 +10,9 @@
 import type {
   CoffeeMeta,
   DailyMeal,
+  Food,
   FoodEntry,
+  FoodKind,
   MealSlotId,
   MealStatus,
   QuantityMode,
@@ -21,11 +23,15 @@ import type {
   CoffeeJson,
   FoodEntryInsert,
   FoodEntryRow,
+  FoodInsert,
+  FoodPreferenceRow,
+  FoodRow,
   Json,
   MealSlotSlug,
   MealStatusValue,
   SubjectiveValue,
 } from "./database.types";
+import { normalize } from "../food-catalog";
 
 // --- meal slot <-> slug -----------------------------------------------------
 const SLOT_TO_SLUG: Record<MealSlotId, MealSlotSlug> = {
@@ -138,6 +144,68 @@ export function entryFromRow(row: FoodEntryRow): FoodEntry {
   const coffee = coffeeFromJson(row.coffee);
   if (coffee) entry.coffee = coffee;
   return entry;
+}
+
+// --- custom foods -----------------------------------------------------------
+const DEFAULT_CUSTOM_UNITS: Unit[] = ["יחידה", "גרם", "מנה"];
+
+/** Domain custom Food -> foods insert payload. */
+export function foodToRow(food: Food, householdId: string): FoodInsert {
+  return {
+    id: food.id,
+    household_id: householdId,
+    name: food.name.trim(),
+    normalized_name: normalize(food.name),
+    category: food.category ?? null,
+    default_unit: food.defaultUnit ?? null,
+    kind: food.kind ?? "generic",
+    is_active: true,
+  };
+}
+
+/** foods row -> domain Food (suggested units are a client-side default). */
+export function foodFromRow(row: FoodRow): Food {
+  return {
+    id: row.id,
+    name: row.name,
+    category: row.category ?? undefined,
+    defaultUnit: (row.default_unit as Unit | null) ?? undefined,
+    suggestedUnits: DEFAULT_CUSTOM_UNITS,
+    kind: (row.kind as FoodKind) ?? "generic",
+  };
+}
+
+export interface Preference {
+  foodId: string;
+  isFavorite: boolean;
+  lastUsedAt: string | null;
+  useCount: number;
+}
+
+export function preferenceFromRow(row: FoodPreferenceRow): Preference {
+  return {
+    foodId: row.food_id,
+    isFavorite: row.is_favorite,
+    lastUsedAt: row.last_used_at,
+    useCount: row.use_count,
+  };
+}
+
+/**
+ * Derives the UI-facing favorites (ids) and recents (ids, newest-first, capped)
+ * from a profile's preference rows. Single source so hydrate + demo agree.
+ */
+export function deriveFavoritesRecents(
+  prefs: Preference[],
+  recentLimit = 12,
+): { favorites: string[]; recents: string[] } {
+  const favorites = prefs.filter((p) => p.isFavorite).map((p) => p.foodId);
+  const recents = prefs
+    .filter((p) => p.lastUsedAt)
+    .sort((a, b) => (a.lastUsedAt! < b.lastUsedAt! ? 1 : -1))
+    .slice(0, recentLimit)
+    .map((p) => p.foodId);
+  return { favorites, recents };
 }
 
 /** Builds a DailyMeal from a DB status + its entry rows. */
