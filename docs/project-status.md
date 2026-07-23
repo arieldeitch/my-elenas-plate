@@ -27,12 +27,26 @@
 | Check | Command | Result |
 | --- | --- | --- |
 | Type check | `tsc --noEmit` | PASS — 0 errors |
-| Lint | `eslint .` | PASS — 0 errors, 8 warnings (pre-existing `react-refresh/only-export-components` from shadcn + store dual-exports) |
+| Lint | `eslint .` | PASS — 0 errors, 8 warnings (see "Remaining warnings" below) |
 | Format | `prettier` | PASS — changed + previously-unformatted source files normalised; `endOfLine: auto` added for cross-platform CRLF |
-| Unit/integration tests | `vitest run` | PASS — 54 passed / 8 files |
+| Unit/integration tests | `vitest run` | PASS — 77 passed / 16 files |
+| Coverage | `vitest run --coverage` | Statements 66.85% · Branches 79.94% · Functions 62.4% · Lines 66.85% (100% on all pure logic modules) |
+| Accessibility | `vitest-axe` on 5 key components | PASS — 0 violations (MealCard, CoffeeSelector, ProfileSwitcher, DailyCompletionIndicator, WeightBanner) |
 | Build | `vite build` | PASS — SSR + client build succeeds |
-| SSR smoke | `vite dev` + curl | PASS — Home renders; profiles אריאל/אלנה, six slots, RTL; no "אני", no "ארוחת לילה" |
+| SSR smoke | `vite dev` + curl | PASS — Home renders; profiles אריאל/אלנה, six slots, RTL; no "אני", no "ארוחת לילה"; no hydration warnings |
 | Secret scan | grep | PASS — no secrets, no `.env`, no service_role |
+
+### Remaining warnings (8, non-blocking, dev-only)
+
+All are `react-refresh/only-export-components` — a Fast-Refresh (HMR) hint with **no runtime or production impact**. Not suppressed globally.
+- 6 in vendored shadcn/ui files that export a variance/util next to the component: `ui/badge.tsx`, `ui/button.tsx`, `ui/form.tsx`, `ui/navigation-menu.tsx`, `ui/sidebar.tsx`, `ui/toggle.tsx`.
+- 2 in `src/lib/store.tsx` (the `StoreProvider` component colocated with the `useStore` hook and `PROFILES` const). Kept colocated deliberately — splitting would churn 9+ import sites (the public `@/lib/store` API) for a dev-only hint.
+
+### Accessibility / QA improvements this pass
+- `prefers-reduced-motion` reset added to `styles.css` (neutralises animations/transitions).
+- Icon-only interactive controls raised to 44px (entry-row favorite/edit/delete, fasting/workout edit).
+- MealEditor moves focus into the dialog on open (keyboard + screen-reader).
+- axe automated a11y checks added for the key components.
 
 ## Working (verified)
 

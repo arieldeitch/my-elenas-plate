@@ -62,5 +62,7 @@ state. When adding Supabase, keep the pure domain modules and the store API surf
 
 ## Quality gate
 
-`tsc --noEmit`, `eslint .`, `vitest run`, `vite build` — all green as of 2026-07-23. See
-`project-status.md` for the table and `decisions.md` for the rationale of recent changes.
+`tsc --noEmit`, `eslint .` (0 errors, 8 dev-only HMR warnings), `vitest run` (77 tests / 16 files,
+coverage 66.85% stmts, 100% on pure logic), `vitest-axe` (0 violations), `vite build` — all green as
+of 2026-07-23. Test tooling: Vitest + Testing Library + vitest-axe; `npm run coverage` for the
+report. See `project-status.md` for the table and `decisions.md` for the rationale of recent changes.

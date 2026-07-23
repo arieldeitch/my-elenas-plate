@@ -16,7 +16,9 @@ communicated by color alone.
 - **No backend.** No Supabase, no auth, no env files, no secrets. State is an in-memory store with
   **interim localStorage persistence** so refresh/date/profile switches keep data. This is explicitly
   temporary; Supabase (per `03-architecture.md`) is the intended source of truth.
-- Quality gate all green: type check, lint (0 errors), 54 tests, build, SSR smoke test.
+- Quality gate all green: type check, lint (0 errors, 8 dev-only HMR warnings), 77 tests / 16 files
+  (coverage 66.85% stmts, 100% on pure logic), automated a11y (vitest-axe, 0 violations), build,
+  SSR smoke. Test tooling: Vitest + Testing Library + vitest-axe.
 
 ## Latest product decisions (active)
 
