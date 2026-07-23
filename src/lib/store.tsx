@@ -13,6 +13,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -33,13 +34,9 @@ import type {
 } from "./domain";
 import { MEAL_SLOTS } from "./domain";
 import { FOOD_CATALOG } from "./food-catalog";
-import {
-  initialDays,
-  initialFavorites,
-  initialRecents,
-  initialWeighIns,
-} from "./demo-data";
+import { initialDays, initialFavorites, initialRecents, initialWeighIns } from "./demo-data";
 import { toISODate } from "./format";
+import { loadState, saveState } from "./persistence";
 
 export const PROFILES: Profile[] = [
   { id: "me", name: "אריאל", initials: "א" },
@@ -112,6 +109,35 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }));
   const [foods, setFoods] = useState<Food[]>(FOOD_CATALOG);
 
+  // Interim demo persistence (localStorage). Hydrate once on the client, then
+  // persist changes so refresh / date change / profile switch keep data.
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    const saved = loadState();
+    if (saved) {
+      setDays(saved.days);
+      setWeighInsMap(saved.weighIns);
+      setFavoritesMap(saved.favorites);
+      setRecentsMap(saved.recents);
+      setFoods(saved.foods);
+      setActiveProfile(saved.activeProfile);
+    }
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    saveState({
+      activeProfile,
+      days,
+      weighIns: weighInsMap,
+      favorites: favoritesMap,
+      recents: recentsMap,
+      foods,
+    });
+  }, [hydrated, activeProfile, days, weighInsMap, favoritesMap, recentsMap, foods]);
+
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const triggerSave = useCallback(() => {
@@ -129,10 +155,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [days],
   );
 
-  const getAllDays = useCallback(
-    (profile: ProfileId) => days[profile],
-    [days],
-  );
+  const getAllDays = useCallback((profile: ProfileId) => days[profile], [days]);
 
   const mutateDay = useCallback(
     (profile: ProfileId, isoDate: string, updater: (d: DayData) => DayData) => {
@@ -146,13 +169,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [triggerSave],
   );
 
-  const pushRecent = useCallback((foodId: string) => {
-    setRecentsMap((prev) => {
-      const list = prev[activeProfile].filter((id) => id !== foodId);
-      list.unshift(foodId);
-      return { ...prev, [activeProfile]: list.slice(0, 12) };
-    });
-  }, [activeProfile]);
+  const pushRecent = useCallback(
+    (foodId: string) => {
+      setRecentsMap((prev) => {
+        const list = prev[activeProfile].filter((id) => id !== foodId);
+        list.unshift(foodId);
+        return { ...prev, [activeProfile]: list.slice(0, 12) };
+      });
+    },
+    [activeProfile],
+  );
 
   const addEntry: StoreValue["addEntry"] = (slot, entry) => {
     const withId: FoodEntry = { ...entry, id: genId("e") };
@@ -174,10 +200,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const removeEntry: StoreValue["removeEntry"] = (slot, entryId) => {
-    let removed: FoodEntry | undefined;
+    // Read the entry from current state *before* mutating: the setDays updater
+    // runs after this function returns, so capturing it inside would yield
+    // undefined and break the undo toast.
+    const current = days[activeProfile][iso] ?? emptyDay();
+    const removed = current.meals[slot].entries.find((e) => e.id === entryId);
     mutateDay(activeProfile, iso, (d) => {
       const meal = d.meals[slot];
-      removed = meal.entries.find((e) => e.id === entryId);
       meal.entries = meal.entries.filter((e) => e.id !== entryId);
       if (meal.entries.length === 0 && meal.status === "logged") {
         meal.status = "empty";
@@ -248,8 +277,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const wi: WeighIn = { ...w, id: genId("w") };
     setWeighInsMap((prev) => ({
       ...prev,
-      [activeProfile]: [...prev[activeProfile], wi].sort(
-        (a, b) => (a.dateISO < b.dateISO ? -1 : 1),
+      [activeProfile]: [...prev[activeProfile], wi].sort((a, b) =>
+        a.dateISO < b.dateISO ? -1 : 1,
       ),
     }));
     triggerSave();
