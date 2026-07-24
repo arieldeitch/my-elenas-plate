@@ -3,31 +3,40 @@
 **Date:** 2026-07-24 (end-of-day handover, back to Lovable)
 **Branch:** main
 **Commit before this work started:** 542233e (Update site info for publish)
-**Latest code commit:** `29ac1d5` — local `main` = `origin/main` = GitHub `main` (in sync).
-**Rollback tag:** `pilot-ready-2026-07-24` → `29ac1d5` (pushed to origin).
+**Pilot-ready checkpoint:** tag `pilot-ready-2026-07-24` → `29ac1d5` (verified backend + E2E code).
+**Current `main`:** merge integrating Lovable's branding work (added after the checkpoint) with this
+handover; tree green (tsc 0, 109 tests, build).
 **Phase:** **Pilot-ready.** Full Supabase backend implemented, deployed to the remote and verified;
-MVP hardening, coffee, favorites/recents/custom foods, and browser E2E complete.
+MVP hardening, coffee, favorites/recents/custom foods, and browser E2E complete. Brand illustration added.
 
 > Rule: nothing is listed as "working" unless it was actually run/verified.
 
 ## Repository state & GitHub sync (2026-07-24)
 
-- Branch `main`; local HEAD, `origin/main`, and GitHub `main` all at `29ac1d5`.
-- Remote: `https://github.com/arieldeitch/my-elenas-plate.git`. No divergence; no force-push/rewrite.
+- Branch `main`. Verified code checkpoint = tag `pilot-ready-2026-07-24` at `29ac1d5`.
+- **Divergence resolved:** Lovable pushed 12 branding commits to `origin/main` after the checkpoint; this
+  session integrated them via a normal **merge** (no file overlap with docs, no rewrite, no force-push).
+  Merged tree is green (tsc, 109 hermetic tests, build). The Playwright suite was not re-run after the
+  branding merge (docs-only session) — re-run `npm run e2e` next session.
+- Remote: `https://github.com/arieldeitch/my-elenas-plate.git`.
 - Working tree clean (only the untracked reference folder `nutrition-tracker-knowledge-pack-complete/`).
 - No secrets/artifacts tracked — only `.env.example`. `.env`, `.env.e2e`, Playwright artifacts,
   `package-lock.json`, `coverage/` are gitignored.
-- Safe to open and edit from Lovable (pulls `main`). Rollback: `git checkout pilot-ready-2026-07-24`.
+- Safe to open and edit from Lovable (pulls `main`). Rollback to the verified backend/E2E checkpoint:
+  `git checkout pilot-ready-2026-07-24`.
 
 ## Branding
 
-- **Done in Lovable:** wordmark "בריאותי" + `Activity` mark (`BrandMark`), calm healthcare pastel design
-  system (green primary, per-slot soft tints, soft shadows, rounded cards), coherent typography scale
-  (≥12px content floor), per-meal-slot lucide iconography + status badges/pills, RTL mobile-first layout,
-  favicon.
-- **Still desired:** stronger **illustration** presence (custom meal-slot + empty-state illustrations, a
-  small brand/hero illustration) and general visual refinement — keeping the calm, uncluttered,
-  non-judgmental tone. See `gpt-handover.md` §10–11.
+- **Done in Lovable:** wordmark "בריאותי"; the calm healthcare pastel design system (green primary,
+  per-slot soft tints, soft shadows, rounded cards); coherent typography scale (≥12px content floor);
+  per-meal-slot lucide iconography + status badges/pills; RTL mobile-first layout.
+- **Brand illustration added by Lovable (2026-07-24, merged):** `src/components/brand/BrandIllustration.tsx`
+  (a shared PNG asset with `header` / `auth` / `empty-state` / `loading` variants) — now used in the
+  header (`BrandMark`), the auth loading state (`AuthGate`) and the sign-in screen; `favicon.png` replaced
+  the old `.ico`. This addresses the previously-desired "stronger illustration presence".
+- **Still desired (optional refinement):** applying illustration variants to the six meal-slot tiles and
+  empty states, and general visual polish — keeping the calm, uncluttered, non-judgmental tone. See
+  `gpt-handover.md` §10–11.
 
 ## Stack (verified from the repo)
 

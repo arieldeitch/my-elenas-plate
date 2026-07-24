@@ -1,8 +1,9 @@
 # TODO
 
 Status legend: Done / In Progress / Blocked / Deferred / Not Started.
-Updated 2026-07-24 (end-of-day handover). Project is **pilot-ready**; code at `29ac1d5`
-(tag `pilot-ready-2026-07-24`). All P0/P1 MVP + Supabase + T-027/T-028 are Done.
+Updated 2026-07-24 (end-of-day handover). Project is **pilot-ready** — verified backend/E2E checkpoint at
+tag `pilot-ready-2026-07-24` (`29ac1d5`); current `main` also merges Lovable's branding illustration work.
+All P0/P1 MVP + Supabase + T-027/T-028 are Done.
 
 ## Done (this session)
 

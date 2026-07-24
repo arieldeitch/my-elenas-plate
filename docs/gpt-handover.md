@@ -10,11 +10,14 @@ communicated by color alone.
 
 ## 1. Repository state
 
-- **Branch:** `main`
-- **Latest commit (code):** `29ac1d5` — local `main` = `origin/main` = GitHub `main` (all in sync).
-- **Rollback tag:** `pilot-ready-2026-07-24` → `29ac1d5` (pushed to origin). The production-ready code
-  checkpoint. Documentation-only commits after it do not change code readiness; the tag stays valid.
-- **Remote:** `https://github.com/arieldeitch/my-elenas-plate.git`.
+- **Branch:** `main` · **Remote:** `https://github.com/arieldeitch/my-elenas-plate.git`.
+- **Rollback tag:** `pilot-ready-2026-07-24` → `29ac1d5` — the verified backend + E2E code checkpoint
+  (production-ready). Still valid; later work is additive.
+- **Divergence resolved (2026-07-24):** while this handover was in progress, Lovable pushed 12 commits to
+  `origin/main` (branding: `BrandIllustration` + PNG asset, `favicon.png`, `BrandMark`/`AuthGate`/`SignIn`/
+  `__root` updates, `bun.lock`). No file overlap with the docs work; integrated via a normal **merge**
+  (no rewrite, no force-push). The merged tree is green: tsc 0, 109 hermetic tests, build. The Playwright
+  E2E suite was not re-run after the branding merge (docs-only session) — re-run `npm run e2e` next session.
 - **Working tree:** clean except the intentionally-untracked `nutrition-tracker-knowledge-pack-complete/`.
 - **Secrets/artifacts:** none tracked. Only `.env.example`. `.env`, `.env.e2e`, Playwright artifacts,
   `package-lock.json`, `coverage/` are gitignored.
@@ -110,18 +113,22 @@ profile.
 
 ## 10. Branding done (in Lovable)
 
-- Wordmark **"בריאותי"** with an `Activity` mark in brand green (`BrandMark`).
+- Wordmark **"בריאותי"** (`BrandMark`).
 - Calm healthcare pastel design system: green primary (`#17A668`), info blue, per-slot soft tints, soft
-  shadows, rounded cards; coherent typography scale (≥12px content floor).
-- Per-meal-slot iconography (lucide line icons) + status badges/pills; RTL, mobile-first layout;
-  favicon.
+  shadows, rounded cards; coherent typography scale (≥12px content floor). Per-meal-slot lucide icons +
+  status badges/pills; RTL, mobile-first layout.
+- **Brand illustration (added 2026-07-24, merged):** `src/components/brand/BrandIllustration.tsx` — a
+  shared PNG asset with `header` / `auth` / `empty-state` / `loading` variants; used in the header
+  (`BrandMark`), the auth loading state (`AuthGate`) and the sign-in screen. `favicon.png` replaced the
+  old `.ico`. Merged cleanly; tsc + 109 tests + build green.
 
-## 11. Branding still desired
+## 11. Branding still desired (optional refinement)
 
-- **Stronger illustration presence** — replace/augment the lucide line icons with custom, warmer
-  illustrations for the six meal slots and empty states; a small hero/brand illustration.
-- **Visual refinement** — richer brand identity beyond the wordmark, refined spacing/imagery, optional
-  light motion (respecting `prefers-reduced-motion`). Keep the calm, non-judgmental, uncluttered tone.
+- Apply the illustration's `empty-state` variant to the six meal-slot tiles / empty states for a warmer,
+  more illustrated home screen.
+- General visual polish and optional light motion (respecting `prefers-reduced-motion`). Keep the calm,
+  non-judgmental, uncluttered tone.
+- Note: the `empty-state` illustration variant exists but is not yet wired into the meal tiles.
 
 ## 12. Expected repository state before the next session
 

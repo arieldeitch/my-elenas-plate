@@ -1,8 +1,8 @@
 # Claude Context
 
 Fast-start context for Claude Code. The latest user instruction always overrides older docs.
-Updated 2026-07-24. **Pilot-ready**; code at `29ac1d5` (tag `pilot-ready-2026-07-24`), `main` in sync
-with GitHub.
+Updated 2026-07-24. **Pilot-ready** — verified backend/E2E checkpoint at tag `pilot-ready-2026-07-24`
+(`29ac1d5`); current `main` also merges Lovable's branding illustration work (`BrandIllustration`).
 
 ## What this is
 
