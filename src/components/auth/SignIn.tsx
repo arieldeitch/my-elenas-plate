@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Loader2, Mail, KeyRound } from "lucide-react";
 import { signInWithMagicLink, signInWithPassword, signUpWithPassword } from "@/lib/supabase/auth";
 import { cn } from "@/lib/utils";
+import { BrandIllustration } from "@/components/brand/BrandIllustration";
 
 type Mode = "magic" | "password";
 
