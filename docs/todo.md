@@ -1,7 +1,8 @@
 # TODO
 
 Status legend: Done / In Progress / Blocked / Deferred / Not Started.
-Updated 2026-07-23 with verified findings from the MVP-hardening session.
+Updated 2026-07-24 (end-of-day handover). Project is **pilot-ready**; code at `29ac1d5`
+(tag `pilot-ready-2026-07-24`). All P0/P1 MVP + Supabase + T-027/T-028 are Done.
 
 ## Done (this session)
 
@@ -56,13 +57,24 @@ Updated 2026-07-23 with verified findings from the MVP-hardening session.
   weigh-in a11y labels, realtime auth token). Full suite green vs local; each capability verified vs
   remote (single full-suite remote run is rate-limit/clock-skew bound — see `project-status.md`).
 
-## Deferred (P2/P3, not approved for MVP)
+## Open backlog / next stages (post-pilot-ready)
 
-- Weigh-in history screen, catalog management UI, export.
-- Dashboard, calories, macros, goals, scoring, recommendations, gamification — explicitly out of scope.
+- **T-029 (P1 ops, recommended first)** Add Playwright E2E to CI against a **dedicated** Supabase project
+  (not the shared pilot project) so the full 10-spec suite runs green in one pass without the sign-up
+  rate-limit / clock-skew flakiness. Optionally add a desktop Playwright project.
+- **T-030 (P2)** Branding pass — stronger illustration presence (custom meal-slot + empty-state
+  illustrations, small brand/hero illustration) + visual refinement; keep the calm, non-judgmental tone.
+- **T-031 (P2)** Catalog management UI for custom foods (edit/rename/restore) — data layer exists
+  (`upsertFood` / `archiveFood`), no UI yet.
+- **T-032 (P2)** Weigh-in history screen; simple export.
 
 ## Nice-to-have (non-blocking)
 
 - Distinct avatar initials for אריאל / אלנה (both currently "א").
 - Quick-add FAB currently opens "ארוחה מרכזית"; consider a slot chooser.
-- Consider Playwright E2E once flows stabilise.
+- In-app sign-out control (auth exposes `signOut()`; no UI yet).
+
+## Deferred / explicitly NOT in MVP (P3, not approved)
+
+- Dashboard, calories, macros, goals, nutrition scoring, recommendations, gamification, image/voice
+  input, wearables, agents, household expansion beyond the two profiles, separate Auth users per profile.

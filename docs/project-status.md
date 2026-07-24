@@ -1,11 +1,33 @@
 # Project Status
 
-**Date:** 2026-07-23
+**Date:** 2026-07-24 (end-of-day handover, back to Lovable)
 **Branch:** main
-**Commit before this work:** 542233e (Update site info for publish)
-**Phase:** MVP hardening — verified implementation, coffee feature, tests added.
+**Commit before this work started:** 542233e (Update site info for publish)
+**Latest code commit:** `29ac1d5` — local `main` = `origin/main` = GitHub `main` (in sync).
+**Rollback tag:** `pilot-ready-2026-07-24` → `29ac1d5` (pushed to origin).
+**Phase:** **Pilot-ready.** Full Supabase backend implemented, deployed to the remote and verified;
+MVP hardening, coffee, favorites/recents/custom foods, and browser E2E complete.
 
-> Rule: nothing is listed as "working" unless it was actually run/verified in this session.
+> Rule: nothing is listed as "working" unless it was actually run/verified.
+
+## Repository state & GitHub sync (2026-07-24)
+
+- Branch `main`; local HEAD, `origin/main`, and GitHub `main` all at `29ac1d5`.
+- Remote: `https://github.com/arieldeitch/my-elenas-plate.git`. No divergence; no force-push/rewrite.
+- Working tree clean (only the untracked reference folder `nutrition-tracker-knowledge-pack-complete/`).
+- No secrets/artifacts tracked — only `.env.example`. `.env`, `.env.e2e`, Playwright artifacts,
+  `package-lock.json`, `coverage/` are gitignored.
+- Safe to open and edit from Lovable (pulls `main`). Rollback: `git checkout pilot-ready-2026-07-24`.
+
+## Branding
+
+- **Done in Lovable:** wordmark "בריאותי" + `Activity` mark (`BrandMark`), calm healthcare pastel design
+  system (green primary, per-slot soft tints, soft shadows, rounded cards), coherent typography scale
+  (≥12px content floor), per-meal-slot lucide iconography + status badges/pills, RTL mobile-first layout,
+  favicon.
+- **Still desired:** stronger **illustration** presence (custom meal-slot + empty-state illustrations, a
+  small brand/hero illustration) and general visual refinement — keeping the calm, uncluttered,
+  non-judgmental tone. See `gpt-handover.md` §10–11.
 
 ## Stack (verified from the repo)
 
@@ -24,21 +46,21 @@
 
 ## Quality gate (run this session)
 
-| Check                     | Command                                   | Result                                                                                                                                                                                                      |
-| ------------------------- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Type check                | `tsc --noEmit`                            | PASS — 0 errors                                                                                                                                                                                             |
-| Lint                      | `eslint .`                                | PASS — 0 errors, 8 warnings (see "Remaining warnings" below)                                                                                                                                                |
-| Format                    | `prettier`                                | PASS — changed + previously-unformatted source files normalised; `endOfLine: auto` added for cross-platform CRLF                                                                                            |
-| Unit/integration tests    | `vitest run`                              | PASS — 109 passed / 12 skipped (2 live suites, no env)                                                                                                                                                      |
-| Live DB (RLS + bootstrap) | `supabase start` + gated integration test | PASS — 5/5 against local Supabase (bootstrap, isolation, anon-denied, coffee CHECK)                                                                                                                         |
-| Live remote (RLS+CRUD+RT) | 2 gated suites vs remote project          | PASS — 12/12 (auth, bootstrap, RLS isolation, CRUD all tables, coffee, idempotency, migration, custom foods + favorites/recents + isolation, 2-context realtime)                                            |
-| Migration validation      | `psql < each migration`                   | PASS — all 5 apply cleanly (10 tables, 35 policies, 8 realtime tables; food_id->text)                                                                                                                       |
-| Generated types           | `supabase gen types --local`              | Matches hand-derived aliases; committed as `database.generated.ts`                                                                                                                                          |
-| Accessibility             | `vitest-axe` on 5 key components          | PASS — 0 violations (MealCard, CoffeeSelector, ProfileSwitcher, DailyCompletionIndicator, WeightBanner)                                                                                                     |
+| Check                     | Command                                   | Result                                                                                                                                                                                                                  |
+| ------------------------- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Type check                | `tsc --noEmit`                            | PASS — 0 errors                                                                                                                                                                                                         |
+| Lint                      | `eslint .`                                | PASS — 0 errors, 8 warnings (see "Remaining warnings" below)                                                                                                                                                            |
+| Format                    | `prettier`                                | PASS — changed + previously-unformatted source files normalised; `endOfLine: auto` added for cross-platform CRLF                                                                                                        |
+| Unit/integration tests    | `vitest run`                              | PASS — 109 passed / 12 skipped (2 live suites, no env)                                                                                                                                                                  |
+| Live DB (RLS + bootstrap) | `supabase start` + gated integration test | PASS — 5/5 against local Supabase (bootstrap, isolation, anon-denied, coffee CHECK)                                                                                                                                     |
+| Live remote (RLS+CRUD+RT) | 2 gated suites vs remote project          | PASS — 12/12 (auth, bootstrap, RLS isolation, CRUD all tables, coffee, idempotency, migration, custom foods + favorites/recents + isolation, 2-context realtime)                                                        |
+| Migration validation      | `psql < each migration`                   | PASS — all 5 apply cleanly (10 tables, 35 policies, 8 realtime tables; food_id->text)                                                                                                                                   |
+| Generated types           | `supabase gen types --local`              | Matches hand-derived aliases; committed as `database.generated.ts`                                                                                                                                                      |
+| Accessibility             | `vitest-axe` on 5 key components          | PASS — 0 violations (MealCard, CoffeeSelector, ProfileSwitcher, DailyCompletionIndicator, WeightBanner)                                                                                                                 |
 | Browser E2E               | `playwright test` (`npm run e2e`)         | PASS — 10 specs vs live Supabase (auth/RTL/mobile, meal+coffee CRUD, custom + built-in foods/favorites/recents, fasting/workout/weigh-in, profile separation, session lifecycle, 2-context realtime, offline+reconnect) |
-| Build                     | `vite build`                              | PASS — SSR + client build succeeds                                                                                                                                                                          |
-| SSR smoke                 | `vite dev` + curl                         | PASS — Home renders; profiles אריאל/אלנה, six slots, RTL; no "אני", no "ארוחת לילה"; no hydration warnings                                                                                                  |
-| Secret scan               | grep                                      | PASS — no secrets, no `.env`, no service_role                                                                                                                                                               |
+| Build                     | `vite build`                              | PASS — SSR + client build succeeds                                                                                                                                                                                      |
+| SSR smoke                 | `vite dev` + curl                         | PASS — Home renders; profiles אריאל/אלנה, six slots, RTL; no "אני", no "ארוחת לילה"; no hydration warnings                                                                                                              |
+| Secret scan               | grep                                      | PASS — no secrets, no `.env`, no service_role                                                                                                                                                                           |
 
 ### Remaining warnings (8, non-blocking, dev-only)
 
@@ -151,11 +173,12 @@ files skip in the hermetic `npm test`).
 ### Browser E2E (T-028, done 2026-07-24)
 
 Playwright drives the real app (dev server) against a live Supabase (local stack for reliable runs;
-`--mode e2e` → `.env.e2e`, else `.env`/remote). **9 specs pass** (`npm run e2e`):
+`--mode e2e` → `.env.e2e`, else `.env`/remote). **10 specs pass** (`npm run e2e`):
 
 - Sign-in + bootstrap + RTL + six meal slots + mobile viewport (no horizontal overflow).
-- Meal + coffee CRUD with refresh persistence; custom food + favorites + recents; fasting + workout +
-  weigh-in persist; profile switching keeps data separate; session lifecycle (clear session → re-login →
+- Meal + coffee CRUD with refresh persistence; custom AND built-in food favorites/recents (per-profile
+  separation); fasting + workout + weigh-in persist; profile switching keeps data separate; session
+  lifecycle (clear session → re-login →
   cloud data returns); two-context realtime; offline mutation → reconnect flush → no duplicate.
 
 **Real bugs found and fixed via E2E (production-readiness):**
@@ -207,4 +230,9 @@ project (or local) to avoid shared-project rate limits.
 
 ## Next step
 
-Connect Supabase (schema per `docs/03-architecture.md`) behind the existing store API and replace the localStorage layer; keep the pure domain modules (`completion`, `coffee`, `fasting`, `weight`, `quantity`) as the shared logic.
+The Supabase backend is implemented, deployed to the remote, and verified — the project is
+**pilot-ready** (tag `pilot-ready-2026-07-24`). Recommended next task: **add Playwright E2E to CI
+against a dedicated Supabase project** (not the shared pilot project) so the full 10-spec suite runs
+green in one pass without the sign-up rate-limit / clock-skew flakiness. Then run the actual 2-person
+pilot and, separately, the branding illustration pass (see the Branding section and `gpt-handover.md`
+§10–11). Open backlog is in `todo.md`.

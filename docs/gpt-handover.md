@@ -1,66 +1,135 @@
 # GPT Handover
 
-High-level handover for continuity across tools. Updated 2026-07-23.
+Continuity handover across tools. Updated 2026-07-24 (end-of-day handover, back to Lovable).
 
 ## Product
 
-Shared Hebrew RTL, mobile-first nutrition **logging** app for **אריאל** and **אלנה**. Purpose:
-fast, calm, reliable daily logging. Out of scope (phase one): calories, macros, goals, scoring,
-dashboards, recommendations, gamification. Tone is neutral and non-judgmental; status is never
+Shared Hebrew RTL, mobile-first nutrition **logging** app for **אריאל** and **אלנה**. Purpose: fast,
+calm, reliable daily logging — NOT analysis. Tone is neutral and non-judgmental; status is never
 communicated by color alone.
 
-## Current state (verified 2026-07-23)
+## 1. Repository state
 
-- Stack: TanStack Start (SSR) + React 19, Vite 8, Tailwind 4, shadcn/ui, lucide-react,
-  @supabase/supabase-js. Tests: Vitest + Testing Library + vitest-axe.
-- **Backend: Supabase implemented, opt-in via env.** One shared Auth account + two internal profiles
-  (אריאל/אלנה), data separated by `profile_id`. Migrations (schema + RLS + bootstrap + realtime) were
-  live-verified on a local Supabase stack (RLS isolation + bootstrap: 5/5). App layer + gated store sync
-  - offline queue + local→cloud migration are in place. Without `VITE_SUPABASE_URL` +
-    `VITE_SUPABASE_ANON_KEY` the app runs in local demo mode (localStorage). See DEC-017.
-- Quality gate all green: type check, lint (0 errors, 8 dev-only HMR warnings), 102 tests (+5 live-RLS
-  skipped without env), automated a11y (0 violations), build, SSR smoke.
-- Remote project `rqgoiuztphkcvbwtbxbj` set in `.env`; schema applied and **live-verified end-to-end**
-  (2 gated suites, 10/10 vs remote): auth/session, bootstrap (אריאל/אלנה, idempotent), RLS isolation,
-  CRUD on all tables, coffee round-trip + CHECK, idempotency (no duplication), local→cloud migration, and
-  two-context realtime (insert/update/delete). App gates correctly against remote. **T-027 done:** custom
-  foods + favorites + recents now sync (`foods`/`food_preferences`, per profile) with optimistic UI,
-  realtime, offline queue and migration; forward migration `090400` (`food_id`→text) — re-run
-  `supabase db push` on the remote so built-in-food favorites sync there too (custom foods already do).
-- **Remote deployment COMPLETE (2026-07-24):** migration `090400` (food_id→text) applied to the remote;
-  built-in + custom food favorites/recents sync there (verified live in the browser).
-- **T-028 done (browser E2E):** Playwright, 10 specs (`npm run e2e`) driving the real app against a live
-  Supabase (local via `.env.e2e`, else remote). It uncovered + fixed 8 production-readiness bugs
-  (MealEditor view-reset, demo-seed pollution, optimistic-wipe / offline loss, activation-window +
-  reconnect, realtime channel collision, weigh-in a11y labels, realtime socket auth token). Full suite
-  green vs local; each capability verified vs remote (full-suite-in-one-run is remote rate-limit/clock
-  bound — not a product issue). See `project-status.md`.
+- **Branch:** `main`
+- **Latest commit (code):** `29ac1d5` — local `main` = `origin/main` = GitHub `main` (all in sync).
+- **Rollback tag:** `pilot-ready-2026-07-24` → `29ac1d5` (pushed to origin). The production-ready code
+  checkpoint. Documentation-only commits after it do not change code readiness; the tag stays valid.
+- **Remote:** `https://github.com/arieldeitch/my-elenas-plate.git`.
+- **Working tree:** clean except the intentionally-untracked `nutrition-tracker-knowledge-pack-complete/`.
+- **Secrets/artifacts:** none tracked. Only `.env.example`. `.env`, `.env.e2e`, Playwright artifacts,
+  `package-lock.json`, `coverage/` are gitignored.
 
-## Latest product decisions (active)
+## 2. Completed milestones (all verified)
 
-- Profiles are אריאל and אלנה; "אני" must never appear.
-- Six fixed meal slots: פתיחת חלון אכילה / נשנוש ראשון / ארוחה מרכזית / נשנוש אחר הצהריים /
-  ארוחת ערב / ארוחה נוספת. "ארוחת לילה" removed.
-- Day completeness = six slots only; `skipped` counts as complete; fasting/workout/weight/coffee
-  do not affect it unless logged as an entry.
-- **Coffee is an approved MVP feature**: structured type + milk (+ optional milk type) + quantity +
-  optional note, stored on the food entry (`FoodEntry.coffee`), shown in recents/favorites/search.
+- **Supabase integration** — typed client (anon key only, SSR-safe), repositories, generated types,
+  gated store sync behind `isSupabaseConfigured()`. Demo mode (no env) = localStorage.
+- **Remote deployment COMPLETE** — project `rqgoiuztphkcvbwtbxbj`; all 5 migrations applied, incl.
+  `20260723090400_food_prefs_text_id.sql` (verified: text `food_id`).
+- **Auth** — one shared account; magic-link + password; `bootstrap_household()` creates the household +
+  two profiles (אריאל/אלנה) idempotently. Data separated by `profile_id`.
+- **RLS** — every user table; `is_household_member()` (SECURITY DEFINER); 35 policies. Verified: anon
+  denied, unrelated household denied, member allowed, per-profile separation.
+- **Realtime** — publication for 8 tables; `subscribeHousehold` re-hydrates; two-context verified live
+  (incl. remote, after the socket-auth fix).
+- **Offline queue** — dirty-tracked push with in-flight protection, requeue-on-failure, reconnect retry;
+  no duplicate rows on flush.
+- **Local→cloud migration** — pure transform + separate markers (`v1` meal data, `foods:v1`), verified.
+- **Coffee** — structured `CoffeeMeta` (type/milk/milkType/note) on the food entry; DB CHECK for
+  milk-type compatibility.
+- **Favorites / recents / custom foods (T-027)** — `foods` + `food_preferences` per profile; built-in
+  AND custom foods; optimistic UI, realtime, offline, migration. Verified live (remote).
+- **Playwright browser E2E (T-028)** — 10 specs; `npm run e2e`.
+- **Remote verification** — every capability verified in the browser against the remote in isolation;
+  gated integration suites 12/12 against remote (the DB layer).
 
-## What was done this session
+## 3. Bugs fixed during T-028 (browser E2E)
 
-1. Fixed the lint/format gate (cross-platform EOL, removed `any`, normalised formatting).
-2. Extracted pure, tested domain modules: completion, coffee, fasting, weight, quantity.
-3. Implemented structured coffee logging end-to-end (model, validation, UI, persistence, tests).
-4. Typography floor: no content text below 12px; unified captions/secondary text.
-5. Added Vitest + Testing Library and 54 tests.
-6. Added interim localStorage persistence (SSR-safe).
-7. Fixed a real bug: `removeEntry` returned `undefined`, breaking the undo toast.
-8. Updated docs (`project-status`, `todo`, `claude-context`, `gpt-handover`, `decisions`,
-   plus coffee/meal-name updates in `01`/`03`).
+1. `MealEditor` reset its view on every parent re-render (unstable `onClose` in effect deps) — reset the
+   open editor mid-flow with sync active. Split the effect + stabilised home close handlers.
+2. Configured mode seeded demo data (non-UUID ids) into fresh cloud accounts and persisted it to
+   localStorage. Now starts empty when configured; never writes localStorage in that mode.
+3. `flush` cleared dirty before pushing (offline loss) and `hydrate` had no dirty/in-flight guard (wiped
+   optimistic edits, then pushed the emptied day). Added in-flight protection + requeue.
+4. Mutations during the activation window weren't recorded (marker gated on `active`) → lost.
+5. Activation didn't retry when interrupted (offline during bootstrap) → added `online` re-activation.
+6. `subscribeHousehold` reused a fixed channel name → "cannot add callbacks after subscribe()" on
+   re-activation. Unique channel name per subscription.
+7. `WeighInForm` inputs had no associated labels (a11y) and reset on background hydrate. Labels wrap
+   inputs; reset keyed on open only.
+8. Realtime didn't reach a second session against the remote (RLS blocked `postgres_changes` because the
+   socket had no JWT). `subscribeHousehold` now calls `realtime.setAuth(token)` before subscribing.
 
-## Recommended next step
+## 4. Final architecture decisions (see decisions.md)
 
-Introduce Supabase behind the existing store API (`src/lib/store.tsx`): schema + RLS +
-generated types + migrations, then swap the localStorage layer for it. Follow the global
-Approval-Brief rule before any Supabase/auth/RLS/schema/secret/env change. Keep the pure domain
-modules as shared logic.
+- DEC-017 — one shared Auth account + two internal profiles; Supabase is source of truth.
+- DEC-018 — `food_preferences.food_id` is a text app-id (no FK) so built-in + custom foods can be
+  favorited/recented uniformly; custom foods live in `foods` (soft-delete via `is_active`).
+- Store starts EMPTY when Supabase is configured and hydrates from the cloud; localStorage is not the
+  source of truth in that mode (only offline queue / cache / migration markers).
+
+## 5. Known limitations (not product bugs)
+
+- **Remote full-suite E2E in one run** is bound by GoTrue **sign-up rate-limiting** (~15 fresh accounts
+  per run) and occasional `PGRST303 "JWT issued at future"` **clock skew**. Each capability passes in
+  isolation; the full 10-spec suite runs green against the local stack (identical schema).
+- **CI recommendation:** run Playwright E2E against a **dedicated** Supabase project (or the local stack)
+  to avoid shared-project rate limits; monitor clock skew.
+- 8 dev-only `react-refresh/only-export-components` lint **warnings** (shadcn + store dual-export) — no
+  runtime/production impact; documented, not suppressed globally.
+- `bun.lock` is not updated for the test/e2e devDeps added via npm — a `bun install` regenerates it.
+
+## 6. Current MVP scope
+
+Two profiles (אריאל/אלנה) · six meal slots · `unmarked/logged/skipped` (skipped counts as complete) ·
+daily completeness from the six slots only · measured + subjective quantity (stored as entered) ·
+coffee (structured) · fasting (16:8, midnight crossover) · workout · weigh-ins (fat mass, delta) ·
+weight banner · calendar (full/partial/empty, shape+color) · recent + favorite + custom foods ·
+Supabase sync (auth, RLS, realtime, offline, migration).
+
+## 7. Explicitly NOT part of MVP
+
+Calories, macros, goals, nutrition scoring, dashboard/analytics, recommendations, gamification, image or
+voice input, wearables, agents, household expansion beyond the two profiles, separate Auth users per
+profile.
+
+## 8. Open backlog
+
+- **P1 ops:** add Playwright E2E to CI against a dedicated project; add a desktop Playwright project.
+- **P2:** weigh-in history screen; catalog management UI (edit/rename/restore custom foods — the
+  repository `archiveFood`/`upsertFood` exist, no UI yet); export.
+- **Nice-to-have:** distinct avatar initials for אריאל/אלנה (both currently "א"); quick-add FAB opens
+  "ארוחה מרכזית" — consider a slot chooser; an in-app sign-out control (auth has `signOut()`, no UI).
+- **P3 (not approved):** everything under "Explicitly NOT part of MVP".
+
+## 9. Next recommended development stages
+
+1. Wire Playwright E2E into CI against a dedicated Supabase project (closes the remote-rate-limit gap).
+2. Pilot with real data (Ariel + Alena) on the remote; watch sync-state + realtime in daily use.
+3. Branding pass (see §10–11) — stronger illustration presence + visual refinement.
+4. Only then consider P2 backlog (weigh-in history, catalog management, export).
+
+## 10. Branding done (in Lovable)
+
+- Wordmark **"בריאותי"** with an `Activity` mark in brand green (`BrandMark`).
+- Calm healthcare pastel design system: green primary (`#17A668`), info blue, per-slot soft tints, soft
+  shadows, rounded cards; coherent typography scale (≥12px content floor).
+- Per-meal-slot iconography (lucide line icons) + status badges/pills; RTL, mobile-first layout;
+  favicon.
+
+## 11. Branding still desired
+
+- **Stronger illustration presence** — replace/augment the lucide line icons with custom, warmer
+  illustrations for the six meal slots and empty states; a small hero/brand illustration.
+- **Visual refinement** — richer brand identity beyond the wordmark, refined spacing/imagery, optional
+  light motion (respecting `prefers-reduced-motion`). Keep the calm, non-judgmental, uncluttered tone.
+
+## 12. Expected repository state before the next session
+
+- `main` at the latest pushed commit; `origin/main` and GitHub in sync; tag `pilot-ready-2026-07-24`
+  present at `29ac1d5`; clean working tree; no secrets tracked. Restore `.env` (and `.env.e2e` for local
+  E2E) locally from `.env.example` / `supabase/DEPLOY.md` — they are gitignored by design.
+
+## 13. First recommended task for the next session
+
+Add Playwright E2E to CI pointed at a dedicated Supabase project (not the shared pilot project), so the
+full 10-spec suite runs green in one pass without the sign-up rate-limit / clock-skew flakiness.

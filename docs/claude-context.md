@@ -1,7 +1,8 @@
 # Claude Context
 
 Fast-start context for Claude Code. The latest user instruction always overrides older docs.
-Updated 2026-07-23.
+Updated 2026-07-24. **Pilot-ready**; code at `29ac1d5` (tag `pilot-ready-2026-07-24`), `main` in sync
+with GitHub.
 
 ## What this is
 
@@ -42,9 +43,10 @@ recommendations, or gamification.
 
 - Domain types + constants: `src/lib/domain.ts`.
 - Pure logic (tested): `completion.ts`, `coffee.ts`, `fasting.ts`, `weight.ts`, `quantity.ts`.
-- App state: `src/lib/store.tsx` (React context, repository-like API). **Interim** persistence via
-  `src/lib/persistence.ts` (localStorage, SSR-safe). Replace with Supabase later behind the same API.
-- Demo seed: `src/lib/demo-data.ts`. Food catalog: `src/lib/food-catalog.ts`.
+- App state: `src/lib/store.tsx` (React context, repository-like API). When Supabase is configured it is
+  the source of truth (store starts EMPTY, hydrates from the cloud); `src/lib/persistence.ts`
+  (localStorage) is used only in demo mode / as offline cache. Sync glue: `src/lib/sync/*`.
+- Demo seed (demo mode only): `src/lib/demo-data.ts`. Food catalog: `src/lib/food-catalog.ts`.
 - UI: `src/components/nutrition/*`, home route `src/routes/index.tsx`, shell `src/routes/__root.tsx`.
 
 ## Backend reality
@@ -80,7 +82,8 @@ writes localStorage. Tests stay hermetic via `vi.stubEnv` in
 
 ## Quality gate
 
-`tsc --noEmit`, `eslint .` (0 errors, 8 dev-only HMR warnings), `vitest run` (77 tests / 16 files,
-coverage 66.85% stmts, 100% on pure logic), `vitest-axe` (0 violations), `vite build` — all green as
-of 2026-07-23. Test tooling: Vitest + Testing Library + vitest-axe; `npm run coverage` for the
-report. See `project-status.md` for the table and `decisions.md` for the rationale of recent changes.
+`tsc --noEmit`, `eslint .` (0 errors, 8 dev-only HMR warnings), `vitest run` (109 tests, +2 gated live
+suites that skip without env; 100% on pure logic), `vitest-axe` (0 violations), `vite build`, and
+`npm run e2e` (Playwright, 10 specs) — all green as of 2026-07-24. Test tooling: Vitest + Testing
+Library + vitest-axe + Playwright; `npm run coverage` for the report. See `project-status.md` for the
+full table and `decisions.md` for the rationale of recent changes.
