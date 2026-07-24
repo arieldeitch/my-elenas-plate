@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { getSession, onAuthChange } from "@/lib/supabase/auth";
 import { SignIn } from "./SignIn";
+import { BrandIllustration } from "@/components/brand/BrandIllustration";
 
 /**
  * Gates the app behind the shared-account session — but only when Supabase is
