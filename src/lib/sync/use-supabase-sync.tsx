@@ -89,6 +89,7 @@ export function useSupabaseSync(args: Args): SyncControls {
   const [active, setActive] = useState(false);
   const ctxRef = useRef<HouseholdContext | null>(null);
   const dirtyDays = useRef<Set<string>>(new Set());
+  const inFlightDays = useRef<Set<string>>(new Set());
   const dirtyWeigh = useRef<Set<ProfileId>>(new Set());
   const dirtyFoods = useRef<Map<string, Food>>(new Map());
   const dirtyPrefs = useRef<Map<string, PrefMutation & { profile: ProfileId }>>(new Map());
@@ -145,11 +146,14 @@ export function useSupabaseSync(args: Args): SyncControls {
       if (!ctx) return;
       try {
         const day = await hydrateDay(ctx, profile, isoDate);
-        if (day) {
+        // Never overwrite a day/weigh-in that has a pending or in-flight local
+        // push — the optimistic state is newer than what Supabase returns.
+        const dayKey = `${profile}::${isoDate}`;
+        if (day && !dirtyDays.current.has(dayKey) && !inFlightDays.current.has(dayKey)) {
           setDays((prev) => ({ ...prev, [profile]: { ...prev[profile], [isoDate]: day } }));
         }
         const pid = profileIdFor(ctx, profile);
-        if (pid) {
+        if (pid && !dirtyWeigh.current.has(profile)) {
           const w = await loadWeighIns(pid);
           setWeighInsMap((prev) => ({ ...prev, [profile]: w }));
         }
@@ -220,10 +224,16 @@ export function useSupabaseSync(args: Args): SyncControls {
         void activate();
       }
     });
+    // Retry activation if it was interrupted (e.g. offline during bootstrap).
+    const onOnline = () => {
+      if (!ctxRef.current) void activate();
+    };
+    window.addEventListener("online", onOnline);
     return () => {
       disposed = true;
       unsubAuth();
       unsubRealtime?.();
+      window.removeEventListener("online", onOnline);
     };
   }, [hydrate, hydrateFoodsList, hydratePrefsFor, setSyncState]);
 
@@ -236,14 +246,29 @@ export function useSupabaseSync(args: Args): SyncControls {
   const flush = useCallback(() => {
     const ctx = ctxRef.current;
     if (!ctx) return;
+    // Snapshot + clear; on failure (e.g. offline) re-queue so nothing is lost
+    // and the next flush / reconnect retries. Idempotent upserts prevent dupes.
     const dayKeys = [...dirtyDays.current];
+    // Move days to in-flight (still protected from hydrate) rather than clearing,
+    // so a concurrent reload can't wipe the optimistic state mid-push.
     dirtyDays.current.clear();
+    for (const k of dayKeys) inFlightDays.current.add(k);
     const weighProfiles = [...dirtyWeigh.current];
     dirtyWeigh.current.clear();
     const foods = [...dirtyFoods.current.values()];
     dirtyFoods.current.clear();
     const prefs = [...dirtyPrefs.current.values()];
     dirtyPrefs.current.clear();
+
+    const requeue = () => {
+      for (const k of dayKeys) dirtyDays.current.add(k);
+      for (const p of weighProfiles) dirtyWeigh.current.add(p);
+      for (const f of foods) if (!dirtyFoods.current.has(f.id)) dirtyFoods.current.set(f.id, f);
+      for (const p of prefs) {
+        const key = `${p.profile}::${p.foodId}`;
+        if (!dirtyPrefs.current.has(key)) dirtyPrefs.current.set(key, p);
+      }
+    };
 
     void (async () => {
       try {
@@ -273,9 +298,12 @@ export function useSupabaseSync(args: Args): SyncControls {
         for (const [profile, mutations] of byProfile) {
           await pushPreferences(ctx, profile, mutations);
         }
+        for (const k of dayKeys) inFlightDays.current.delete(k);
         setSyncState("saved");
       } catch (err) {
-        console.warn("push failed", err);
+        console.warn("push failed — re-queued for retry", err);
+        for (const k of dayKeys) inFlightDays.current.delete(k);
+        requeue();
         setSyncState("error");
       }
     })();
@@ -286,54 +314,78 @@ export function useSupabaseSync(args: Args): SyncControls {
     pushTimer.current = setTimeout(flush, 700);
   }, [flush]);
 
+  // Flush any re-queued (failed/offline) mutations when connectivity returns.
+  // The "online" event is the fast path; a short interval is the reliable
+  // fallback (some environments don't fire it) and no-ops when nothing pending.
+  useEffect(() => {
+    if (!active) return;
+    const hasPending = () =>
+      dirtyDays.current.size > 0 ||
+      dirtyWeigh.current.size > 0 ||
+      dirtyFoods.current.size > 0 ||
+      dirtyPrefs.current.size > 0;
+    const onOnline = () => schedule();
+    window.addEventListener("online", onOnline);
+    const id = setInterval(() => {
+      if (hasPending()) schedule();
+    }, 3000);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      clearInterval(id);
+    };
+  }, [active, schedule]);
+
+  // Record dirty whenever Supabase is configured — even during the activation
+  // window before `active` flips true — so a mutation made right after load is
+  // protected from the initial hydrate and flushed once the context is ready.
   const markDayDirty = useCallback(
     (profile: ProfileId, isoDate: string) => {
-      if (!active) return;
+      if (!isSupabaseConfigured()) return;
       dirtyDays.current.add(`${profile}::${isoDate}`);
       schedule();
     },
-    [active, schedule],
+    [schedule],
   );
 
   const markWeighDirty = useCallback(
     (profile: ProfileId) => {
-      if (!active) return;
+      if (!isSupabaseConfigured()) return;
       dirtyWeigh.current.add(profile);
       schedule();
     },
-    [active, schedule],
+    [schedule],
   );
 
   const markFoodDirty = useCallback(
     (food: Food) => {
       // Only custom foods are synced (built-in catalog is a client constant).
-      if (!active || !isCustomFoodId(food.id)) return;
+      if (!isSupabaseConfigured() || !isCustomFoodId(food.id)) return;
       dirtyFoods.current.set(food.id, food);
       schedule();
     },
-    [active, schedule],
+    [schedule],
   );
 
   const markFavoriteDirty = useCallback(
     (profile: ProfileId, foodId: string, isFavorite: boolean) => {
-      if (!active) return;
+      if (!isSupabaseConfigured()) return;
       const key = `${profile}::${foodId}`;
       const prev = dirtyPrefs.current.get(key) ?? { profile, foodId };
       dirtyPrefs.current.set(key, { ...prev, isFavorite });
       schedule();
     },
-    [active, schedule],
+    [schedule],
   );
 
   const markRecentDirty = useCallback(
     (profile: ProfileId, foodId: string, whenISO: string) => {
-      if (!active) return;
+      if (!isSupabaseConfigured()) return;
       const key = `${profile}::${foodId}`;
       const prev = dirtyPrefs.current.get(key) ?? { profile, foodId };
       dirtyPrefs.current.set(key, { ...prev, recentAt: whenISO });
       schedule();
     },
-    [active, schedule],
+    [schedule],
   );
 
   return {

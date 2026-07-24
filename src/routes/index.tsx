@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { MEAL_SLOTS, type MealSlotId } from "@/lib/domain";
 import { useStore } from "@/lib/store";
 import { toISODate } from "@/lib/format";
@@ -40,6 +40,11 @@ function Home() {
   const [openSlot, setOpenSlot] = useState<MealSlotId | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [weighOpen, setWeighOpen] = useState(false);
+
+  // Stable handlers so background sync re-renders don't reset open modals.
+  const closeSlot = useCallback(() => setOpenSlot(null), []);
+  const closeCalendar = useCallback(() => setCalendarOpen(false), []);
+  const closeWeigh = useCallback(() => setWeighOpen(false), []);
 
   const iso = toISODate(store.selectedDate);
   const day = store.getDay(store.activeProfile, iso);
@@ -89,9 +94,9 @@ function Home() {
         </p>
       </div>
 
-      <MealEditor slot={openSlot} onClose={() => setOpenSlot(null)} />
-      <CalendarView open={calendarOpen} onClose={() => setCalendarOpen(false)} />
-      <WeighInForm open={weighOpen} onClose={() => setWeighOpen(false)} />
+      <MealEditor slot={openSlot} onClose={closeSlot} />
+      <CalendarView open={calendarOpen} onClose={closeCalendar} />
+      <WeighInForm open={weighOpen} onClose={closeWeigh} />
       <WeightBanner onOpen={() => setWeighOpen(true)} />
       <BottomNav
         active="home"

@@ -27,12 +27,19 @@ export function MealEditor({ slot, onClose }: Props) {
   const [view, setView] = useState<View>({ kind: "list" });
   const panelRef = useRef<HTMLDivElement>(null);
 
+  // Reset the view ONLY when a different meal opens. Depending on `onClose`
+  // (a fresh function each parent render) would reset the editor to the list
+  // view on every background sync re-render, losing the user's place mid-flow.
   useEffect(() => {
     if (!slot) return;
-    // reset view when opening
     setView({ kind: "list" });
-    // Move focus into the dialog for keyboard + screen-reader users.
     panelRef.current?.focus();
+  }, [slot]);
+
+  // Escape-to-close + scroll lock; may re-run when onClose changes without
+  // disturbing the current view.
+  useEffect(() => {
+    if (!slot) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };

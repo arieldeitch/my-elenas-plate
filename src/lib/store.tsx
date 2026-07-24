@@ -37,6 +37,7 @@ import { FOOD_CATALOG } from "./food-catalog";
 import { initialDays, initialFavorites, initialRecents, initialWeighIns } from "./demo-data";
 import { toISODate } from "./format";
 import { loadState, saveState } from "./persistence";
+import { isSupabaseConfigured } from "./supabase/client";
 import { useSupabaseSync } from "./sync/use-supabase-sync";
 
 export const PROFILES: Profile[] = [
@@ -98,22 +99,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [syncState, setSyncState] = useState<SyncState>("saved");
 
-  const [days, setDays] = useState<PerProfile<Record<string, DayData>>>(() => ({
-    me: initialDays("me"),
-    elena: initialDays("elena"),
-  }));
-  const [weighInsMap, setWeighInsMap] = useState<PerProfile<WeighIn[]>>(() => ({
-    me: initialWeighIns("me"),
-    elena: initialWeighIns("elena"),
-  }));
-  const [favoritesMap, setFavoritesMap] = useState<PerProfile<string[]>>(() => ({
-    me: initialFavorites("me"),
-    elena: initialFavorites("elena"),
-  }));
-  const [recentsMap, setRecentsMap] = useState<PerProfile<string[]>>(() => ({
-    me: initialRecents("me"),
-    elena: initialRecents("elena"),
-  }));
+  // Demo seed only in local demo mode. When Supabase is configured the store
+  // starts EMPTY and hydrates from the cloud — otherwise the seed (with its
+  // non-UUID ids) would pollute and fail to sync into a fresh account.
+  const seeded = !isSupabaseConfigured();
+  const [days, setDays] = useState<PerProfile<Record<string, DayData>>>(() =>
+    seeded ? { me: initialDays("me"), elena: initialDays("elena") } : { me: {}, elena: {} },
+  );
+  const [weighInsMap, setWeighInsMap] = useState<PerProfile<WeighIn[]>>(() =>
+    seeded ? { me: initialWeighIns("me"), elena: initialWeighIns("elena") } : { me: [], elena: [] },
+  );
+  const [favoritesMap, setFavoritesMap] = useState<PerProfile<string[]>>(() =>
+    seeded
+      ? { me: initialFavorites("me"), elena: initialFavorites("elena") }
+      : { me: [], elena: [] },
+  );
+  const [recentsMap, setRecentsMap] = useState<PerProfile<string[]>>(() =>
+    seeded ? { me: initialRecents("me"), elena: initialRecents("elena") } : { me: [], elena: [] },
+  );
   const [foods, setFoods] = useState<Food[]>(FOOD_CATALOG);
 
   const iso = toISODate(selectedDate);
@@ -152,7 +155,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!hydrated || sync.active) return;
+    // When Supabase is configured it is the source of truth — never persist to
+    // localStorage (otherwise the demo seed would be saved and then migrated
+    // into a brand-new cloud account). Demo mode persists as before.
+    if (!hydrated || isSupabaseConfigured()) return;
     saveState({
       activeProfile,
       days,
@@ -161,7 +167,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       recents: recentsMap,
       foods,
     });
-  }, [hydrated, sync.active, activeProfile, days, weighInsMap, favoritesMap, recentsMap, foods]);
+  }, [hydrated, activeProfile, days, weighInsMap, favoritesMap, recentsMap, foods]);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 

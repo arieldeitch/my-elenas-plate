@@ -36,7 +36,10 @@ export function WeighInForm({ open, onClose }: Props) {
         document.body.style.overflow = "";
       };
     }
-  }, [open, onClose, store.weighIns]);
+    // Intentionally keyed on `open` only: re-running when weighIns changes
+    // (a background hydrate) would wipe the user's input mid-entry.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, onClose]);
 
   if (!open) return null;
 
@@ -164,11 +167,11 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div>
-      <label className="block text-sm font-medium mb-1">{label}</label>
+    <label className="block">
+      <span className="mb-1 block text-sm font-medium">{label}</span>
       {children}
       {error && <div className="mt-1 text-xs text-destructive">{error}</div>}
-    </div>
+    </label>
   );
 }
 

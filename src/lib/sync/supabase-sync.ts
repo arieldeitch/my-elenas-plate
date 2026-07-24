@@ -165,6 +165,11 @@ export async function pushPreferences(
   }
 }
 
+// Unique per subscription so a re-activation never collides with an
+// already-subscribed channel of the same name ("cannot add callbacks after
+// subscribe()"), e.g. under React StrictMode double-mount or auth re-fire.
+let channelSeq = 0;
+
 /**
  * Subscribes to realtime changes for the household's data tables and calls
  * `onChange` with the affected table name. Returns an unsubscribe fn.
@@ -181,11 +186,9 @@ export function subscribeHousehold(
     "foods",
     "food_preferences",
   ] as const;
-  let channel: RealtimeChannel = sb.channel(`household:${ctx.householdId}`);
+  const channel: RealtimeChannel = sb.channel(`household:${ctx.householdId}:${++channelSeq}`);
   for (const table of tables) {
-    channel = channel.on("postgres_changes", { event: "*", schema: "public", table }, () =>
-      onChange(table),
-    );
+    channel.on("postgres_changes", { event: "*", schema: "public", table }, () => onChange(table));
   }
   channel.subscribe();
   return () => {
