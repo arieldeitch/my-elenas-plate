@@ -64,6 +64,31 @@ test("custom food, favorites and recents", async ({ page }) => {
   await expect(page.getByText("מאכל בדיקה").first()).toBeVisible();
 });
 
+test("built-in food favorite + recent sync (text food_id) per profile", async ({ page }) => {
+  await signIn(page, uniqueEmail());
+
+  // Add + favorite a BUILT-IN catalog food (string id like f_apple) for אריאל.
+  await addSearchedFood(page, "ארוחה מרכזית", "תפוח");
+  await page.getByRole("button", { name: "הוספה למועדפים" }).first().click();
+  await closeDialog(page);
+  await waitSaved(page);
+
+  // Refresh — the favorite + recent hydrate from Supabase (food_preferences).
+  await page.reload();
+  await waitForApp(page);
+  await openMeal(page, "נשנוש ראשון");
+  await page.getByRole("button", { name: "הוספת מאכל" }).first().click();
+  // The built-in food is listed (favorites section) for אריאל after hydrate.
+  await expect(page.getByRole("button", { name: /תפוח/ }).first()).toBeVisible({ timeout: 30_000 });
+  await closeDialog(page);
+
+  // אלנה must NOT inherit אריאל's favorite/recent (per-profile separation).
+  await page.getByRole("tab", { name: /אלנה/ }).click();
+  await openMeal(page, "נשנוש ראשון");
+  await page.getByRole("button", { name: "הוספת מאכל" }).first().click();
+  await expect(page.getByRole("button", { name: /תפוח/ })).toHaveCount(0);
+});
+
 test("fasting, workout and weigh-in persist", async ({ page }) => {
   await signIn(page, uniqueEmail());
 

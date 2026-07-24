@@ -177,8 +177,12 @@ let channelSeq = 0;
 export function subscribeHousehold(
   ctx: HouseholdContext,
   onChange: (table: string) => void,
+  accessToken?: string,
 ): () => void {
   const sb = requireSupabase();
+  // Give the realtime socket the auth token so RLS lets this session receive
+  // the household's changes (required for postgres_changes over RLS).
+  if (accessToken) sb.realtime.setAuth(accessToken);
   const tables = [
     "food_entries",
     "meal_statuses",

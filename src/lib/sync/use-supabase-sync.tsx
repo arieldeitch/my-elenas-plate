@@ -204,11 +204,15 @@ export function useSupabaseSync(args: Args): SyncControls {
         await hydrate(viewRef.current.profile, viewRef.current.iso);
         setSyncState("saved");
 
-        unsubRealtime = subscribeHousehold(ctx, (table) => {
-          if (table === "foods") void hydrateFoodsList();
-          else if (table === "food_preferences") void hydratePrefsFor(viewRef.current.profile);
-          else void hydrate(viewRef.current.profile, viewRef.current.iso);
-        });
+        unsubRealtime = subscribeHousehold(
+          ctx,
+          (table) => {
+            if (table === "foods") void hydrateFoodsList();
+            else if (table === "food_preferences") void hydratePrefsFor(viewRef.current.profile);
+            else void hydrate(viewRef.current.profile, viewRef.current.iso);
+          },
+          session.access_token,
+        );
       } catch (err) {
         console.warn("supabase activation failed", err);
         setSyncState("error");
