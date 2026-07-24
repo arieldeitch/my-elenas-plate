@@ -39,8 +39,9 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   if (!ready) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-label="טוען" />
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background">
+        <BrandIllustration variant="loading" />
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-label="טוען" />
       </div>
     );
   }
