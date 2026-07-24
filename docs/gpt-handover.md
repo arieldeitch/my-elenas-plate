@@ -27,11 +27,14 @@ communicated by color alone.
   foods + favorites + recents now sync (`foods`/`food_preferences`, per profile) with optimistic UI,
   realtime, offline queue and migration; forward migration `090400` (`food_id`→text) — re-run
   `supabase db push` on the remote so built-in-food favorites sync there too (custom foods already do).
-- **T-028 done (browser E2E):** Playwright, 9 specs (`npm run e2e`) driving the real app against a live
-  Supabase (local stack via `.env.e2e`, else remote). It uncovered + fixed 7 production-readiness bugs
-  (MealEditor view-reset on sync re-render, demo-seed pollution of fresh cloud accounts, optimistic-wipe /
-  offline data loss, activation-window + reconnect gaps, realtime channel-name collision, weigh-in a11y
-  labels). See `project-status.md`.
+- **Remote deployment COMPLETE (2026-07-24):** migration `090400` (food_id→text) applied to the remote;
+  built-in + custom food favorites/recents sync there (verified live in the browser).
+- **T-028 done (browser E2E):** Playwright, 10 specs (`npm run e2e`) driving the real app against a live
+  Supabase (local via `.env.e2e`, else remote). It uncovered + fixed 8 production-readiness bugs
+  (MealEditor view-reset, demo-seed pollution, optimistic-wipe / offline loss, activation-window +
+  reconnect, realtime channel collision, weigh-in a11y labels, realtime socket auth token). Full suite
+  green vs local; each capability verified vs remote (full-suite-in-one-run is remote rate-limit/clock
+  bound — not a product issue). See `project-status.md`.
 
 ## Latest product decisions (active)
 

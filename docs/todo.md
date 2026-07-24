@@ -45,17 +45,16 @@ Updated 2026-07-23 with verified findings from the MVP-hardening session.
 
 ### Follow-ups
 
-- **T-027 Done (2026-07-23)** Sync custom foods + favorites + recents with Supabase. Forward migration
-  `090400` (food_id→text); `useSupabaseSync` hydrates/pushes foods + preferences (per profile), with
-  optimistic UI, dirty-tracking, realtime, offline queue and a separate migration marker. Verified live
-  (7/7 remote-live). **Remote note:** re-run `supabase db push` so built-in-food favorites/recents sync
-  on the remote too (custom foods already do). See `project-status.md` / `supabase/DEPLOY.md`.
-- **T-028 Done (2026-07-24)** Playwright browser E2E: 9 specs (auth/bootstrap/RTL/mobile, meal+coffee CRUD,
-  custom foods/favorites/recents, fasting/workout/weigh-in, profile separation, session lifecycle,
-  two-context realtime, offline+reconnect). `npm run e2e`; `.env.e2e` → local stack, else remote. Found
-  and fixed 7 real production-readiness bugs (editor reset, seed pollution, optimistic-wipe / offline
-  loss, activation-window/reconnect, realtime channel collision, weigh-in a11y labels). See
-  `project-status.md`.
+- **T-027 Done + remote-verified (2026-07-24)** Sync custom foods + favorites + recents. Migration
+  `090400` (food_id→text) **applied to the remote** and verified; built-in AND custom food
+  favorites/recents sync live in the browser with per-profile separation.
+- **T-028 Done + remote-verified (2026-07-24)** Playwright browser E2E: 10 specs (auth/bootstrap/RTL/mobile,
+  meal+coffee CRUD, custom + built-in foods/favorites/recents, fasting/workout/weigh-in, profile
+  separation, session lifecycle, two-context realtime, offline+reconnect). `npm run e2e`; `.env.e2e` →
+  local stack, else remote. Found and fixed 8 real production-readiness bugs (editor reset, seed
+  pollution, optimistic-wipe / offline loss, activation-window/reconnect, realtime channel collision,
+  weigh-in a11y labels, realtime auth token). Full suite green vs local; each capability verified vs
+  remote (single full-suite remote run is rate-limit/clock-skew bound — see `project-status.md`).
 
 ## Deferred (P2/P3, not approved for MVP)
 

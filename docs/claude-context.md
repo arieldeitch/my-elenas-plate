@@ -61,9 +61,11 @@ applied, and **live-verified end-to-end** (2 gated suites, 10/10 vs remote): aut
 local→cloud migration, two-context realtime. **T-027 done:** `useSupabaseSync` also syncs custom foods
 (`foods`) + favorites/recents (`food_preferences`, per profile) with optimistic UI, dirty-tracking,
 realtime and offline queue; migration `090400` made `food_preferences.food_id` a text app-id (DEC-018).
-Remote note: re-run `supabase db push` so built-in-food favorites sync on the remote too (custom foods
-already do). **T-028 done:** Playwright browser E2E (`npm run e2e`, 9 specs) against a live Supabase
-(`.env.e2e` → local stack, else remote); it found + fixed 7 production-readiness bugs (see project-status).
+Remote deployment is COMPLETE: migration `090400` (food_id→text) is applied to the remote, so built-in AND
+custom food favorites/recents sync there (verified live in the browser). **T-028 done:** Playwright browser
+E2E (`npm run e2e`, 10 specs) against a live Supabase (`.env.e2e` → local stack, else remote); it found +
+fixed 8 production-readiness bugs incl. realtime auth-token on the socket (see project-status). Full suite
+green vs local; each capability verified vs remote (single full-suite remote run is rate-limit/clock bound).
 In configured mode the store starts EMPTY and hydrates from the cloud (no demo-seed pollution); never
 writes localStorage. Tests stay hermetic via `vi.stubEnv` in
 `src/test/setup.ts`; the live suites (`*.integration.test.ts`) skip unless

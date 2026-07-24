@@ -24,21 +24,21 @@
 
 ## Quality gate (run this session)
 
-| Check                     | Command                                   | Result                                                                                                                                                           |
-| ------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Type check                | `tsc --noEmit`                            | PASS — 0 errors                                                                                                                                                  |
-| Lint                      | `eslint .`                                | PASS — 0 errors, 8 warnings (see "Remaining warnings" below)                                                                                                     |
-| Format                    | `prettier`                                | PASS — changed + previously-unformatted source files normalised; `endOfLine: auto` added for cross-platform CRLF                                                 |
-| Unit/integration tests    | `vitest run`                              | PASS — 109 passed / 12 skipped (2 live suites, no env)                                                                                                           |
-| Live DB (RLS + bootstrap) | `supabase start` + gated integration test | PASS — 5/5 against local Supabase (bootstrap, isolation, anon-denied, coffee CHECK)                                                                              |
-| Live remote (RLS+CRUD+RT) | 2 gated suites vs remote project          | PASS — 12/12 (auth, bootstrap, RLS isolation, CRUD all tables, coffee, idempotency, migration, custom foods + favorites/recents + isolation, 2-context realtime) |
-| Migration validation      | `psql < each migration`                   | PASS — all 5 apply cleanly (10 tables, 35 policies, 8 realtime tables; food_id->text)                                                                            |
-| Generated types           | `supabase gen types --local`              | Matches hand-derived aliases; committed as `database.generated.ts`                                                                                               |
-| Accessibility             | `vitest-axe` on 5 key components          | PASS — 0 violations (MealCard, CoffeeSelector, ProfileSwitcher, DailyCompletionIndicator, WeightBanner)                                                          |
-| Browser E2E               | `playwright test` (`npm run e2e`)         | PASS — 9 specs vs live Supabase (auth/RTL/mobile, meal+coffee CRUD, custom foods/favorites/recents, fasting/workout/weigh-in, profile separation, session lifecycle, 2-context realtime, offline+reconnect) |
-| Build                     | `vite build`                              | PASS — SSR + client build succeeds                                                                                                                               |
-| SSR smoke                 | `vite dev` + curl                         | PASS — Home renders; profiles אריאל/אלנה, six slots, RTL; no "אני", no "ארוחת לילה"; no hydration warnings                                                       |
-| Secret scan               | grep                                      | PASS — no secrets, no `.env`, no service_role                                                                                                                    |
+| Check                     | Command                                   | Result                                                                                                                                                                                                      |
+| ------------------------- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Type check                | `tsc --noEmit`                            | PASS — 0 errors                                                                                                                                                                                             |
+| Lint                      | `eslint .`                                | PASS — 0 errors, 8 warnings (see "Remaining warnings" below)                                                                                                                                                |
+| Format                    | `prettier`                                | PASS — changed + previously-unformatted source files normalised; `endOfLine: auto` added for cross-platform CRLF                                                                                            |
+| Unit/integration tests    | `vitest run`                              | PASS — 109 passed / 12 skipped (2 live suites, no env)                                                                                                                                                      |
+| Live DB (RLS + bootstrap) | `supabase start` + gated integration test | PASS — 5/5 against local Supabase (bootstrap, isolation, anon-denied, coffee CHECK)                                                                                                                         |
+| Live remote (RLS+CRUD+RT) | 2 gated suites vs remote project          | PASS — 12/12 (auth, bootstrap, RLS isolation, CRUD all tables, coffee, idempotency, migration, custom foods + favorites/recents + isolation, 2-context realtime)                                            |
+| Migration validation      | `psql < each migration`                   | PASS — all 5 apply cleanly (10 tables, 35 policies, 8 realtime tables; food_id->text)                                                                                                                       |
+| Generated types           | `supabase gen types --local`              | Matches hand-derived aliases; committed as `database.generated.ts`                                                                                                                                          |
+| Accessibility             | `vitest-axe` on 5 key components          | PASS — 0 violations (MealCard, CoffeeSelector, ProfileSwitcher, DailyCompletionIndicator, WeightBanner)                                                                                                     |
+| Browser E2E               | `playwright test` (`npm run e2e`)         | PASS — 10 specs vs live Supabase (auth/RTL/mobile, meal+coffee CRUD, custom + built-in foods/favorites/recents, fasting/workout/weigh-in, profile separation, session lifecycle, 2-context realtime, offline+reconnect) |
+| Build                     | `vite build`                              | PASS — SSR + client build succeeds                                                                                                                                                                          |
+| SSR smoke                 | `vite dev` + curl                         | PASS — Home renders; profiles אריאל/אלנה, six slots, RTL; no "אני", no "ארוחת לילה"; no hydration warnings                                                                                                  |
+| Secret scan               | grep                                      | PASS — no secrets, no `.env`, no service_role                                                                                                                                                               |
 
 ### Remaining warnings (8, non-blocking, dev-only)
 
@@ -143,10 +143,10 @@ files skip in the hermetic `npm test`).
   and custom foods can be favorited/recented. Verified live (7/7 remote-live incl. custom foods create +
   per-profile favorites/recents + isolation + soft-delete/archive + realtime).
 
-* **Remote deployment note**: migration `090400` is applied to the local stack and included in
-  `deploy_all.sql`; the remote still has the uuid `food_id` until the user re-runs `supabase db push`.
-  Until then, **custom-food** favorites/recents sync on the remote; **built-in-food** favorites/recents
-  stay local (the app retries). Custom foods themselves sync now.
+* **Remote deployment: COMPLETE (2026-07-24).** Migration `20260723090400_food_prefs_text_id.sql` is
+  applied to the **remote** (verified behaviourally: an anon insert of a text `food_id` like `f_coffee`
+  returns `42501` RLS — not `22P02` uuid — so the column is text). **Built-in AND custom** food
+  favorites/recents now sync on the remote; verified live in the browser (E2E, per-profile separation).
 
 ### Browser E2E (T-028, done 2026-07-24)
 
@@ -176,6 +176,20 @@ Playwright drives the real app (dev server) against a live Supabase (local stack
    re-activation (StrictMode) → activation threw. Unique channel name per subscription.
 7. `WeighInForm` inputs had **no associated labels** (a11y defect) and reset on every background hydrate.
    Labels now wrap their inputs; reset keyed on open only.
+8. Realtime didn't deliver to a second session **against the remote** (worked locally): the realtime
+   socket lacked its auth token, so RLS blocked `postgres_changes`. `subscribeHousehold` now calls
+   `realtime.setAuth(token)` before subscribing. Verified two-context realtime against the remote.
+
+### Remote E2E verification (2026-07-24)
+
+Each capability was verified in the browser against the **remote** project in isolation: built-in AND
+custom food favorites/recents sync (per-profile separation), custom food sync, refresh persistence,
+session lifecycle, two-context realtime, and offline+reconnect. Running the entire 10-spec suite in a
+single pass against the remote is limited by **environmental** factors — GoTrue sign-up rate-limiting
+(~15 fresh accounts/run) and occasional `PGRST303 "JWT issued at future"` clock skew — not product bugs;
+the app's activation-retry absorbs the transient auth failures. The full 10-spec suite runs green against
+the local Supabase stack (identical, complete schema). Recommended for CI: run E2E against a dedicated
+project (or local) to avoid shared-project rate limits.
 
 ## Not present / not yet live-verified (honest gaps)
 
