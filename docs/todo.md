@@ -50,8 +50,12 @@ Updated 2026-07-23 with verified findings from the MVP-hardening session.
   optimistic UI, dirty-tracking, realtime, offline queue and a separate migration marker. Verified live
   (7/7 remote-live). **Remote note:** re-run `supabase db push` so built-in-food favorites/recents sync
   on the remote too (custom foods already do). See `project-status.md` / `supabase/DEPLOY.md`.
-- **T-028 (next)** Playwright browser E2E (SignIn → MealEditor → CRUD/coffee/fasting/workout/weigh-in →
-  refresh → sign-out/in → profile switch) and a browser-level offline test, driven against the remote.
+- **T-028 Done (2026-07-24)** Playwright browser E2E: 9 specs (auth/bootstrap/RTL/mobile, meal+coffee CRUD,
+  custom foods/favorites/recents, fasting/workout/weigh-in, profile separation, session lifecycle,
+  two-context realtime, offline+reconnect). `npm run e2e`; `.env.e2e` → local stack, else remote. Found
+  and fixed 7 real production-readiness bugs (editor reset, seed pollution, optimistic-wipe / offline
+  loss, activation-window/reconnect, realtime channel collision, weigh-in a11y labels). See
+  `project-status.md`.
 
 ## Deferred (P2/P3, not approved for MVP)
 

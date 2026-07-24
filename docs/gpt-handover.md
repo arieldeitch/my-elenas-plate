@@ -27,7 +27,11 @@ communicated by color alone.
   foods + favorites + recents now sync (`foods`/`food_preferences`, per profile) with optimistic UI,
   realtime, offline queue and migration; forward migration `090400` (`food_id`→text) — re-run
   `supabase db push` on the remote so built-in-food favorites sync there too (custom foods already do).
-  **Next:** T-028 Playwright browser E2E + browser-level offline.
+- **T-028 done (browser E2E):** Playwright, 9 specs (`npm run e2e`) driving the real app against a live
+  Supabase (local stack via `.env.e2e`, else remote). It uncovered + fixed 7 production-readiness bugs
+  (MealEditor view-reset on sync re-render, demo-seed pollution of fresh cloud accounts, optimistic-wipe /
+  offline data loss, activation-window + reconnect gaps, realtime channel-name collision, weigh-in a11y
+  labels). See `project-status.md`.
 
 ## Latest product decisions (active)
 

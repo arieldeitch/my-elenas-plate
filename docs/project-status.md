@@ -32,9 +32,10 @@
 | Unit/integration tests    | `vitest run`                              | PASS — 109 passed / 12 skipped (2 live suites, no env)                                                                                                           |
 | Live DB (RLS + bootstrap) | `supabase start` + gated integration test | PASS — 5/5 against local Supabase (bootstrap, isolation, anon-denied, coffee CHECK)                                                                              |
 | Live remote (RLS+CRUD+RT) | 2 gated suites vs remote project          | PASS — 12/12 (auth, bootstrap, RLS isolation, CRUD all tables, coffee, idempotency, migration, custom foods + favorites/recents + isolation, 2-context realtime) |
-| Migration validation      | `psql < each migration`                   | PASS — all 5 apply cleanly (10 tables, 35 policies, 8 realtime tables; food_id->text)                                                                                           |
+| Migration validation      | `psql < each migration`                   | PASS — all 5 apply cleanly (10 tables, 35 policies, 8 realtime tables; food_id->text)                                                                            |
 | Generated types           | `supabase gen types --local`              | Matches hand-derived aliases; committed as `database.generated.ts`                                                                                               |
 | Accessibility             | `vitest-axe` on 5 key components          | PASS — 0 violations (MealCard, CoffeeSelector, ProfileSwitcher, DailyCompletionIndicator, WeightBanner)                                                          |
+| Browser E2E               | `playwright test` (`npm run e2e`)         | PASS — 9 specs vs live Supabase (auth/RTL/mobile, meal+coffee CRUD, custom foods/favorites/recents, fasting/workout/weigh-in, profile separation, session lifecycle, 2-context realtime, offline+reconnect) |
 | Build                     | `vite build`                              | PASS — SSR + client build succeeds                                                                                                                               |
 | SSR smoke                 | `vite dev` + curl                         | PASS — Home renders; profiles אריאל/אלנה, six slots, RTL; no "אני", no "ארוחת לילה"; no hydration warnings                                                       |
 | Secret scan               | grep                                      | PASS — no secrets, no `.env`, no service_role                                                                                                                    |
@@ -147,12 +148,34 @@ files skip in the hermetic `npm test`).
   Until then, **custom-food** favorites/recents sync on the remote; **built-in-food** favorites/recents
   stay local (the app retries). Custom foods themselves sync now.
 
-### Honest gaps in the live pass
+### Browser E2E (T-028, done 2026-07-24)
 
-- **Browser UI E2E** (Playwright driving SignIn → MealEditor → … against remote) and **browser-level
-  offline** (network throttle in a real browser) are **not automated** (next: T-028). Coverage is
-  instead: the live data-layer suites against the real remote (same mappers/migration/RLS the app uses) +
-  hermetic component tests + the app booting and gating correctly against the remote.
+Playwright drives the real app (dev server) against a live Supabase (local stack for reliable runs;
+`--mode e2e` → `.env.e2e`, else `.env`/remote). **9 specs pass** (`npm run e2e`):
+
+- Sign-in + bootstrap + RTL + six meal slots + mobile viewport (no horizontal overflow).
+- Meal + coffee CRUD with refresh persistence; custom food + favorites + recents; fasting + workout +
+  weigh-in persist; profile switching keeps data separate; session lifecycle (clear session → re-login →
+  cloud data returns); two-context realtime; offline mutation → reconnect flush → no duplicate.
+
+**Real bugs found and fixed via E2E (production-readiness):**
+
+1. `MealEditor` reset its view on every parent re-render (unstable `onClose` in its effect deps) — with
+   sync active it reset the open editor mid-flow. Split the effect (reset on slot change only) + stabilised
+   home handlers.
+2. In configured mode the store seeded demo data (non-UUID ids like `e_1`) into a **fresh cloud account**
+   and even persisted it to localStorage → migration/push failures. Now the store **starts empty when
+   configured** and never writes localStorage in that mode.
+3. Sync `flush` cleared the dirty set before pushing → **offline mutations were lost**; and `hydrate` had
+   no dirty/in-flight guard → a realtime/reconnect hydrate **wiped optimistic edits** and the pending push
+   then wrote the emptied day back. Added in-flight protection, requeue-on-failure, and a reconnect retry.
+4. Mutations made during the activation window weren't recorded (marker gated on `active`) → lost. Now
+   recorded whenever Supabase is configured.
+5. Activation didn't retry if interrupted (offline during bootstrap). Added an `online` re-activation.
+6. `subscribeHousehold` reused a fixed channel name → "cannot add callbacks after subscribe()" on
+   re-activation (StrictMode) → activation threw. Unique channel name per subscription.
+7. `WeighInForm` inputs had **no associated labels** (a11y defect) and reset on every background hydrate.
+   Labels now wrap their inputs; reset keyed on open only.
 
 ## Not present / not yet live-verified (honest gaps)
 
