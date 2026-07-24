@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Loader2, Mail, KeyRound } from "lucide-react";
 import { signInWithMagicLink, signInWithPassword, signUpWithPassword } from "@/lib/supabase/auth";
 import { cn } from "@/lib/utils";
+import { BrandIllustration } from "@/components/brand/BrandIllustration";
 
 type Mode = "magic" | "password";
 
@@ -38,9 +39,12 @@ export function SignIn() {
   }
 
   return (
-    <div dir="rtl" className="flex min-h-screen items-center justify-center bg-background px-5">
+    <div dir="rtl" className="flex min-h-screen items-center justify-center bg-background px-5 py-8">
       <div className="w-full max-w-sm rounded-3xl border border-border bg-card p-6 shadow-soft">
-        <h1 className="text-center text-xl font-bold text-foreground">מעקב תזונה משותף</h1>
+        <div className="flex justify-center">
+          <BrandIllustration variant="auth" />
+        </div>
+        <h1 className="mt-2 text-center text-xl font-bold text-foreground">מעקב תזונה משותף</h1>
         <p className="mt-1 text-center text-sm text-muted-foreground">כניסה לחשבון המשותף</p>
 
         <div className="mt-5 inline-flex w-full rounded-full border border-border bg-secondary p-1">

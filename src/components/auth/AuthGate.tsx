@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { getSession, onAuthChange } from "@/lib/supabase/auth";
 import { SignIn } from "./SignIn";
+import { BrandIllustration } from "@/components/brand/BrandIllustration";
 
 /**
  * Gates the app behind the shared-account session — but only when Supabase is
@@ -38,8 +39,9 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   if (!ready) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-label="טוען" />
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background">
+        <BrandIllustration variant="loading" />
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-label="טוען" />
       </div>
     );
   }
