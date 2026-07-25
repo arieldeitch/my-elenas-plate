@@ -63,20 +63,32 @@
 --   unique (household_id, normalized_name) constraint, so re-running updates
 --   the same rows in place and never grows the catalog.
 --
+-- ATOMICITY
+--   No explicit BEGIN/COMMIT, on purpose.  Pasted into the SQL Editor the whole
+--   script is sent as one multi-statement query, which Postgres runs in a single
+--   implicit transaction: if any statement fails, nothing is applied.  Applied by
+--   `supabase db push` the CLI wraps it in a transaction for the same effect.  An
+--   explicit COMMIT here would end that outer transaction early and leave the
+--   rest running unprotected, so it is deliberately absent.
+--   If the run does fail, no cleanup and no seeding happened — fix the error and
+--   run the whole file again.
+--
 -- VERIFICATION
 --   The final SELECT returns a before/after audit (counts only — no row
 --   contents, no health data).  `supabase/verify_catalog.sql` re-runs the same
 --   read-only checks at any later time.
 --
 -- ROLLBACK / REMEDIATION
---   Deletions are not reversible in-place; the rows removed are test-account
---   and demo-seed rows only.  To undo the seed:
---     delete from public.foods where created_by_seed_marker...  -- (not used)
---   the catalog rows carry no marker column by design, so remediation is
---   `delete from public.foods where household_id = '<id>' and normalized_name
---   in (...)`, or simply archiving them: update public.foods set is_active =
---   false where ... .  Historical entries are unaffected either way because
---   food_entries stores the food name, not a foreign key.
+--   The catalog rows carry no marker column (by design — a seeded food must be
+--   indistinguishable from any other household food).  To undo the seed, archive
+--   it rather than delete it:
+--     update public.foods set is_active = false where household_id = '<id>';
+--   Historical entries are unaffected either way, because food_entries stores the
+--   food name, not a foreign key to foods.
+--   The deletions are NOT reversible in place.  What they remove is limited to
+--   test-account households and demo-seed rows, by the fingerprints above; if a
+--   fingerprint looks wrong for this database, review it BEFORE running, because
+--   there is no undo afterwards.
 -- ============================================================================
 
 -- Audit trail for this run. Temporary: it disappears with the session and can
