@@ -39,7 +39,10 @@ export function SignIn() {
   }
 
   return (
-    <div dir="rtl" className="flex min-h-screen items-center justify-center bg-background px-5 py-8">
+    <div
+      dir="rtl"
+      className="flex min-h-screen items-center justify-center bg-background px-5 py-8"
+    >
       <div className="w-full max-w-sm rounded-3xl border border-border bg-card p-6 shadow-soft">
         <div className="flex justify-center">
           <BrandIllustration variant="auth" />
