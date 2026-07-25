@@ -1,6 +1,26 @@
 # GPT Handover
 
-Continuity handover across tools. Updated 2026-07-24 (end-of-day handover, back to Lovable).
+Continuity handover across tools. Updated 2026-07-25 (production catalog + mock-data removal).
+
+## 0. Read this first — one open action
+
+The pilot is meant to start **2026-07-26 morning**. Everything in code is done and green, but **one
+database action is outstanding and cannot be done by the assistant**:
+
+> Supabase Dashboard → project `rqgoiuztphkcvbwtbxbj` → SQL Editor → paste
+> `supabase/migrations/20260725190000_cleanup_mock_data_and_seed_food_catalog.sql` → run once →
+> paste the returned audit table back for review.
+
+Why it cannot be automated (all verified, not assumed): the Supabase CLI account logged in on this
+machine does not own that project (`supabase migration list` → HTTP 403; the project is absent from
+`supabase projects list`), no `SUPABASE_DB_PASSWORD` is available, and Docker is not running so there
+is no local stack. Only the anon key is present, and RLS correctly refuses unauthenticated reads — so
+not even row counts could be measured. **Therefore no production cleanup or seeding has happened, and
+no production numbers appear in any doc.** Until it runs, the app still works (the bundled catalog is
+the fallback) but the database catalog is empty and mock rows remain.
+
+After it runs: re-run `npm run e2e` (it was intentionally not run this session — it drives the real
+remote project and creates `e2e_*` test households there).
 
 ## Product
 
@@ -67,8 +87,17 @@ communicated by color alone.
 - DEC-017 — one shared Auth account + two internal profiles; Supabase is source of truth.
 - DEC-018 — `food_preferences.food_id` is a text app-id (no FK) so built-in + custom foods can be
   favorited/recented uniformly; custom foods live in `foods` (soft-delete via `is_active`).
-- Store starts EMPTY when Supabase is configured and hydrates from the cloud; localStorage is not the
-  source of truth in that mode (only offline queue / cache / migration markers).
+- **DEC-019 (new)** — Supabase `public.foods` is the source of truth for the catalog; the 390-item
+  TypeScript catalog under `src/data/foods/*` is the canonical definition (it generates the seed SQL)
+  and the offline / pre-seed fallback. `mergeCatalog` reconciles by `normalized_name`: a remote row
+  supersedes the bundled item, `is_active = false` hides it, and the app food id stays `f_*` so
+  favorites/recents survive the seed.
+- **DEC-020 (new)** — one Hebrew normalization function (`normalizeFoodName`) for search, duplicate
+  prevention and `normalized_name`: geresh/apostrophe variants, niqqud, ktiv male (`עגבניה`≡`עגבנייה`),
+  punctuation, whitespace, Latin case. No alias subsystem, no new dependency.
+- Store starts EMPTY in **every** mode and there is no demo/mock seed anywhere
+  (`src/lib/demo-data.ts` deleted 2026-07-25). localStorage is read only in demo mode, and the
+  one-time localStorage→cloud import is disabled so a stale snapshot cannot repopulate the cloud.
 
 ## 5. Known limitations (not product bugs)
 
@@ -138,5 +167,9 @@ profile.
 
 ## 13. First recommended task for the next session
 
-Add Playwright E2E to CI pointed at a dedicated Supabase project (not the shared pilot project), so the
-full 10-spec suite runs green in one pass without the sign-up rate-limit / clock-skew flakiness.
+1. **Apply the pending migration** (§0) and review the audit table it returns. Nothing else should
+   start before that — it is what makes the catalog real and removes the mock rows.
+2. Re-run `npm run e2e` against the remote and confirm no mock rows return after a refresh.
+3. Then: add Playwright E2E to CI pointed at a **dedicated** Supabase project (not the shared pilot
+   project), so the full 10-spec suite runs green in one pass without the sign-up rate-limit /
+   clock-skew flakiness.

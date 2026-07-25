@@ -388,3 +388,17 @@ alter table public.food_preferences
 alter table public.food_preferences
   alter column food_id type text using food_id::text;
 
+
+-- ========================================================================
+-- supabase/migrations/20260725190000_cleanup_mock_data_and_seed_food_catalog.sql
+-- ========================================================================
+-- NOT inlined here on purpose. That migration is ~56 KB (390 generated catalog
+-- rows) and is the only one that touches DATA rather than structure, so it is
+-- applied as its own file and returns its own before/after audit:
+--
+--   1. Paste supabase/migrations/20260725190000_cleanup_mock_data_and_seed_food_catalog.sql
+--      into the SQL Editor and run it once.
+--   2. Paste supabase/verify_catalog.sql to re-check the result read-only.
+--
+-- It is fingerprint-driven and upsert-based, so re-running it deletes nothing new
+-- and never grows the catalog. See supabase/DEPLOY.md.

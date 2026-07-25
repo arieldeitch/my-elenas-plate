@@ -1,15 +1,152 @@
 # Project Status
 
-**Date:** 2026-07-24 (end-of-day handover, back to Lovable)
+**Date:** 2026-07-25 (production catalog + mock-data removal)
 **Branch:** main
-**Commit before this work started:** 542233e (Update site info for publish)
+**Commit before this work started:** `2dfe91e` (docs(handover): reconcile with Lovable's branding illustration)
 **Pilot-ready checkpoint:** tag `pilot-ready-2026-07-24` → `29ac1d5` (verified backend + E2E code).
-**Current `main`:** merge integrating Lovable's branding work (added after the checkpoint) with this
-handover; tree green (tsc 0, 109 tests, build).
-**Phase:** **Pilot-ready.** Full Supabase backend implemented, deployed to the remote and verified;
-MVP hardening, coffee, favorites/recents/custom foods, and browser E2E complete. Brand illustration added.
+**Phase:** **Pilot-ready in code; ONE manual database action outstanding.** Full Supabase backend
+implemented, deployed and verified; MVP hardening, coffee, favorites/recents/custom foods and browser
+E2E complete. The 390-item Hebrew catalog, Hebrew normalization, duplicate prevention and the
+cleanup/seed migration are implemented and tested locally — the migration is **not yet applied to the
+remote** (see below).
 
 > Rule: nothing is listed as "working" unless it was actually run/verified.
+
+## 2026-07-25 — Production food catalog + removal of mock-data paths
+
+### Status honestly stated
+
+- **Code + migration: complete, green locally.** tsc 0 errors, eslint 0 errors, 173 unit/component
+  tests passing, `vite build` OK.
+- **Database: UNCHANGED.** No cleanup ran, no catalog row was inserted, no mock row was deleted.
+  Privileged access is unavailable from this machine, verified: `supabase migration list` → HTTP 403
+  ("account does not have the necessary privileges"); project `rqgoiuztphkcvbwtbxbj` is not in
+  `supabase projects list` (the CLI account belongs to a different org); no `SUPABASE_DB_PASSWORD`;
+  Docker daemon not running, so no local stack. Only the anon key exists locally, and RLS correctly
+  denies unauthenticated reads — so even row counts could not be obtained. **No production counts are
+  reported anywhere in these docs, because none could be measured.**
+- **Blocking action:** T-033 in `todo.md` / `supabase/DEPLOY.md`.
+
+### Catalog
+
+- **390 items**, 11 category modules under `src/data/foods/` (`vegetables`, `fruits`,
+  `dairy-and-eggs`, `breads-and-grains`, `legumes`, `meat-and-fish`, `dishes`,
+  `snacks-and-sweets`, `drinks`, `condiments`, plus `types` + `index`).
+- Per-category counts: ירקות ועשבי תיבול 45 · פירות 36 · מוצרי חלב ותחליפים 28 · ביצים 7 ·
+  לחם ומאפים 27 · דגנים ופחמימות 24 · קטניות 15 · עוף ובשר 33 · דגים 20 · מנות ותבשילים 55 ·
+  אגוזים, גרעינים וממרחים 22 · חטיפים ומתוקים 29 · משקאות 31 · רטבים, שמנים ותבלינים 18.
+- Fields only: `name`, `normalized_name`, `category`, `default_unit`, `kind`, `is_active`
+  (+ client-side `suggestedUnits`). **No** calories, macros, health labels, scores, favorites,
+  recents or entries. `allowed_units` does not exist in this schema — unit sets stay client-side.
+- 41 practical unit presets from the existing `Unit` union; the default unit is always the first
+  offered unit. Verified examples: מלפפון = יחידה/חצי יחידה/גרם · גבינה צהובה = פרוסה/גרם ·
+  שניצל עוף = יחידה/מנה/גרם · מים = מ״ל/כוס/ליטר · אורז לבן = כוס/כף/מנה/גרם · קפה default כוס.
+- Supabase is the source of truth (DEC-019): `mergeCatalog` lets a remote row supersede the bundled
+  item by `normalized_name`, an `is_active = false` row hides it, and the bundled list is the
+  offline / pre-seed fallback. The app food id stays `f_*` so favorites/recents survive the seed.
+
+### Normalization + search (DEC-020)
+
+- `src/lib/food-normalize.ts` — one key for search, duplicate prevention and `normalized_name`:
+  hyphen/slash → space, geresh & all apostrophe variants removed, niqqud removed, punctuation
+  removed, Latin lowercased, ktiv male folded (`יי`→`י`, `וו`→`ו`), whitespace collapsed, trimmed.
+  Idempotent. No alias subsystem, no new dependency.
+- Verified searches (automated): `מלפפון`, `עגבניה`→עגבנייה, `עגבנייה`, `גבינה צהובה`, `שניצל`
+  (3+ hits), `אורז`, `חזה עוף`, `סלט`, `מים`, `קפה` (+שחור/נמס/הפוך), `קוטג`→קוטג׳, `פיתה`,
+  `טחינה`, `קוטג'`, `צ'יפס`, and vocalised `לֶחֶם מָלֵא`.
+- `src/lib/food-search.ts` — index built once per list change (not per keystroke); ranking
+  exact → prefix → word-prefix → substring; **capped at 20 results**, empty query returns none, so
+  the full catalog is never rendered.
+- Duplicate prevention: `addFood` returns the existing food when the normalized name matches
+  (`קוטג'` → the catalog's `קוטג׳`), which also protects the DB's
+  `unique (household_id, normalized_name)`.
+
+### Mock-data paths removed from production code
+
+| Path | Action |
+| --- | --- |
+| `src/lib/demo-data.ts` (fake days, weigh-ins, favorites, recents, fasting, workout) | **Deleted** |
+| `store.tsx` seeding of days/weighIns/favorites/recents | **Removed** — starts empty in every mode |
+| `store.tsx` localStorage hydration in configured mode | **Guarded** — demo mode only |
+| localStorage→cloud one-time import | **Disabled** (`LOCAL_IMPORT_ENABLED = false`) so a stale demo snapshot cannot repopulate the cloud after cleanup |
+| Old 23-item client catalog + weak `normalize` | **Replaced** by `src/data/foods/*` + `food-normalize.ts` |
+
+Legitimate test fixtures were kept. Tests that had asserted against the demo seed
+(`WeightBanner`, `FastingCard`, `WorkoutCard`) now create their own data through the store API.
+
+### Cleanup + seed migration (written, NOT applied)
+
+`supabase/migrations/20260725190000_cleanup_mock_data_and_seed_food_catalog.sql`
+
+How mock rows are identified — **no rule uses a date, and none is based on row age**:
+
+1. **Test households** — every member's `auth.users.email` matches the generated shape
+   `^(e2e|t|live)_[0-9]{13}_[0-9]+@` produced by `e2e/helpers.ts`,
+   `rls.integration.test.ts` and `remote-live.integration.test.ts`. Deleting the household row
+   cascades to its own data. A household with one real member is never touched; `auth.users` is
+   only read, never modified.
+2. **Demo days** — the complete multiset of a day's entries (slot · food name · quantity mode ·
+   amount · unit · subjective) must equal one of the four exact day shapes built by the removed
+   `demo-data.ts` (`meDay`, `elenaDay`, `fullSampleDay`, `partialSampleDay`). One extra or missing
+   entry preserves the whole day. Value-only matching is deliberately not used, because
+   e.g. "קפה · 1 · כוס" is also what a real fast-add produces.
+3. **Demo favorites/recents** — `last_used_at` exactly on `to_timestamp(1784000000 - n*60)`, the
+   fixed `RECENCY_BASE_MS` epoch from `sync/migrate-local.ts` (real usage stamps `Date.now()`);
+   and, independently, a profile whose complete preference id set equals the demo union for its slug.
+4. **Demo weigh-ins** — exact `(weight_kg, body_fat_pct)` pairs from `demo-data.ts` **and** the
+   profile has no other weigh-in. Any real weigh-in makes that profile untouchable.
+5. **E2E fixture food** — the exact literal name `מאכל בדיקה` from `crud.spec.ts`.
+
+Fasting (`20:30`→`12:30`) and workout (`הליכה`/`טוב`) rows are deleted **only** inside a day already
+proven to be a demo day by rule 2 — those values alone are plausible real input.
+
+Preserved by construction: `auth.users`, households/memberships/profiles of real accounts, the six
+meal slots (a CHECK constraint, not data — no DDL touches it), RLS and every policy, settings, all
+existing migrations, and every row not matched by a fingerprint. No `TRUNCATE`, no unconditional
+`DELETE`, no `USING (true)`, no service-role usage. One additive index
+(`foods_household_normalized_idx`); no column/constraint/policy change.
+
+Idempotency: cleanup is fingerprint-driven so a second run matches nothing; the seed is
+`on conflict (household_id, normalized_name) do update`, which never grows the catalog and
+deliberately does **not** reset `is_active` (so an archived food is not resurrected).
+
+Auditability: the migration writes before/after counts into a temporary report table and ends with a
+`SELECT` returning them — counts only, no names, weights or dates. `supabase/verify_catalog.sql` is a
+read-only re-check (household/profile/meal-slot/RLS/catalog/duplicate/tracking-table counts) safe to
+run any number of times.
+
+SQL↔TypeScript parity: the seed block is generated by `npm run catalog:seed`
+(`scripts/generate-catalog-seed.ts` + `catalog-seed-sql.ts`, run through the already-present
+`vite-node` — no new dependency) and `src/lib/catalog-seed.test.ts` fails if the committed file is not
+the current generated form. Verified: regenerating twice is byte-identical, and a deliberately staled
+block is restored exactly.
+
+### Tests added (2026-07-25)
+
+| Suite | Tests | Covers |
+| --- | --- | --- |
+| `food-normalize.test.ts` | 11 | geresh/apostrophe variants, niqqud, ktiv male, separators, punctuation, Latin case, idempotency, false-merge guards (`פטה`≠`פיתה`) |
+| `food-catalog.test.ts` | 25 | ≥300 items, no blank/duplicate normalized names, unique `f_*` ids, valid units, default ∈ allowed, ≥15 distinct unit sets, all categories used & populated, no nutrition/favorite fields, no placeholder or numbered names, one coffee-kind food, 13 checklist searches, ranking, result cap, `mergeCatalog` supersede/archive/dedupe |
+| `catalog-seed.test.ts` | 16 | SQL is the current generated form, one row per item, idempotent upsert, seeds every household, writes no preferences/entries, schema-only columns, no RLS/policy/TRUNCATE/auth changes, no unqualified DELETE, delete-target allowlist, fingerprint & epoch presence, before/after reporting |
+| `store.test.tsx` (extended) | +6 | empty start for both profiles, catalog exposed with no preferences, normalized-duplicate reuse, genuine custom food still created, favorite only on request, recent only after logging, per-profile separation |
+| `MealEditor.test.tsx` (extended) | +5 | favorites/recents empty until use, capped results, subjective mode, food-specific units (פרוסה not חצי יחידה), apostrophe duplicate resolves to the catalog item |
+
+### Not verified / cannot be claimed
+
+- Nothing about the live database: no cleanup, no seeding, no row counts, no post-refresh check.
+- `npm run e2e` was not re-run (it drives the remote project that T-033 is about to change, and would
+  create new `e2e_*` households in the pilot project).
+- Whether the demo seed ever actually reached the remote household is unknown from here; the
+  migration handles both cases and reports what it found.
+
+### Ambiguous data intentionally preserved
+
+- Any weigh-in matching a demo value pair for a profile that also has other weigh-ins (counted as
+  `weigh_ins_preserved_ambiguous` in the migration report, never deleted).
+- Any day whose entry multiset does not exactly match a demo shape — including manual rows created
+  while testing the app in the browser, which are indistinguishable from real logging by value.
+- Any custom food other than the exact `מאכל בדיקה` fixture.
+- Any household with at least one non-test member address.
 
 ## Repository state & GitHub sync (2026-07-24)
 

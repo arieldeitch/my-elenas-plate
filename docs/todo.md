@@ -1,9 +1,43 @@
 # TODO
 
 Status legend: Done / In Progress / Blocked / Deferred / Not Started.
-Updated 2026-07-24 (end-of-day handover). Project is **pilot-ready** — verified backend/E2E checkpoint at
+Updated 2026-07-25. Project is **pilot-ready** — verified backend/E2E checkpoint at
 tag `pilot-ready-2026-07-24` (`29ac1d5`); current `main` also merges Lovable's branding illustration work.
 All P0/P1 MVP + Supabase + T-027/T-028 are Done.
+
+## Blocking for the 2026-07-26 pilot start
+
+- **T-033 (P0) — Apply the cleanup + catalog migration to the remote. Blocked on user action.**
+  `supabase/migrations/20260725190000_cleanup_mock_data_and_seed_food_catalog.sql` is written,
+  tested and committed but **NOT applied**. It cannot be applied from here: the CLI account
+  logged in on this machine does not own project `rqgoiuztphkcvbwtbxbj` (`supabase migration list`
+  → HTTP 403 "account does not have the necessary privileges"), no `SUPABASE_DB_PASSWORD` is
+  available, and Docker is not running so there is no local stack either.
+  **Action:** Supabase Dashboard → project `rqgoiuztphkcvbwtbxbj` → SQL Editor → paste the
+  migration → run once → paste the returned audit table back. Details in `supabase/DEPLOY.md`.
+  Until then the app is usable (the bundled catalog is the fallback) but the database catalog is
+  empty and any mock rows are still there.
+- **T-034 (P1) — Re-run `npm run e2e` after T-033.** Not run in this session: it drives the real
+  browser against the remote project, which is exactly the environment T-033 changes. Running it
+  before the migration would also create fresh `e2e_*` test households in the pilot project.
+
+## Done (2026-07-25) — production catalog + mock-data removal
+
+- **T-035 Done** Hebrew name normalization (`src/lib/food-normalize.ts`, DEC-020): geresh variants,
+  niqqud, ktiv male (`עגבניה`≡`עגבנייה`), punctuation, whitespace, Latin case. 11 tests.
+- **T-036 Done** 390-item Hebrew catalog in 11 category modules under `src/data/foods/`
+  (DEC-019). No calories, macros, labels or scores. 25 validation + search tests.
+- **T-037 Done** Ranked, capped search (`src/lib/food-search.ts`): index built once per list
+  change, exact → prefix → word-prefix → substring, max 20 results.
+- **T-038 Done** Duplicate prevention: `addFood` returns the existing food when the normalized
+  name matches, so `קוטג'` resolves to `קוטג׳` instead of creating a twin.
+- **T-039 Done** Mock-data bootstrap removed: `src/lib/demo-data.ts` deleted; the store starts
+  empty in **every** mode; localStorage is read only in demo mode; the one-time
+  localStorage→cloud import is disabled (`LOCAL_IMPORT_ENABLED = false`) so a stale demo snapshot
+  cannot repopulate the cloud after cleanup.
+- **T-040 Done** Cleanup + seed migration authored with fingerprint-based identification and a
+  self-reporting audit; `supabase/verify_catalog.sql` added for read-only re-checks.
+  Application is T-033 (above).
 
 ## Done (this session)
 
@@ -60,6 +94,9 @@ All P0/P1 MVP + Supabase + T-027/T-028 are Done.
 
 ## Open backlog / next stages (post-pilot-ready)
 
+- **T-031 (P2) is now more valuable** — a catalog management UI would let the household rename or
+  archive seeded foods; `is_active = false` in the DB already hides a food in the app
+  (`mergeCatalog`), but there is no UI for it.
 - **T-029 (P1 ops, recommended first)** Add Playwright E2E to CI against a **dedicated** Supabase project
   (not the shared pilot project) so the full 10-spec suite runs green in one pass without the sign-up
   rate-limit / clock-skew flakiness. Optionally add a desktop Playwright project.

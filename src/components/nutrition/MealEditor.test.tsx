@@ -10,7 +10,7 @@ const wrapper = ({ children }: { children: ReactNode }) => (
 );
 
 function renderEditor() {
-  // `dinner` starts empty in the demo seed for the active profile (אריאל).
+  // `dinner` is empty for a fresh store: there is no seeded data any more.
   return render(<MealEditor slot="dinner" onClose={vi.fn()} />, { wrapper });
 }
 
@@ -42,8 +42,13 @@ describe("MealEditor", () => {
 
     await user.click(screen.getAllByRole("button", { name: "הוספת מאכל" })[0]);
     await user.type(screen.getByRole("textbox", { name: "חיפוש מאכל" }), "תפוח");
-    // Search results appear after the 180ms debounce — findBy waits for them.
-    await user.click(await screen.findByRole("button", { name: /תפוח/ }));
+    // Search results appear after the 180ms debounce — findAllBy waits for them.
+    // "תפוח" also prefixes תפוח אדמה / תפוחי אדמה, and the exact match ranks first.
+    const results = await screen.findAllByRole("button", { name: /תפוח/ });
+    // The result's accessible name is "<food> <category>", so a trailing space
+    // pins this to תפוח itself rather than תפוחי אדמה.
+    expect(results[0]).toHaveAccessibleName(/^תפוח /);
+    await user.click(results[0]);
     await user.click(screen.getByRole("button", { name: "הוספת המאכל" }));
     await user.click(screen.getByRole("button", { name: "חזרה לארוחה" }));
 
@@ -52,6 +57,66 @@ describe("MealEditor", () => {
 
     await user.click(screen.getByRole("button", { name: "מחיקה" }));
     expect(screen.getByText("עוד לא תועדו מאכלים בארוחה הזו.")).toBeInTheDocument();
+  });
+
+  it("starts with no favorites and no recents, and caps the result list", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+
+    await user.click(screen.getAllByRole("button", { name: "הוספת מאכל" })[0]);
+    // Nothing has been logged yet, so neither section exists.
+    expect(screen.queryByText("מועדפים")).not.toBeInTheDocument();
+    expect(screen.queryByText("אחרונים")).not.toBeInTheDocument();
+
+    // A very common letter matches most of the catalog; the list stays capped.
+    await user.type(screen.getByRole("textbox", { name: "חיפוש מאכל" }), "ה");
+    const results = await screen.findAllByRole("button", { name: /./ });
+    const catalogRows = results.filter((b) => b.className.includes("border-border"));
+    expect(catalogRows.length).toBeLessThanOrEqual(20);
+  });
+
+  it("supports the subjective quantity mode for a catalog food", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+
+    await user.click(screen.getAllByRole("button", { name: "הוספת מאכל" })[0]);
+    await user.type(screen.getByRole("textbox", { name: "חיפוש מאכל" }), "סלט ירקות");
+    await user.click((await screen.findAllByRole("button", { name: /סלט ירקות/ }))[0]);
+
+    await user.click(screen.getByRole("tab", { name: "תחושה" }));
+    await user.click(screen.getByRole("button", { name: "הרבה" }));
+    await user.click(screen.getByRole("button", { name: "הוספת המאכל" }));
+    await user.click(screen.getByRole("button", { name: "חזרה לארוחה" }));
+
+    expect(screen.getByText("סלט ירקות")).toBeInTheDocument();
+    expect(screen.getByText("הרבה")).toBeInTheDocument();
+  });
+
+  it("offers the food's own units, defaulting to the sensible one", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+
+    await user.click(screen.getAllByRole("button", { name: "הוספת מאכל" })[0]);
+    await user.type(screen.getByRole("textbox", { name: "חיפוש מאכל" }), "גבינה צהובה");
+    await user.click((await screen.findAllByRole("button", { name: /גבינה צהובה/ }))[0]);
+
+    // גבינה צהובה is logged by the slice, not by the piece.
+    expect(screen.getByRole("button", { name: "פרוסה" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "גרם" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "חצי יחידה" })).not.toBeInTheDocument();
+  });
+
+  it("reuses the existing food instead of creating a punctuation duplicate", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+
+    await user.click(screen.getAllByRole("button", { name: "הוספת מאכל" })[0]);
+    // Typing קוטג' (straight apostrophe) must resolve to the catalog's קוטג׳.
+    await user.type(screen.getByRole("textbox", { name: "חיפוש מאכל" }), "קוטג'");
+
+    expect(await screen.findByRole("button", { name: /קוטג׳/ })).toBeInTheDocument();
+    // No "create as a new food" offer, because it already exists.
+    expect(screen.queryByRole("button", { name: /כמאכל חדש/ })).not.toBeInTheDocument();
   });
 
   it("marks the meal as not eaten and can undo the skip", async () => {

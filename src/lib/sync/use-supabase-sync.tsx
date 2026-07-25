@@ -25,6 +25,7 @@ import {
   type HouseholdContext,
 } from "../supabase/repositories";
 import { deriveFavoritesRecents } from "../supabase/mappers";
+import { BUILT_IN_FOODS, mergeCatalog } from "../food-catalog";
 import {
   hydrateDay,
   hydrateFoods,
@@ -50,6 +51,18 @@ import {
 import { loadState } from "../persistence";
 
 type PerProfile<T> = Record<ProfileId, T>;
+
+/**
+ * The one-time localStorage -> Supabase import (T-023).
+ *
+ * OFF since 2026-07-25. It completed for the real household, and the store no
+ * longer produces any demo state, so the only payload it could still build is a
+ * stale pre-fix demo snapshot left in a browser. Importing that would recreate
+ * exactly the mock rows the cleanup migration deletes. The transform itself is
+ * kept (pure and unit-tested) so the import can be re-enabled deliberately if a
+ * genuine local-only dataset ever has to be brought into the cloud.
+ */
+const LOCAL_IMPORT_ENABLED = false;
 
 interface Args {
   days: PerProfile<Record<string, DayData>>;
@@ -105,17 +118,15 @@ export function useSupabaseSync(args: Args): SyncControls {
   foodsRef.current = args.foods;
   viewRef.current = { profile: activeProfile, iso };
 
-  // Merge remote custom foods into the catalog, preserving built-in + local ones.
+  // Reconcile the remote catalog with the built-in list. Always merged from
+  // BUILT_IN_FOODS (not from previous state) so a row deleted or archived
+  // remotely actually disappears instead of lingering from an earlier hydrate.
   const hydrateFoodsList = useCallback(async () => {
     const ctx = ctxRef.current;
     if (!ctx) return;
     try {
       const remote = await hydrateFoods(ctx);
-      setFoods((prev) => {
-        const have = new Set(prev.map((f) => f.id));
-        const extra = remote.filter((f) => !have.has(f.id));
-        return extra.length ? [...extra, ...prev] : prev;
-      });
+      setFoods(mergeCatalog(BUILT_IN_FOODS, remote));
     } catch (err) {
       console.warn("hydrate foods failed", err);
     }
@@ -181,23 +192,29 @@ export function useSupabaseSync(args: Args): SyncControls {
         if (disposed) return;
         ctxRef.current = ctx;
 
-        const local = loadState();
-        if (!isMigrated()) {
-          if (local) {
-            const payload = buildMigrationPayload(local, ctx.householdId, ctx.profileIdBySlug);
-            if (totalRows(payload) > 0) await uploadMigration(payload);
+        // The one-time localStorage -> cloud import is RETIRED (see
+        // LOCAL_IMPORT_ENABLED). It has already run for this household, and the
+        // only thing a browser can still be holding is a pre-fix demo snapshot —
+        // re-importing that would put mock rows back into the cloud right after
+        // the cleanup migration removed them. Markers are still set so the import
+        // can never fire even if it is re-enabled on an old profile.
+        if (LOCAL_IMPORT_ENABLED) {
+          const local = loadState();
+          if (!isMigrated()) {
+            if (local) {
+              const payload = buildMigrationPayload(local, ctx.householdId, ctx.profileIdBySlug);
+              if (totalRows(payload) > 0) await uploadMigration(payload);
+            }
           }
-          markMigrated();
-        }
-        // Independent marker so users who already ran the meal-data migration
-        // still import custom foods + favorites/recents exactly once.
-        if (!isFoodsMigrated()) {
-          if (local) {
-            const fp = buildFoodMigrationPayload(local, ctx.householdId, ctx.profileIdBySlug);
-            if (totalFoodRows(fp) > 0) await uploadFoodMigration(fp);
+          if (!isFoodsMigrated()) {
+            if (local) {
+              const fp = buildFoodMigrationPayload(local, ctx.householdId, ctx.profileIdBySlug);
+              if (totalFoodRows(fp) > 0) await uploadFoodMigration(fp);
+            }
           }
-          markFoodsMigrated();
         }
+        if (!isMigrated()) markMigrated();
+        if (!isFoodsMigrated()) markFoodsMigrated();
 
         setActive(true);
         await hydrateFoodsList();

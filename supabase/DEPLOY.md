@@ -1,3 +1,36 @@
+# Deploying to the remote Supabase project
+
+## PENDING (2026-07-25): one action required before real logging starts
+
+`20260725190000_cleanup_mock_data_and_seed_food_catalog.sql` is written, tested and
+committed, but **not applied** — the Supabase CLI account logged in on this machine
+does not own project `rqgoiuztphkcvbwtbxbj` (`supabase migration list` → HTTP 403),
+there is no `SUPABASE_DB_PASSWORD`, and no local stack is available. It therefore
+has to be applied by hand, once:
+
+1. Open project **`rqgoiuztphkcvbwtbxbj`** in the Supabase Dashboard.
+2. Open **SQL Editor** → new query.
+3. Paste the whole of
+   `supabase/migrations/20260725190000_cleanup_mock_data_and_seed_food_catalog.sql`.
+4. **Run it once.** It finishes by returning a before/after audit table
+   (counts only — no food names, weights or dates).
+5. Copy that table back into the chat so the result can be reviewed.
+
+Optionally paste `supabase/verify_catalog.sql` afterwards for a read-only re-check
+(it writes nothing and can be run any number of times).
+
+What it does: deletes rows created by the automated test suites and by the removed
+localStorage demo seed, identified by explicit fingerprints — never by date — then
+upserts the 390-item Hebrew catalog into `public.foods` for every household. It
+never touches `auth.users`, profiles, memberships, RLS or policies, never
+`TRUNCATE`s, and has no unconditional `DELETE`. Re-running is safe: the cleanup
+matches nothing the second time and the seed upserts in place.
+
+Until it is applied the app still works — the bundled catalog is the fallback — but
+the database catalog stays empty and any mock rows remain.
+
+---
+
 # Deploying the schema to the remote Supabase project
 
 The migrations under `supabase/migrations/` (schema + RLS + bootstrap + realtime)

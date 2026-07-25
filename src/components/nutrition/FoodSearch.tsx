@@ -2,8 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, Star, Clock, Plus, X, Coffee } from "lucide-react";
 import type { Food } from "@/lib/domain";
 import { useStore } from "@/lib/store";
-import { normalize } from "@/lib/food-catalog";
+import { buildFoodSearchIndex, findFoodByName, searchFoods } from "@/lib/food-search";
+import { normalizeFoodName } from "@/lib/food-normalize";
 import { cn } from "@/lib/utils";
+
+/** Results shown per query. The catalog is never rendered in full. */
+const RESULT_LIMIT = 20;
 
 interface Props {
   onPick: (food: Food) => void;
@@ -34,9 +38,12 @@ export function FoodSearch({ onPick, onCreate, onAddCoffee }: Props) {
     .map((id) => foodById.get(id))
     .filter((f): f is Food => !!f && !favSet.has(f.id));
 
-  const nq = normalize(q);
-  const results = nq ? foods.filter((f) => normalize(f.name).includes(nq)).slice(0, 20) : [];
-  const exact = nq ? foods.find((f) => normalize(f.name) === nq) : undefined;
+  // Normalizing the whole catalog once per list change (not per keystroke) keeps
+  // typing responsive on a several-hundred-item catalog.
+  const index = useMemo(() => buildFoodSearchIndex(foods), [foods]);
+  const nq = normalizeFoodName(q);
+  const results = useMemo(() => searchFoods(index, q, RESULT_LIMIT), [index, q]);
+  const exact = findFoodByName(index, q);
 
   return (
     <div className="flex flex-col gap-3">
@@ -131,8 +138,10 @@ export function FoodSearch({ onPick, onCreate, onAddCoffee }: Props) {
               הוספת “{raw.trim()}” כמאכל חדש
             </button>
           )}
-          {results.length === 0 && !raw.trim() && (
-            <div className="text-sm text-muted-foreground py-6 text-center">אין תוצאות</div>
+          {results.length === 0 && (
+            <div className="text-sm text-muted-foreground py-4 text-center">
+              לא נמצא מאכל תואם בקטלוג.
+            </div>
           )}
         </div>
       )}

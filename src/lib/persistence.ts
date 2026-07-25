@@ -1,8 +1,11 @@
 /**
- * Interim demo persistence via localStorage so a refresh, date change or profile
- * switch does not lose data. This is NOT the eventual source of truth — once
- * Supabase is connected it replaces this (see the TODO in store.tsx). SSR-safe:
- * every access is guarded and wrapped so storage being unavailable is non-fatal.
+ * localStorage persistence for LOCAL DEMO MODE ONLY (no Supabase env), so a
+ * refresh, date change or profile switch does not lose data there.
+ *
+ * Not a source of truth: when Supabase is configured the store neither reads nor
+ * writes this (see store.tsx), because a stale local snapshot must never be able
+ * to reappear in — or be pushed to — the cloud. SSR-safe: every access is
+ * guarded so storage being unavailable is non-fatal.
  */
 import type { DayData, Food, ProfileId, WeighIn } from "./domain";
 
@@ -30,7 +33,7 @@ export function loadState(): PersistedState | null {
     if (!parsed || parsed.version !== VERSION || !parsed.days) return null;
     return parsed;
   } catch (err) {
-    // Corrupt or unavailable storage — fall back to the seeded demo state.
+    // Corrupt or unavailable storage — start empty rather than fail.
     console.warn("Failed to load saved state", err);
     return null;
   }
@@ -41,7 +44,7 @@ export function saveState(state: Omit<PersistedState, "version">): void {
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: VERSION, ...state }));
   } catch (err) {
-    // Quota exceeded / private mode — acceptable to drop for a demo.
+    // Quota exceeded / private mode — acceptable to drop in demo mode.
     console.warn("Failed to persist state", err);
   }
 }

@@ -3,7 +3,8 @@ import { renderHook, act } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { StoreProvider, useStore } from "./store";
 import { toISODate } from "./format";
-import type { FoodEntry } from "./domain";
+import { MEAL_SLOTS } from "./domain";
+import type { Food, FoodEntry } from "./domain";
 
 const wrapper = ({ children }: { children: ReactNode }) => (
   <StoreProvider>{children}</StoreProvider>
@@ -20,7 +21,7 @@ const coffee: Omit<FoodEntry, "id"> = {
 };
 
 describe("store", () => {
-  // Persistence uses localStorage; clear it so each test starts from the seed.
+  // Persistence uses localStorage; clear it so each test starts empty.
   beforeEach(() => window.localStorage.clear());
 
   it("keeps data separate per profile and preserves the date on switch", () => {
@@ -68,7 +69,7 @@ describe("store", () => {
   it("persists structured coffee metadata on the entry", () => {
     const { result } = renderHook(() => useStore(), { wrapper });
 
-    // `dinner` starts empty in the demo seed, so the only coffee here is ours.
+    // The store starts empty, so the only coffee here is ours.
     act(() => result.current.addEntry("dinner", coffee));
 
     const entries = result.current.getDay("me", today()).meals.dinner.entries;
@@ -85,6 +86,99 @@ describe("store", () => {
     const second = renderHook(() => useStore(), { wrapper });
     const entries = second.result.current.getDay("me", today()).meals.dinner.entries;
     expect(entries.find((e) => e.coffee)?.coffee?.type).toBe("אמריקנו");
+  });
+
+  it("starts with no tracking data, favorites or recents for either profile", () => {
+    const { result } = renderHook(() => useStore(), { wrapper });
+
+    for (const profile of ["me", "elena"] as const) {
+      expect(result.current.getAllDays(profile)).toEqual({});
+      for (const slot of MEAL_SLOTS) {
+        const meal = result.current.getDay(profile, today()).meals[slot];
+        expect(meal.status).toBe("empty");
+        expect(meal.entries).toEqual([]);
+      }
+    }
+    expect(result.current.favorites).toEqual([]);
+    expect(result.current.recents).toEqual([]);
+    expect(result.current.weighIns).toEqual([]);
+  });
+
+  it("exposes the full catalog without any pre-created preference", () => {
+    const { result } = renderHook(() => useStore(), { wrapper });
+    expect(result.current.foods.length).toBeGreaterThanOrEqual(300);
+    expect(result.current.favorites).toHaveLength(0);
+    expect(result.current.recents).toHaveLength(0);
+  });
+
+  it("reuses an existing food instead of creating a normalized duplicate", () => {
+    const { result } = renderHook(() => useStore(), { wrapper });
+    const before = result.current.foods.length;
+
+    // Same food, three ways a person might type it.
+    let a: Food | undefined;
+    let b: Food | undefined;
+    act(() => {
+      a = result.current.addFood("קוטג'");
+    });
+    act(() => {
+      b = result.current.addFood("  קוטג׳  ");
+    });
+
+    expect(a!.name).toBe("קוטג׳");
+    expect(b!.id).toBe(a!.id);
+    expect(result.current.foods.length).toBe(before);
+  });
+
+  it("still creates a genuinely new custom food", () => {
+    const { result } = renderHook(() => useStore(), { wrapper });
+    const before = result.current.foods.length;
+
+    let created: Food | undefined;
+    act(() => {
+      created = result.current.addFood("תבשיל של סבתא");
+    });
+
+    expect(created!.name).toBe("תבשיל של סבתא");
+    expect(created!.id.startsWith("f_")).toBe(false); // custom id, syncs to Supabase
+    expect(result.current.foods.length).toBe(before + 1);
+
+    // ...and a second attempt at the same name does not duplicate it.
+    act(() => {
+      result.current.addFood("תבשיל  של   סבתא");
+    });
+    expect(result.current.foods.length).toBe(before + 1);
+  });
+
+  it("adds a favorite only when the user asks for one", () => {
+    const { result } = renderHook(() => useStore(), { wrapper });
+    expect(result.current.favorites).toEqual([]);
+
+    act(() => result.current.toggleFavorite("f_cucumber"));
+    expect(result.current.favorites).toEqual(["f_cucumber"]);
+
+    // Per profile: אלנה does not inherit אריאל's favorite.
+    act(() => result.current.setActiveProfile("elena"));
+    expect(result.current.favorites).toEqual([]);
+  });
+
+  it("records a recent only after a food is actually logged", () => {
+    const { result } = renderHook(() => useStore(), { wrapper });
+    expect(result.current.recents).toEqual([]);
+
+    act(() => {
+      result.current.addEntry("lunch", {
+        foodId: "f_cucumber",
+        foodName: "מלפפון",
+        mode: "measured",
+        amount: 1,
+        unit: "יחידה",
+      });
+    });
+
+    expect(result.current.recents).toEqual(["f_cucumber"]);
+    act(() => result.current.setActiveProfile("elena"));
+    expect(result.current.recents).toEqual([]);
   });
 
   it("restores a removed entry (undo)", () => {

@@ -12,9 +12,15 @@ const wrapper = ({ children }: { children: ReactNode }) => (
 describe("WorkoutCard", () => {
   beforeEach(() => window.localStorage.clear());
 
-  it("reflects the seeded 'performed' workout and its type", () => {
+  it("starts undocumented, with neither answer pre-selected", () => {
     render(<WorkoutCard />, { wrapper });
-    // אריאל's seed: performed, type הליכה, feeling טוב.
+    expect(screen.getByRole("button", { name: "כן" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "לא" })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("reveals the details once 'performed' is chosen", async () => {
+    render(<WorkoutCard />, { wrapper });
+    await userEvent.click(screen.getByRole("button", { name: "כן" }));
     expect(screen.getByRole("button", { name: "כן" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByText("סוג האימון")).toBeInTheDocument();
   });

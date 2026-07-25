@@ -17,14 +17,10 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "json-summary"],
       // Focus coverage on our own logic + nutrition UI; exclude generated,
-      // vendored shadcn primitives, demo seed and framework glue.
+      // vendored shadcn primitives and framework glue. The catalog data modules
+      // are declarative content, validated by src/lib/food-catalog.test.ts.
       include: ["src/lib/**", "src/components/nutrition/**"],
-      exclude: [
-        "src/**/*.test.{ts,tsx}",
-        "src/lib/demo-data.ts",
-        "src/lib/food-catalog.ts",
-        "src/routeTree.gen.ts",
-      ],
+      exclude: ["src/**/*.test.{ts,tsx}", "src/data/foods/**", "src/routeTree.gen.ts"],
     },
   },
 });

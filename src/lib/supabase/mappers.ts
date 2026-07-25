@@ -31,7 +31,7 @@ import type {
   MealStatusValue,
   SubjectiveValue,
 } from "./database.types";
-import { normalize } from "../food-catalog";
+import { normalizeFoodName } from "../food-normalize";
 
 // --- meal slot <-> slug -----------------------------------------------------
 const SLOT_TO_SLUG: Record<MealSlotId, MealSlotSlug> = {
@@ -155,23 +155,29 @@ export function foodToRow(food: Food, householdId: string): FoodInsert {
     id: food.id,
     household_id: householdId,
     name: food.name.trim(),
-    normalized_name: normalize(food.name),
+    normalized_name: normalizeFoodName(food.name),
     category: food.category ?? null,
     default_unit: food.defaultUnit ?? null,
     kind: food.kind ?? "generic",
-    is_active: true,
+    is_active: food.isActive ?? true,
   };
 }
 
-/** foods row -> domain Food (suggested units are a client-side default). */
+/**
+ * foods row -> domain Food. `is_active` is carried through so `mergeCatalog` can
+ * let an archived remote row hide a built-in food. Suggested units are a
+ * client-side default: the column does not exist in the schema, and a built-in
+ * food's richer unit set is restored by `mergeCatalog`.
+ */
 export function foodFromRow(row: FoodRow): Food {
   return {
     id: row.id,
     name: row.name,
     category: row.category ?? undefined,
     defaultUnit: (row.default_unit as Unit | null) ?? undefined,
-    suggestedUnits: DEFAULT_CUSTOM_UNITS,
+    suggestedUnits: [...DEFAULT_CUSTOM_UNITS],
     kind: (row.kind as FoodKind) ?? "generic",
+    isActive: row.is_active,
   };
 }
 

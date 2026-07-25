@@ -1,13 +1,14 @@
 /**
- * Demo store for the pilot.
+ * Application store.
  *
- * Wraps all app state in a single React context. All mutations flow through
- * this repository-like API so the future Supabase integration can replace the
- * in-memory implementation without touching UI components.
+ * Wraps all app state in a single React context; every mutation flows through
+ * this repository-like API, which is what lets Supabase be the source of truth
+ * without UI components knowing about it (`useSupabaseSync` below hydrates and
+ * pushes through the same setters).
  *
- * TODO(supabase): replace the internal useState maps with a Supabase-backed
- * repository (household -> profiles -> days -> meals -> entries). RLS should
- * scope reads/writes to the current profile's household.
+ * All tracking state starts empty in every mode — there is no demo or mock seed
+ * anywhere in the app. Content comes from Supabase when configured, or from
+ * localStorage in local demo mode.
  */
 import {
   createContext,
@@ -33,8 +34,8 @@ import type {
   WorkoutLog,
 } from "./domain";
 import { MEAL_SLOTS } from "./domain";
-import { FOOD_CATALOG } from "./food-catalog";
-import { initialDays, initialFavorites, initialRecents, initialWeighIns } from "./demo-data";
+import { FOOD_CATALOG, mergeCatalog } from "./food-catalog";
+import { normalizeFoodName } from "./food-normalize";
 import { toISODate } from "./format";
 import { loadState, saveState } from "./persistence";
 import { isSupabaseConfigured } from "./supabase/client";
@@ -99,24 +100,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [syncState, setSyncState] = useState<SyncState>("saved");
 
-  // Demo seed only in local demo mode. When Supabase is configured the store
-  // starts EMPTY and hydrates from the cloud — otherwise the seed (with its
-  // non-UUID ids) would pollute and fail to sync into a fresh account.
-  const seeded = !isSupabaseConfigured();
-  const [days, setDays] = useState<PerProfile<Record<string, DayData>>>(() =>
-    seeded ? { me: initialDays("me"), elena: initialDays("elena") } : { me: {}, elena: {} },
-  );
-  const [weighInsMap, setWeighInsMap] = useState<PerProfile<WeighIn[]>>(() =>
-    seeded ? { me: initialWeighIns("me"), elena: initialWeighIns("elena") } : { me: [], elena: [] },
-  );
-  const [favoritesMap, setFavoritesMap] = useState<PerProfile<string[]>>(() =>
-    seeded
-      ? { me: initialFavorites("me"), elena: initialFavorites("elena") }
-      : { me: [], elena: [] },
-  );
-  const [recentsMap, setRecentsMap] = useState<PerProfile<string[]>>(() =>
-    seeded ? { me: initialRecents("me"), elena: initialRecents("elena") } : { me: [], elena: [] },
-  );
+  // Tracking data always starts EMPTY, in every mode. There is no demo/mock seed
+  // anywhere in the app: a seed once leaked into a real cloud account (see
+  // project-status, T-028 bug 2), and favorites / recents / history must only
+  // ever reflect real logging. Content comes from Supabase, or from localStorage
+  // in local demo mode.
+  const [days, setDays] = useState<PerProfile<Record<string, DayData>>>({ me: {}, elena: {} });
+  const [weighInsMap, setWeighInsMap] = useState<PerProfile<WeighIn[]>>({ me: [], elena: [] });
+  const [favoritesMap, setFavoritesMap] = useState<PerProfile<string[]>>({ me: [], elena: [] });
+  const [recentsMap, setRecentsMap] = useState<PerProfile<string[]>>({ me: [], elena: [] });
+  // The built-in catalog is the pre-hydration fallback; Supabase supersedes it
+  // by normalized name once loaded (see `mergeCatalog`).
   const [foods, setFoods] = useState<Food[]>(FOOD_CATALOG);
 
   const iso = toISODate(selectedDate);
@@ -142,13 +136,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    // Only demo mode reads localStorage. When Supabase is configured it is the
+    // source of truth, and restoring a legacy local snapshot here would
+    // resurrect data the cloud no longer has (including any pre-cleanup rows).
+    // The one-time local->cloud import reads storage separately, in the sync layer.
+    if (isSupabaseConfigured()) {
+      setHydrated(true);
+      return;
+    }
     const saved = loadState();
     if (saved) {
       setDays(saved.days);
       setWeighInsMap(saved.weighIns);
       setFavoritesMap(saved.favorites);
       setRecentsMap(saved.recents);
-      setFoods(saved.foods);
+      // Merge rather than replace: a snapshot taken before a catalog update must
+      // not shrink the catalog back to its older contents.
+      setFoods(mergeCatalog(FOOD_CATALOG, saved.foods));
       setActiveProfile(saved.activeProfile);
     }
     setHydrated(true);
@@ -284,9 +288,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const addFood: StoreValue["addFood"] = (name, category) => {
+    const trimmed = name.trim();
+    // Duplicate prevention: the DB enforces unique (household_id, normalized_name),
+    // so creating a food that normalizes onto an existing one would fail to sync
+    // and split favorites/recents across two ids. Reuse the existing food instead —
+    // this is what makes "קוטג" resolve to קוטג׳ rather than creating a twin.
+    const key = normalizeFoodName(trimmed);
+    const existing = foods.find((f) => normalizeFoodName(f.name) === key);
+    if (existing) return existing;
+
     const f: Food = {
       id: genId("f"),
-      name: name.trim(),
+      name: trimmed,
       category,
       defaultUnit: "יחידה",
       suggestedUnits: ["יחידה", "גרם", "מנה"],

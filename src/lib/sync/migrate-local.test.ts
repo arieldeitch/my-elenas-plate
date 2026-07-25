@@ -110,7 +110,8 @@ describe("buildFoodMigrationPayload", () => {
     const p = buildFoodMigrationPayload(stateWithFoods(), "H1", { ariel: "PA", alena: "PB" });
     // only the custom food
     expect(p.foods.map((f) => f.id)).toEqual(["cust-uuid-1"]);
-    expect(p.foods[0].normalized_name).toBe("שייק בננה");
+    // normalizeFoodName folds ktiv male, so שייק and שיק share one key.
+    expect(p.foods[0].normalized_name).toBe("שיק בננה");
 
     // preferences: f_coffee (favorite + recent), cust-uuid-1 (favorite + recent), profile PA
     const byFood = Object.fromEntries(p.preferences.map((r) => [r.food_id, r]));

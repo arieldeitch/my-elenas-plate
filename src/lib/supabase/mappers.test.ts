@@ -138,7 +138,9 @@ describe("custom food mapping", () => {
       id: "abc",
       household_id: "H1",
       name: "שייק  בננה",
-      normalized_name: "שייק בננה",
+      // Whitespace collapsed and ktiv male folded (שייק → שיק) by
+      // normalizeFoodName, so a duplicate can't be created by spelling.
+      normalized_name: "שיק בננה",
       default_unit: "כוס",
       kind: "generic",
       is_active: true,

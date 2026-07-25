@@ -194,14 +194,17 @@ export async function insertWeighIn(
 
 // --- custom foods -----------------------------------------------------------
 
-/** Household-scoped active custom foods. */
+/**
+ * The household's catalog rows (seeded + custom). Archived rows are included on
+ * purpose: `mergeCatalog` needs them to hide a built-in food the household
+ * archived. Filtering happens there, not here.
+ */
 export async function loadFoods(householdId: string): Promise<Food[]> {
   const sb = requireSupabase();
   const { data, error } = await sb
     .from("foods")
     .select("*")
     .eq("household_id", householdId)
-    .eq("is_active", true)
     .order("created_at");
   if (error) throw error;
   return ((data ?? []) as FoodRow[]).map(foodFromRow);

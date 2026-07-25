@@ -73,6 +73,12 @@ export interface Food {
   defaultUnit?: Unit;
   suggestedUnits?: Unit[];
   kind?: FoodKind;
+  /**
+   * Mirrors `foods.is_active`. Only set on foods loaded from Supabase: `false`
+   * means the household archived it, which removes it from the catalog while
+   * keeping historical entries readable (they store the name).
+   */
+  isActive?: boolean;
 }
 
 // --- Coffee ---------------------------------------------------------------

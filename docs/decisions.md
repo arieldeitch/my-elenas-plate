@@ -417,3 +417,83 @@ Scripts: `npm test`, `npm run test:watch`, `npm run typecheck`.
 - אומת חי (7/7 remote-live): יצירת מאכל מותאם, מועדפים/אחרונים לפי פרופיל, בידוד, soft-delete, realtime.
 - **migration `090400` הוחל על ה-remote (2026-07-24)** ואומת: `food_id` הוא text, ולכן מועדפי/אחרוני
   **מאכלים מובנים וגם מותאמים** מסתנכרנים ב-remote (אומת בדפדפן, עם הפרדת פרופיל). הנתונים ההיסטוריים אינם נפגעים.
+
+---
+
+## DEC-019 — Supabase הוא מקור האמת לקטלוג; מודולי TypeScript הם ההגדרה הקנונית ו-Fallback
+
+- תאריך: 2026-07-25
+- סטטוס: Accepted (מממש DEC-001; מרחיב DEC-018)
+
+### הקשר
+
+הקטלוג המובנה היה קבוע בצד הלקוח (23 פריטים) ורק מאכלים מותאמים נשמרו ב-`foods`.
+נדרש קטלוג עברי רחב לשימוש יומיומי, וגם ש-Supabase יהיה מקור האמת (DEC-001) —
+בלי לשבור את היכולת לתעד כאשר ה-Seed עוד לא הוחל או כשאין רשת.
+
+### החלטה
+
+- **הגדרה קנונית**: מודולי TypeScript לפי קטגוריה תחת `src/data/foods/*.ts` (390 פריטים).
+- **מקור אמת בזמן ריצה**: `public.foods`. `mergeCatalog` ממזג לפי `normalized_name`:
+  שורה מרוחקת **גוברת** על הפריט המובנה (category / default_unit / kind), שורה עם
+  `is_active = false` **מסתירה** אותו, ושורות ללא התאמה הן מאכלים מותאמים.
+- **`id` נשאר ה-`f_*` של הקטלוג** גם כשהשורה המרוחקת גוברת, כדי שמועדפים/אחרונים
+  (`food_preferences.food_id` כ-text, DEC-018) לא יתנתקו כשה-Seed מוחל.
+- **Fallback**: כל עוד אין שורה מרוחקת, הפריט המובנה מוצג — כך האפליקציה שמישה
+  offline, לפני החלת ה-Migration, ובמצב דמו מקומי.
+- **סנכרון SQL↔TS**: ה-Seed ב-Migration נוצר מהמודולים ע"י `npm run catalog:seed`
+  (`scripts/generate-catalog-seed.ts`), ו-`src/lib/catalog-seed.test.ts` נכשל אם הקובץ
+  אינו הצורה המעודכנת. אין אפשרות ל-drift.
+
+### חלופות שנשקלו
+
+- להשאיר את הקטלוג רק בצד הלקוח — נדחה: סותר את DEC-001 ואינו נגיש ל-DB.
+- להעביר את הקטלוג רק ל-DB — נדחה: לפני החלת ה-Seed / ללא רשת האפליקציה תישאר בלי
+  קטלוג, ו-`f_coffee` (DEC-014) חייב להישאר קבוע בקוד.
+- להוסיף עמודת `catalog_key`/`allowed_units` ל-`foods` — נדחה: שינוי Schema שאינו נדרש.
+  `allowed_units` אינו קיים ב-Schema; קבוצות היחידות נשארות בצד הלקוח.
+
+### השלכות
+
+- `foods.is_active` נטען כולל שורות מאורכבות (`loadFoods` ללא סינון) כדי ש-Archive
+  ב-DB אכן יסתיר פריט מובנה. `Food.isActive` נוסף ל-Domain.
+- `mappers.foodToRow` משתמש ב-`normalizeFoodName` (DEC-020) עבור `normalized_name`.
+- קבצים: `src/data/foods/*`, `src/lib/food-catalog.ts`, `src/lib/domain.ts`,
+  `src/lib/supabase/{mappers,repositories}.ts`, `src/lib/sync/use-supabase-sync.tsx`,
+  `scripts/{catalog-seed-sql,generate-catalog-seed}.ts`.
+
+---
+
+## DEC-020 — נרמול שמות עברי אחד, גם לחיפוש וגם למניעת כפילויות
+
+- תאריך: 2026-07-25
+- סטטוס: Accepted
+
+### הקשר
+
+`normalize` הקודם ביצע trim + lowercase + כיווץ רווחים בלבד. לכן `עגבניה` לא מצא
+`עגבנייה`, `קוטג` לא מצא `קוטג׳`, ואפשר היה ליצור מאכל מותאם כפול שנבדל רק בגרש —
+שגם נכשל בסנכרון בגלל `unique (household_id, normalized_name)`.
+
+### החלטה
+
+`src/lib/food-normalize.ts` (`normalizeFoodName`) הוא המפתח היחיד לחיפוש, למניעת
+כפילויות ולעמודה `normalized_name`. הכללים: separators (מקף/לוכסן) → רווח; הסרת
+גרש/גרשיים וכל גרסאות הגרש; הסרת ניקוד (U+0591–U+05BD, U+05BF–U+05C7); הסרת פיסוק;
+lowercase ל-Latin; קיפול כתיב מלא (`יי`→`י`, `וו`→`ו`); כיווץ רווחים; trim.
+הפונקציה אידמפוטנטית. אין תת-מערכת Aliases.
+
+### נימוק
+
+קיפול הכתיב המלא פותר את מרבית שגיאות ההקלדה בעברית בכלל אחד, בלי טבלת מילים
+נרדפות. הוא מקפל רק אותיות מוכפלות — `פטה` ו-`פיתה` נשארים נפרדים.
+
+### השלכות
+
+- `addFood` מחזיר מאכל קיים כאשר הנרמול זהה, במקום ליצור כפילות.
+- `normalized_name` של מאכלים מותאמים שנשמרו לפני השינוי עשוי להיות שונה מהערך
+  שהיה נכתב היום; אין השפעה על נתונים היסטוריים כי `food_entries` שומר `food_name`.
+- חיפוש: `src/lib/food-search.ts` בונה Index פעם אחת לכל שינוי רשימה, ומדרג
+  התאמה מדויקת → תחילית → תחילית מילה → הכלה, עם תקרה של 20 תוצאות.
+- מכוסה ב-`food-normalize.test.ts` (11), `food-catalog.test.ts` (25),
+  `catalog-seed.test.ts` (16).
