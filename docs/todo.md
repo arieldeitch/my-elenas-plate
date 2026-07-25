@@ -1,32 +1,57 @@
 # TODO
 
 Status legend: Done / In Progress / Blocked / Deferred / Not Started.
-Updated 2026-07-25. Project is **pilot-ready** — verified backend/E2E checkpoint at
-tag `pilot-ready-2026-07-24` (`29ac1d5`); current `main` also merges Lovable's branding illustration work.
-All P0/P1 MVP + Supabase + T-027/T-028 are Done.
+Updated 2026-07-25. **Production bootstrap is complete** — Supabase project `rqgoiuztphkcvbwtbxbj`
+holds 1 household, 2 profiles (אריאל/אלנה), 6 meal slots, RLS on 10 tables and 390 active foods
+(status `READY`). Rollback code checkpoint: tag `pilot-ready-2026-07-24` (`29ac1d5`).
+All P0 work is Done. The only open P1 is T-034 below, and it needs no technical action.
 
-## Pilot start 2026-07-26
+## Next task (the only open P1)
 
-- **T-033 (P0) DONE (2026-07-25)** — database applied to `rqgoiuztphkcvbwtbxbj` via
-  `supabase/bootstrap_and_seed.sql`. Verified: 1 household, 2 memberships, profiles אריאל/אלנה,
-  6 meal slots, RLS on 10 tables, **390 active foods**, `weigh_ins = 0`, status `READY`.
-  Root cause of the first zero-row report: the seed inserts one row per household and the project had
-  no household yet (`bootstrap_household()` had never run there) — see `project-status.md`.
-- **T-034 (P1, open) — First real-use confirmation in the browser.** Not doable by the assistant:
-  it needs the household account's credentials, and a throwaway account would create a second
-  household. Covered by automated tests, not observed live. On the first log, confirm: both profiles
-  switch, a search returns catalog foods, one entry saves and deletes, מועדפים/אחרונים start empty,
-  and a refresh brings nothing back.
-- **T-041 (P1, open) — Re-run `npm run e2e`.** Deliberately not run: it signs up fresh `e2e_*`
-  accounts, which would create extra households in the now-clean pilot project. Run it against a
-  dedicated project (see T-029).
+### T-034 (P1) — Authenticated first-use smoke verification
+
+**Status:** Ready / Pending first real use.
+
+Requires **no SQL and no Terminal commands** — it is ordinary use of the application. Claude cannot
+perform it: it needs the household account's credentials, and a throwaway account would create a second
+household in the clean pilot project.
+
+Acceptance criteria:
+
+- User can sign in normally.
+- אריאל and אלנה are both visible.
+- Switching profiles preserves the active date.
+- Food search returns catalog items.
+- A real food entry can be added.
+- Refresh preserves the entry.
+- No mock records appear.
+- Recent Foods updates after genuine use.
+- Favorite Foods remains user-controlled.
+- Any failure is documented with the exact visible behaviour.
+
+## Production bootstrap — done 2026-07-25
+
+- **T-033 (P0) Done** — database applied to Supabase project `rqgoiuztphkcvbwtbxbj` via
+  `supabase/bootstrap_and_seed.sql`, run once manually in the SQL Editor. Verified: 1 household,
+  2 memberships, profiles אריאל/אלנה, 6 meal slots, RLS on 10 tables, **390 active foods**,
+  `weigh_ins = 0`, status `READY`. Root cause of the first zero-row report: the seed inserts one row
+  per household and the project had no household yet (`bootstrap_household()` had never run there).
+  **The bootstrap must not be rerun** (DEC-021); use read-only `supabase/verify_catalog.sql` instead.
+- **T-043 Done** Documentation reconciled and session closed (`project-status.md`, `todo.md`,
+  `claude-context.md`, `gpt-handover.md`, `decisions.md` DEC-021, `supabase/DEPLOY.md`): the applied
+  bootstrap is recorded as historical, and every "pending migration" instruction was removed.
+- **T-042 (P2, open) — Playwright E2E against a dedicated project.** Deliberately not run against the
+  pilot project: it signs up fresh `e2e_*` accounts, which would create extra households. Folds into
+  T-029.
 
 ## Done (2026-07-25) — production catalog + mock-data removal
 
 - **T-035 Done** Hebrew name normalization (`src/lib/food-normalize.ts`, DEC-020): geresh variants,
   niqqud, ktiv male (`עגבניה`≡`עגבנייה`), punctuation, whitespace, Latin case. 11 tests.
-- **T-036 Done** 390-item Hebrew catalog in 11 category modules under `src/data/foods/`
-  (DEC-019). No calories, macros, labels or scores. 25 validation + search tests.
+- **T-036 Done** 390-item Hebrew catalog spanning **14 categories**, authored in 11 modules under
+  `src/data/foods/` (DEC-019). No calories, macros, health labels or scores. 25 catalog-validation +
+  search tests (no blank/duplicate normalized names, valid units, default unit offered, no nutrition
+  fields, no placeholder names).
 - **T-037 Done** Ranked, capped search (`src/lib/food-search.ts`): index built once per list
   change, exact → prefix → word-prefix → substring, max 20 results.
 - **T-038 Done** Duplicate prevention: `addFood` returns the existing food when the normalized
@@ -40,7 +65,7 @@ All P0/P1 MVP + Supabase + T-027/T-028 are Done.
   **Applied to the remote on 2026-07-25** together with `supabase/bootstrap_and_seed.sql`, which
   supplies the household/profiles the seed needs (see T-033).
 
-## Done (this session)
+## Done (2026-07-22/23 — MVP hardening)
 
 - **T-001** Repository audit (branch/commit/stack/scripts/config) — Done. See `project-status.md`.
 - **T-A01** Fix lint gate — Done. Added `endOfLine: auto`; normalised formatting; removed `any` in demo-data. `eslint .` → 0 errors.
@@ -115,5 +140,19 @@ All P0/P1 MVP + Supabase + T-027/T-028 are Done.
 
 ## Deferred / explicitly NOT in MVP (P3, not approved)
 
-- Dashboard, calories, macros, goals, nutrition scoring, recommendations, gamification, image/voice
-  input, wearables, agents, household expansion beyond the two profiles, separate Auth users per profile.
+Deferred, and not to be added without an explicit decision:
+
+- dashboard
+- calories
+- macros
+- goals
+- recommendations
+- notifications
+- voice input
+- image recognition
+- wearables
+- gamification
+- Agents
+
+Also deferred: nutrition scoring, household expansion beyond the two profiles, and separate Auth users
+per profile.

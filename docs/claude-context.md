@@ -1,28 +1,67 @@
 # Claude Context
 
 Fast-start context for Claude Code. The latest user instruction always overrides older docs.
-Updated 2026-07-25. **Pilot-ready** — verified backend/E2E checkpoint at tag `pilot-ready-2026-07-24`
-(`29ac1d5`); current `main` also merges Lovable's branding illustration work (`BrandIllustration`).
+Updated 2026-07-25.
 
-## DATABASE IS LIVE (2026-07-25)
+## Start state
 
-Project `rqgoiuztphkcvbwtbxbj` is set up and verified: **1 household, 2 memberships, profiles
-אריאל/אלנה, 6 meal slots, RLS on 10 tables, 390 active foods, zero tracking data, status READY.**
-Applied with `supabase/bootstrap_and_seed.sql`. **Do not re-run any SQL** — both scripts are
-idempotent, but there is nothing left to apply.
+- **Project:** shared Nutrition Tracker for **אריאל (Ariel)** and **אלנה (Elena)** — Hebrew, RTL,
+  mobile-first daily logging.
+- **Branch:** `main` · **Commit:** `90df85f` · synchronized with `origin/main`.
+- **Supabase project:** `rqgoiuztphkcvbwtbxbj`.
+- **Production status:** bootstrap complete, catalog seeded, **ready for real use**.
 
-Note for future sessions: the catalog seed inserts one row **per household**
-(`from public.households h cross join catalog c`), so it silently seeds nothing on a project where no
-account has signed in yet (no household ⇒ no rows). That is what caused the first zero-row report.
-`bootstrap_and_seed.sql` is the fix and is safe to reuse on a fresh project.
+## Verified production baseline (2026-07-25)
 
-## FIRST NEXT STEP
+| households | memberships | profiles | meal slots | RLS tables | active foods | transactional logs | status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | 2 | 2 | 6 | 10 | **390** | 0 | **READY** |
 
-Confirm the first real log in the browser (T-034): both profiles switch, search returns catalog foods,
-one entry saves and deletes, מועדפים/אחרונים start empty, a refresh brings nothing back. This needs the
-household account's credentials, so the assistant cannot do it — a throwaway account would create a
-second household. Do **not** run `npm run e2e` against this project (it signs up `e2e_*` accounts and
-would add households); use a dedicated project (T-029/T-041).
+## Important instructions
+
+- **Do not rerun the bootstrap migration** (DEC-021 — it is historical and applied).
+- Do not reset or reseed the database.
+- Do not recreate demo data.
+- Do not assume the user needs to run SQL. They do not.
+- Supabase is the source of truth.
+- Preserve the household and both profiles.
+- Preserve the 390-item catalog.
+- Out of scope: calories, macros, goals, gamification, dashboard, recommendations, voice,
+  image recognition, wearables, Agents.
+- Avoid unrelated refactors.
+
+Why the first SQL report showed zeros (so a future session does not misread it): the catalog seed
+inserts one row **per household** (`from public.households h cross join catalog c`), and the project
+had the full schema but no household, because `bootstrap_household()` only runs on sign-in and had
+never run there. `supabase/bootstrap_and_seed.sql` created the household/membership/profiles and then
+seeded. Nothing was ever broken in the migration.
+
+## Important files
+
+- `supabase/migrations/20260725190000_cleanup_mock_data_and_seed_food_catalog.sql` (applied)
+- `supabase/bootstrap_and_seed.sql` (applied) · `supabase/verify_catalog.sql` (read-only checks)
+- `src/data/foods/` · `src/lib/food-normalize.ts` · `src/lib/food-search.ts`
+- `docs/project-status.md` · `docs/todo.md` · `docs/decisions.md` · `docs/gpt-handover.md`
+
+## First action for the next session
+
+Not a repository audit, and not a migration:
+
+1. Read `docs/claude-context.md`.
+2. Read `docs/project-status.md`.
+3. Read `docs/todo.md`.
+4. Check the current branch, HEAD and `git status` (read-only).
+5. Ask what happened during the user's first real use, or process the issue they already supplied.
+6. Continue from the existing production baseline.
+7. Never rerun the bootstrap as a troubleshooting shortcut — use `supabase/verify_catalog.sql`.
+
+## Known limitation
+
+Claude has **not** authenticated through the user's account, so profile switching, adding a food in the
+real UI, refresh persistence and live Recent/Favorite behaviour were never observed in an authenticated
+browser session (they are covered by automated tests). **Do not request the password.** If authenticated
+UI testing becomes necessary, give the user one minimal in-app action, or use an approved session
+mechanism that does not expose credentials.
 
 ## What this is
 

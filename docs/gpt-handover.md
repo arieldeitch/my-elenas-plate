@@ -1,180 +1,223 @@
 # GPT Handover
 
-Continuity handover across tools. Updated 2026-07-25 (production catalog + mock-data removal).
+Continuity handover across tools. Updated **2026-07-25** — production bootstrap session closed.
 
-## 0. Read this first — the database is live
+> Any future GPT must rely on the documentation in this repository, not on conversation memory.
+> On conflict, the newest user instruction wins, then `project-status.md`, then this file.
 
-The pilot can start **2026-07-26 morning**. Project `rqgoiuztphkcvbwtbxbj` was set up and verified on
-2026-07-25 via `supabase/bootstrap_and_seed.sql`:
+---
 
-| households | memberships | profiles אריאל/אלנה | meal slots | RLS tables | active foods | tracking data | status |
+## 1. Product purpose
+
+A shared Hebrew, RTL, mobile-first **nutrition logging** app for two people: **אריאל (Ariel)** and
+**אלנה (Elena)**. The purpose is fast, calm, reliable daily logging — **not** analysis. The tone is
+neutral and non-judgmental, status is never communicated by colour alone, and no food is ever labelled
+good, bad, healthy or forbidden.
+
+## 2. Current production state
+
+**The project is no longer in a specification-only or bootstrap stage. The database is live.**
+
+- The production bootstrap **has completed**, applied once manually in the Supabase SQL Editor, with a
+  final report of `READY`.
+- The **390-food Hebrew catalog is live** in the database.
+- **No further SQL action is pending.** Do not instruct the user to rerun the migration.
+- The single remaining check is the user's **first real-use interaction** in the app.
+
+| households | memberships | profiles (אריאל/אלנה) | meal slots | RLS tables | active foods | transactional logs | status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1 | 2 | 2 | 6 | 10 | **390** | 0 | **READY** |
 
-**No further SQL is needed.** Both SQL scripts are idempotent, but there is nothing left to apply.
+## 3. Repository and commits
 
-Why the first attempt reported zeros: the catalog seed inserts one row **per household**
-(`from public.households h cross join catalog c`), and the project had the full schema but no household,
-because `bootstrap_household()` only runs when an account signs in and that had never happened there.
-So the seed correctly inserted 0 rows — the cleanup migration was never at fault, and running it twice
-was harmless (its only `foods` delete targets the literal `מאכל בדיקה`, so it can never remove a seeded
-catalog). `bootstrap_and_seed.sql` created the household, membership and the two profiles, then seeded.
+- **Branch:** `main` · **Remote:** `https://github.com/arieldeitch/my-elenas-plate.git`
+- **HEAD at session close:** `90df85f` — synchronized with `origin/main`.
+- Relevant commits from this work:
+  - `6768c99` feat(foods): add production Hebrew catalog and safe seed migration
+  - `82de378` docs(migration): clarify atomicity and rollback
+  - `d018725` style(auth): fix pre-existing prettier error in SignIn
+  - `7d8ce50` fix(supabase): add bootstrap script so the catalog seed has a household to seed
+  - `90df85f` docs: record the applied Supabase setup and the zero-row root cause
+- **Rollback code checkpoint:** tag `pilot-ready-2026-07-24` → `29ac1d5`.
+- Working tree clean apart from two intentionally-untracked items: the reference folder
+  `nutrition-tracker-knowledge-pack-complete/` and `my-elenas-plate.code-workspace`.
+- No secrets tracked. Only `.env.example`; `.env`, `.env.e2e`, Playwright artifacts,
+  `package-lock.json` and `coverage/` are gitignored.
 
-One open confirmation (T-034): the in-browser first-use check — profile switching, catalog rendering
-from Supabase, one entry saved and deleted, empty מועדפים/אחרונים, nothing back after refresh. The
-assistant cannot do it: it needs the household account's credentials, and a throwaway account would
-create a second household. Do **not** run `npm run e2e` against this project — it signs up `e2e_*`
-accounts and would add households; use a dedicated project (T-029/T-041).
+## 4. Supabase state
 
-## Product
+- **Project reference:** `rqgoiuztphkcvbwtbxbj`. The application configuration points at it (verified in
+  the client module the running app actually loads, not only in `.env`).
+- All schema, RLS and bootstrap migrations are applied; RLS is enabled on all 10 relevant tables and
+  was re-confirmed after the bootstrap (anonymous reads return empty; the bootstrap RPC rejects
+  unauthenticated calls).
+- Applied operational SQL: the cleanup/seed migration plus `supabase/bootstrap_and_seed.sql`.
+- **Read-only verification** for any future doubt: `supabase/verify_catalog.sql`. It writes nothing and
+  can be run any number of times.
+- **Why the first SQL report showed zeros** (important, so it is never misdiagnosed again): the catalog
+  seed inserts one row **per household** (`from public.households h cross join catalog c`), and the
+  project had the full schema but **no household**, because `bootstrap_household()` only runs when an
+  account signs in and that had never happened there. The seed therefore correctly inserted 0 rows. The
+  migration was never at fault, and running it twice was harmless — its only `DELETE` against `foods`
+  targets the exact literal `מאכל בדיקה`, so it can never remove a seeded catalog.
 
-Shared Hebrew RTL, mobile-first nutrition **logging** app for **אריאל** and **אלנה**. Purpose: fast,
-calm, reliable daily logging — NOT analysis. Tone is neutral and non-judgmental; status is never
-communicated by color alone.
+## 5. Household and profiles
 
-## 1. Repository state
+- One shared household, one shared Auth account model (DEC-017): two **internal** profiles, not two
+  Auth users. Data is separated by `profile_id`; the shared account can edit both.
+- Profiles: **אריאל** and **אלנה** (internal ids remain `me` / `elena`; slugs `ariel` / `alena`).
+  The word "אני" must never appear in the UI.
+- Two household memberships exist.
+- Both profiles use the same product structure and share one food catalog.
+- Six meal slots (fixed order and labels): פתיחת חלון אכילה · נשנוש ראשון · ארוחה מרכזית ·
+  נשנוש אחר הצהריים · ארוחת ערב · ארוחה נוספת. "ארוחת לילה" must not appear.
 
-- **Branch:** `main` · **Remote:** `https://github.com/arieldeitch/my-elenas-plate.git`.
-- **Rollback tag:** `pilot-ready-2026-07-24` → `29ac1d5` — the verified backend + E2E code checkpoint
-  (production-ready). Still valid; later work is additive.
-- **Divergence resolved (2026-07-24):** while this handover was in progress, Lovable pushed 12 commits to
-  `origin/main` (branding: `BrandIllustration` + PNG asset, `favicon.png`, `BrandMark`/`AuthGate`/`SignIn`/
-  `__root` updates, `bun.lock`). No file overlap with the docs work; integrated via a normal **merge**
-  (no rewrite, no force-push). The merged tree is green: tsc 0, 109 hermetic tests, build. The Playwright
-  E2E suite was not re-run after the branding merge (docs-only session) — re-run `npm run e2e` next session.
-- **Working tree:** clean except the intentionally-untracked `nutrition-tracker-knowledge-pack-complete/`.
-- **Secrets/artifacts:** none tracked. Only `.env.example`. `.env`, `.env.e2e`, Playwright artifacts,
-  `package-lock.json`, `coverage/` are gitignored.
+## 6. Food catalog
 
-## 2. Completed milestones (all verified)
+- **390 active Hebrew items across 14 categories**, covering foods, drinks, ingredients, spreads,
+  snacks, dishes, vegetables, fruits, dairy, eggs, grains, breads, legumes, meat, poultry, fish, sauces
+  and common Israeli meals.
+- **No** calories, macros, health labels, quality scores, goals or nutrition recommendations — by
+  decision (DEC-004, DEC-009), not by omission.
+- The bootstrap created **no** Favorites, Recents or Food Entries.
+- **Supabase is the source of truth** (DEC-019). The TypeScript modules under `src/data/foods/` are the
+  canonical *definition*: they generate the seed SQL and act as the offline / pre-seed fallback. They
+  must **not** be documented as the primary production source.
+- Per-food practical units (e.g. גבינה צהובה = פרוסה/גרם, מים = מ״ל/כוס/ליטר); the default unit is
+  always one of the offered units.
 
-- **Supabase integration** — typed client (anon key only, SSR-safe), repositories, generated types,
-  gated store sync behind `isSupabaseConfigured()`. Demo mode (no env) = localStorage.
-- **Remote deployment COMPLETE** — project `rqgoiuztphkcvbwtbxbj`; all 5 migrations applied, incl.
-  `20260723090400_food_prefs_text_id.sql` (verified: text `food_id`).
-- **Auth** — one shared account; magic-link + password; `bootstrap_household()` creates the household +
-  two profiles (אריאל/אלנה) idempotently. Data separated by `profile_id`.
-- **RLS** — every user table; `is_household_member()` (SECURITY DEFINER); 35 policies. Verified: anon
-  denied, unrelated household denied, member allowed, per-profile separation.
-- **Realtime** — publication for 8 tables; `subscribeHousehold` re-hydrates; two-context verified live
-  (incl. remote, after the socket-auth fix).
-- **Offline queue** — dirty-tracked push with in-flight protection, requeue-on-failure, reconnect retry;
-  no duplicate rows on flush.
-- **Local→cloud migration** — pure transform + separate markers (`v1` meal data, `foods:v1`), verified.
-- **Coffee** — structured `CoffeeMeta` (type/milk/milkType/note) on the food entry; DB CHECK for
-  milk-type compatibility.
-- **Favorites / recents / custom foods (T-027)** — `foods` + `food_preferences` per profile; built-in
-  AND custom foods; optimistic UI, realtime, offline, migration. Verified live (remote).
-- **Playwright browser E2E (T-028)** — 10 specs; `npm run e2e`.
-- **Remote verification** — every capability verified in the browser against the remote in isolation;
-  gated integration suites 12/12 against remote (the DB layer).
+## 7. Search and normalization
 
-## 3. Bugs fixed during T-028 (browser E2E)
+- `src/lib/food-normalize.ts` — one normalization key used consistently for search, duplicate
+  prevention and the `normalized_name` column: Hebrew niqqud removal, whitespace normalization,
+  punctuation normalization, geresh and apostrophe variants, Hebrew spelling normalization as required
+  by the implemented tests, and Latin lowercase where relevant. Idempotent; no alias subsystem.
+- `src/lib/food-search.ts` — ranked search with a result limit, so the full catalog is never rendered.
+- Duplicate prevention: creating a custom food whose normalized name already exists reuses the existing
+  food instead of creating a twin.
+- Automated search coverage: מלפפון · עגבניה · עגבנייה · גבינה צהובה · שניצל · אורז · חזה עוף · סלט ·
+  מים · קפה · קוטג · פיתה · טחינה.
 
-1. `MealEditor` reset its view on every parent re-render (unstable `onClose` in effect deps) — reset the
-   open editor mid-flow with sync active. Split the effect + stabilised home close handlers.
-2. Configured mode seeded demo data (non-UUID ids) into fresh cloud accounts and persisted it to
-   localStorage. Now starts empty when configured; never writes localStorage in that mode.
-3. `flush` cleared dirty before pushing (offline loss) and `hydrate` had no dirty/in-flight guard (wiped
-   optimistic edits, then pushed the emptied day). Added in-flight protection + requeue.
-4. Mutations during the activation window weren't recorded (marker gated on `active`) → lost.
-5. Activation didn't retry when interrupted (offline during bootstrap) → added `online` re-activation.
-6. `subscribeHousehold` reused a fixed channel name → "cannot add callbacks after subscribe()" on
-   re-activation. Unique channel name per subscription.
-7. `WeighInForm` inputs had no associated labels (a11y) and reset on background hydrate. Labels wrap
-   inputs; reset keyed on open only.
-8. Realtime didn't reach a second session against the remote (RLS blocked `postgres_changes` because the
-   socket had no JWT). `subscribeHousehold` now calls `realtime.setAuth(token)` before subscribing.
+## 8. Mock-data cleanup
 
-## 4. Final architecture decisions (see decisions.md)
+- `src/lib/demo-data.ts` was **removed**.
+- The production store no longer initializes with demo nutrition records — it starts empty in every mode.
+- The stale local-snapshot path that could repopulate cloud data was **disabled**.
+- At the verified production baseline there were no mock meals, meal statuses, fasting logs, workout
+  logs, weigh-ins, favorites or recents.
+- Cleanup logic uses **explicit fingerprints**, never broad date-based deletion. Ambiguous records are
+  preserved rather than deleted, and Auth users, households, profiles, memberships, meal slots, RLS and
+  real user data are protected.
 
-- DEC-017 — one shared Auth account + two internal profiles; Supabase is source of truth.
-- DEC-018 — `food_preferences.food_id` is a text app-id (no FK) so built-in + custom foods can be
-  favorited/recented uniformly; custom foods live in `foods` (soft-delete via `is_active`).
-- **DEC-019 (new)** — Supabase `public.foods` is the source of truth for the catalog; the 390-item
-  TypeScript catalog under `src/data/foods/*` is the canonical definition (it generates the seed SQL)
-  and the offline / pre-seed fallback. `mergeCatalog` reconciles by `normalized_name`: a remote row
-  supersedes the bundled item, `is_active = false` hides it, and the app food id stays `f_*` so
-  favorites/recents survive the seed.
-- **DEC-020 (new)** — one Hebrew normalization function (`normalizeFoodName`) for search, duplicate
-  prevention and `normalized_name`: geresh/apostrophe variants, niqqud, ktiv male (`עגבניה`≡`עגבנייה`),
-  punctuation, whitespace, Latin case. No alias subsystem, no new dependency.
-- Store starts EMPTY in **every** mode and there is no demo/mock seed anywhere
-  (`src/lib/demo-data.ts` deleted 2026-07-25). localStorage is read only in demo mode, and the
-  one-time localStorage→cloud import is disabled so a stale snapshot cannot repopulate the cloud.
+## 9. Quality checks
 
-## 5. Known limitations (not product bugs)
+Verified 2026-07-25: TypeScript typecheck 0 errors · ESLint 0 errors (8 pre-existing development-only
+HMR warnings) · **186 automated tests passing**, 2 gated live suites skipped · Vite production build
+passing · Prettier clean · deterministic catalog SQL generator verified · no secrets or environment
+files committed.
 
-- **Remote full-suite E2E in one run** is bound by GoTrue **sign-up rate-limiting** (~15 fresh accounts
-  per run) and occasional `PGRST303 "JWT issued at future"` **clock skew**. Each capability passes in
-  isolation; the full 10-spec suite runs green against the local stack (identical schema).
-- **CI recommendation:** run Playwright E2E against a **dedicated** Supabase project (or the local stack)
-  to avoid shared-project rate limits; monitor clock skew.
-- 8 dev-only `react-refresh/only-export-components` lint **warnings** (shadcn + store dual-export) — no
-  runtime/production impact; documented, not suppressed globally.
-- `bun.lock` is not updated for the test/e2e devDeps added via npm — a `bun install` regenerates it.
+(The 186 figure supersedes the 173 reported at `6768c99`; the bootstrap-script tests were added after
+that commit.) Playwright E2E passed on 2026-07-24 but is deliberately **not** run against this project —
+it signs up fresh `e2e_*` accounts, which would create extra households.
 
-## 6. Current MVP scope
+## 10. Decisions currently active
 
-Two profiles (אריאל/אלנה) · six meal slots · `unmarked/logged/skipped` (skipped counts as complete) ·
-daily completeness from the six slots only · measured + subjective quantity (stored as entered) ·
-coffee (structured) · fasting (16:8, midnight crossover) · workout · weigh-ins (fat mass, delta) ·
-weight banner · calendar (full/partial/empty, shape+color) · recent + favorite + custom foods ·
-Supabase sync (auth, RLS, realtime, offline, migration).
+See `decisions.md` for the full records. The ones that govern current work:
 
-## 7. Explicitly NOT part of MVP
+- **DEC-001 / DEC-017** — Supabase is the source of truth; one shared Auth account + two internal profiles.
+- **DEC-002** — one household containing two profiles.
+- **DEC-003 / DEC-007** — daily completeness comes from the six meal slots only; `skipped` counts as complete.
+- **DEC-004 / DEC-009** — no calories or macros; non-judgmental tone.
+- **DEC-006** — measured and subjective quantities are stored exactly as entered.
+- **DEC-014** — coffee is a normal food entry with structured attributes.
+- **DEC-018** — `food_preferences.food_id` is a text app id, so built-in and custom foods can be
+  favorited/recented uniformly.
+- **DEC-019** — catalog ownership: Supabase is authoritative; the TypeScript catalog is the canonical
+  definition, seed generator and offline fallback.
+- **DEC-020** — one Hebrew normalization function for search, duplicate prevention and `normalized_name`.
+- **DEC-021** — the production bootstrap migration is one-time and must not be rerun as routine startup
+  or troubleshooting.
 
-Calories, macros, goals, nutrition scoring, dashboard/analytics, recommendations, gamification, image or
-voice input, wearables, agents, household expansion beyond the two profiles, separate Auth users per
-profile.
+## 11. Scope exclusions
 
-## 8. Open backlog
+Not in scope, and must not be added without an explicit decision: dashboard, calories, macros, goals,
+nutrition scoring, recommendations, notifications, gamification, voice input, image recognition,
+wearables, Agents, household expansion beyond the two profiles, separate Auth users per profile.
 
-- **P1 ops:** add Playwright E2E to CI against a dedicated project; add a desktop Playwright project.
-- **P2:** weigh-in history screen; catalog management UI (edit/rename/restore custom foods — the
-  repository `archiveFood`/`upsertFood` exist, no UI yet); export.
-- **Nice-to-have:** distinct avatar initials for אריאל/אלנה (both currently "א"); quick-add FAB opens
-  "ארוחה מרכזית" — consider a slot chooser; an in-app sign-out control (auth has `signOut()`, no UI).
-- **P3 (not approved):** everything under "Explicitly NOT part of MVP".
+## 12. User working style
 
-## 9. Next recommended development stages
+- Communicate **in Hebrew**. The user is **non-technical**.
+- Minimize manual instructions; give **one simple action at a time**; prefer automation.
+- Do not ask the user to use Git, Terminal, CLI, migrations, SQL, environment variables or database
+  credentials unless genuinely unavoidable.
+- Do not ask for confirmation on standard technical decisions.
+- Factual, non-judgmental tone; avoid unnecessary explanation of internal implementation.
 
-1. Wire Playwright E2E into CI against a dedicated Supabase project (closes the remote-rate-limit gap).
-2. Pilot with real data (Ariel + Alena) on the remote; watch sync-state + realtime in daily use.
-3. Branding pass (see §10–11) — stronger illustration presence + visual refinement.
-4. Only then consider P2 backlog (weigh-in history, catalog management, export).
+## 13. Known limitation
 
-## 10. Branding done (in Lovable)
+Claude never authenticated through the user's actual application account, because the password was
+unavailable and a throwaway account would have created a second household. Therefore the following were
+**not personally observed by Claude** in an authenticated browser session — do not claim otherwise:
 
-- Wordmark **"בריאותי"** (`BrandMark`).
-- Calm healthcare pastel design system: green primary (`#17A668`), info blue, per-slot soft tints, soft
-  shadows, rounded cards; coherent typography scale (≥12px content floor). Per-meal-slot lucide icons +
-  status badges/pills; RTL, mobile-first layout.
-- **Brand illustration (added 2026-07-24, merged):** `src/components/brand/BrandIllustration.tsx` — a
-  shared PNG asset with `header` / `auth` / `empty-state` / `loading` variants; used in the header
-  (`BrandMark`), the auth loading state (`AuthGate`) and the sign-in screen. `favicon.png` replaced the
-  old `.ico`. Merged cleanly; tsc + 109 tests + build green.
+- visible switching between אריאל and אלנה,
+- adding a food through the real UI,
+- refreshing and observing persistence through the user account,
+- live Recent and Favorite behaviour through the user account.
 
-## 11. Branding still desired (optional refinement)
+All of it is covered by automated tests at the logic and component level. This is **not** a blocker; the
+user's first real food entry functions as the final authenticated smoke test.
 
-- Apply the illustration's `empty-state` variant to the six meal-slot tiles / empty states for a warmer,
-  more illustrated home screen.
-- General visual polish and optional light motion (respecting `prefers-reduced-motion`). Keep the calm,
-  non-judgmental, uncluttered tone.
-- Note: the `empty-state` illustration variant exists but is not yet wired into the meal tiles.
+## 14. Risks
 
-## 12. Expected repository state before the next session
+1. The first authenticated UI interaction has not yet been directly observed.
+2. The user may discover a UI-only issue during first use.
+3. The successful bootstrap SQL must not be rerun unnecessarily.
+4. Future schema or seed changes must continue through new forward-only migrations.
 
-- `main` at the latest pushed commit; `origin/main` and GitHub in sync; tag `pilot-ready-2026-07-24`
-  present at `29ac1d5`; clean working tree; no secrets tracked. Restore `.env` (and `.env.e2e` for local
-  E2E) locally from `.env.example` / `supabase/DEPLOY.md` — they are gitignored by design.
+## 15. First next step
 
-## 13. First recommended task for the next session
+Process the outcome of the user's **first real logging session**: profile switching, food search,
+saving an entry, and persistence after refresh. If a problem appears, capture the visible behaviour and
+continue from the current production baseline **without rerunning migrations**.
 
-1. **Pilot with real data** — the database is ready (§0). Watch sync state and realtime during the
-   first days of actual logging.
-2. Add Playwright E2E to CI pointed at a **dedicated** Supabase project (never the pilot project, which
-   must stay at exactly one household), so the full 10-spec suite runs green in one pass without the
-   sign-up rate-limit / clock-skew flakiness.
-3. Then the P2 backlog: catalog management UI (rename/archive seeded foods — `is_active = false`
-   already hides a food in the app), weigh-in history, export.
+## 16. Prompt for continuing with Claude Code
+
+```
+Read the active documentation in docs/ (claude-context.md, project-status.md, todo.md, decisions.md).
+Verify Git state only — current branch, HEAD and git status, read-only.
+
+Do NOT rerun any migration, do not reseed the food catalog, and do not reset the database. The
+production bootstrap for Supabase project rqgoiuztphkcvbwtbxbj is already complete and verified:
+1 household, 2 profiles (אריאל/אלנה), 6 meal slots, RLS on 10 tables, 390 active foods, status READY.
+Continue from that completed production baseline.
+
+The first task is to process the result of the user's first real logging session, or any issue they
+report. If verification is needed, use the read-only supabase/verify_catalog.sql — never the bootstrap.
+Communicate with the user in Hebrew; they are non-technical, so avoid asking for SQL, Terminal or Git
+actions and give one simple step at a time.
+```
+
+---
+
+## Appendix A — MVP scope as built
+
+Two profiles · six meal slots · `unmarked/logged/skipped` (skipped counts as complete) · daily
+completeness from the six slots only · measured + subjective quantity stored as entered · coffee
+(structured type/milk/milkType/note) · fasting (16:8, midnight crossover) · workout · weigh-ins (fat
+mass, delta) · weight banner · calendar (full/partial/empty, shape + colour) · recent, favorite and
+custom foods · Supabase sync (auth, RLS, realtime, offline queue).
+
+## Appendix B — Branding (done in Lovable)
+
+Wordmark **"בריאותי"** (`BrandMark`); calm healthcare pastel system (green primary `#17A668`, info blue,
+per-slot soft tints, soft shadows, rounded cards, ≥12px content floor); per-slot lucide icons and status
+pills; RTL mobile-first layout. `BrandIllustration` provides `header` / `auth` / `empty-state` /
+`loading` variants. Still optional: wire the `empty-state` variant into the six meal tiles, plus light
+motion that respects `prefers-reduced-motion`.
+
+## Appendix C — Historical: bugs fixed during browser E2E (T-028, 2026-07-24)
+
+Kept for context only. Editor view resetting on re-render; demo seed leaking into fresh cloud accounts;
+dirty-flag cleared before push (offline loss) and hydrate overwriting optimistic edits; mutations lost
+during the activation window; no retry after an interrupted activation; realtime channel-name collision;
+weigh-in inputs missing labels; realtime socket missing its JWT under RLS.

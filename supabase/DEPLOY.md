@@ -1,33 +1,28 @@
 # Deploying to the remote Supabase project
 
-## PENDING (2026-07-25): one action required before real logging starts
+## APPLIED (2026-07-25) — nothing is pending
 
-`20260725190000_cleanup_mock_data_and_seed_food_catalog.sql` is written, tested and
-committed, but **not applied** — the Supabase CLI account logged in on this machine
-does not own project `rqgoiuztphkcvbwtbxbj` (`supabase migration list` → HTTP 403),
-there is no `SUPABASE_DB_PASSWORD`, and no local stack is available. It therefore
-has to be applied by hand, once:
+The production bootstrap is **complete**. Applied once, manually, in the SQL Editor of project
+`rqgoiuztphkcvbwtbxbj`:
 
-1. Open project **`rqgoiuztphkcvbwtbxbj`** in the Supabase Dashboard.
-2. Open **SQL Editor** → new query.
-3. Paste the whole of
-   `supabase/migrations/20260725190000_cleanup_mock_data_and_seed_food_catalog.sql`.
-4. **Run it once.** It finishes by returning a before/after audit table
-   (counts only — no food names, weights or dates).
-5. Copy that table back into the chat so the result can be reviewed.
+- `supabase/bootstrap_and_seed.sql` — created the household, its membership and the two profiles
+  (אריאל / אלנה), then seeded the catalog.
+- `supabase/migrations/20260725190000_cleanup_mock_data_and_seed_food_catalog.sql` — cleanup +
+  catalog seed.
 
-Optionally paste `supabase/verify_catalog.sql` afterwards for a read-only re-check
-(it writes nothing and can be run any number of times).
+Verified final report: 1 household · 2 memberships · 2 profiles · 6 meal slots · RLS on 10 tables ·
+**390 active foods** · `weigh_ins = 0` · status **READY**.
 
-What it does: deletes rows created by the automated test suites and by the removed
-localStorage demo seed, identified by explicit fingerprints — never by date — then
-upserts the 390-item Hebrew catalog into `public.foods` for every household. It
-never touches `auth.users`, profiles, memberships, RLS or policies, never
-`TRUNCATE`s, and has no unconditional `DELETE`. Re-running is safe: the cleanup
-matches nothing the second time and the seed upserts in place.
+**Do not rerun either script** (DEC-021). They are idempotent, but the baseline exists and re-running
+is unnecessary operational risk on real data. For any doubt, run `supabase/verify_catalog.sql`, which
+is **read-only** and safe to run any number of times.
 
-Until it is applied the app still works — the bundled catalog is the fallback — but
-the database catalog stays empty and any mock rows remain.
+Future catalog or schema changes go into a **new** forward-only migration; regenerate the seed SQL from
+the TypeScript modules with `npm run catalog:seed`.
+
+Note for a fresh project: the catalog seed inserts one row **per household**
+(`from public.households h cross join catalog c`), so it seeds nothing until a household exists.
+`bootstrap_and_seed.sql` creates that household and is the correct starting point.
 
 ---
 

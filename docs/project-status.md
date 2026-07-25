@@ -1,16 +1,61 @@
 # Project Status
 
-**Date:** 2026-07-25 (production catalog applied to Supabase)
+**Date:** 2026-07-25
 **Branch:** main
-**Commit before this work started:** `2dfe91e` (docs(handover): reconcile with Lovable's branding illustration)
-**Pilot-ready checkpoint:** tag `pilot-ready-2026-07-24` → `29ac1d5` (verified backend + E2E code).
-**Phase:** **Ready for the pilot.** Full Supabase backend implemented and deployed; MVP hardening,
-coffee, favorites/recents/custom foods and browser E2E complete. The 390-item Hebrew catalog, Hebrew
-normalization and duplicate prevention are implemented, tested, and **live in project
-`rqgoiuztphkcvbwtbxbj`**: 1 household, 2 profiles (אריאל/אלנה), 390 active foods, RLS on all 10 tables,
-zero tracking data. Remaining confirmation is the first real log in the browser on 2026-07-26.
+**Commit:** `90df85f` (docs: record the applied Supabase setup and the zero-row root cause)
+**Supabase project:** `rqgoiuztphkcvbwtbxbj`
+**Stage:** **Production bootstrap complete — ready for first real-use smoke verification**
+**Pilot-ready code checkpoint:** tag `pilot-ready-2026-07-24` → `29ac1d5`.
 
 > Rule: nothing is listed as "working" unless it was actually run/verified.
+
+## Current verified state (2026-07-25)
+
+- Repository is active, `main` is synchronized with `origin/main`, and the deployed code matches.
+- Supabase project `rqgoiuztphkcvbwtbxbj` is the live environment, and the application configuration
+  points at it (verified in the client module the running app actually loads, not only in `.env`).
+- **The production bootstrap completed successfully.** It was applied once, manually, in the Supabase
+  SQL Editor, and its final report returned `READY`. It is historical and applied — see DEC-021: it
+  must not be rerun.
+- One shared household exists.
+- Two profiles exist: **אריאל (Ariel)** and **אלנה (Elena)**.
+- Two household memberships exist.
+- Six meal slots are defined.
+- Ten relevant tables have RLS enabled.
+- **390 active foods** exist in the catalog.
+- Transactional nutrition data was empty at the production baseline (`weigh_ins = 0`; no meal,
+  fasting or workout records).
+- All demo/mock-data paths were removed from the application.
+- **The application is ready for the first real logging.** No further SQL action is required.
+
+### Verified baseline counts
+
+| check | value |
+| --- | --- |
+| households | 1 |
+| household_memberships | 2 |
+| profiles (אריאל / אלנה) | 2 |
+| meal_slots_defined | 6 |
+| tables_with_rls | 10 |
+| active foods | **390** |
+| weigh_ins | 0 |
+| duplicate normalized food names | 0 |
+| **status** | **READY** |
+
+### Quality status (verified 2026-07-25)
+
+| Check | Result |
+| --- | --- |
+| TypeScript typecheck (`tsc --noEmit`) | PASS — 0 errors |
+| Lint (`eslint .`) | PASS — 0 errors, 8 pre-existing dev-only HMR warnings |
+| Automated tests (`vitest run`) | PASS — 186 passed, 2 gated live suites skipped (12 tests, no env) |
+| Production build (`vite build`) | PASS |
+| Formatting (`prettier --check`) | PASS |
+| Deterministic catalog SQL generator | PASS — regenerating is byte-identical; a staled block is restored exactly |
+| Secret scan | PASS — no secrets, no `.env`, no service_role committed |
+
+The 186 figure supersedes the 173 reported at commit `6768c99`: the bootstrap-script tests
+(13 additional assertions on `supabase/bootstrap_and_seed.sql`) were added afterwards.
 
 ## 2026-07-25 — DATABASE APPLIED. Catalog live in Supabase.
 
@@ -67,10 +112,12 @@ The first real log on 2026-07-26 is that confirmation.
 
 ### Catalog
 
-- **390 items**, 11 category modules under `src/data/foods/` (`vegetables`, `fruits`,
-  `dairy-and-eggs`, `breads-and-grains`, `legumes`, `meat-and-fish`, `dishes`,
-  `snacks-and-sweets`, `drinks`, `condiments`, plus `types` + `index`).
-- Per-category counts: ירקות ועשבי תיבול 45 · פירות 36 · מוצרי חלב ותחליפים 28 · ביצים 7 ·
+- **390 active items across 14 categories**, authored in category modules under `src/data/foods/`
+  (`vegetables`, `fruits`, `dairy-and-eggs`, `breads-and-grains`, `legumes`, `meat-and-fish`,
+  `dishes`, `snacks-and-sweets`, `drinks`, `condiments`, plus `types` + `index`). Coverage spans
+  foods, drinks, ingredients, spreads, snacks, dishes, vegetables, fruits, dairy, eggs, grains,
+  breads, legumes, meat, poultry, fish, sauces and common Israeli meals.
+- Per-category counts (14): ירקות ועשבי תיבול 45 · פירות 36 · מוצרי חלב ותחליפים 28 · ביצים 7 ·
   לחם ומאפים 27 · דגנים ופחמימות 24 · קטניות 15 · עוף ובשר 33 · דגים 20 · מנות ותבשילים 55 ·
   אגוזים, גרעינים וממרחים 22 · חטיפים ומתוקים 29 · משקאות 31 · רטבים, שמנים ותבלינים 18.
 - Fields only: `name`, `normalized_name`, `category`, `default_unit`, `kind`, `is_active`
@@ -112,9 +159,12 @@ The first real log on 2026-07-26 is that confirmation.
 Legitimate test fixtures were kept. Tests that had asserted against the demo seed
 (`WeightBanner`, `FastingCard`, `WorkoutCard`) now create their own data through the store API.
 
-### Cleanup + seed migration (written, NOT applied)
+### Cleanup + seed migration (APPLIED 2026-07-25 — do not rerun, DEC-021)
 
 `supabase/migrations/20260725190000_cleanup_mock_data_and_seed_food_catalog.sql`
+Applied manually through the Supabase SQL Editor together with
+`supabase/bootstrap_and_seed.sql`, which supplies the household the seed needs. Read-only re-checks
+use `supabase/verify_catalog.sql`; troubleshooting must never rerun the bootstrap.
 
 How mock rows are identified — **no rule uses a date, and none is based on row age**:
 
@@ -228,20 +278,20 @@ block is restored exactly.
 | Tests            | **Vitest + Testing Library (added this session)**                                                                                                                                                                                                                                         |
 | Backend          | **Supabase integration implemented (opt-in via env).** Schema + RLS + realtime + bootstrap migrations under `supabase/`; typed client, repositories, auth UI, gated store sync, offline queue and local→cloud migration. With no env vars the app runs in local demo mode (localStorage). |
 
-## Quality gate (run this session)
+## Quality gate (latest verified run: 2026-07-25)
 
 | Check                     | Command                                   | Result                                                                                                                                                                                                                  |
 | ------------------------- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Type check                | `tsc --noEmit`                            | PASS — 0 errors                                                                                                                                                                                                         |
 | Lint                      | `eslint .`                                | PASS — 0 errors, 8 warnings (see "Remaining warnings" below)                                                                                                                                                            |
 | Format                    | `prettier`                                | PASS — changed + previously-unformatted source files normalised; `endOfLine: auto` added for cross-platform CRLF                                                                                                        |
-| Unit/integration tests    | `vitest run`                              | PASS — 109 passed / 12 skipped (2 live suites, no env)                                                                                                                                                                  |
+| Unit/integration tests    | `vitest run`                              | PASS — 186 passed / 12 skipped (2 live suites, no env)                                                                                                                                                                  |
 | Live DB (RLS + bootstrap) | `supabase start` + gated integration test | PASS — 5/5 against local Supabase (bootstrap, isolation, anon-denied, coffee CHECK)                                                                                                                                     |
 | Live remote (RLS+CRUD+RT) | 2 gated suites vs remote project          | PASS — 12/12 (auth, bootstrap, RLS isolation, CRUD all tables, coffee, idempotency, migration, custom foods + favorites/recents + isolation, 2-context realtime)                                                        |
 | Migration validation      | `psql < each migration`                   | PASS — all 5 apply cleanly (10 tables, 35 policies, 8 realtime tables; food_id->text)                                                                                                                                   |
 | Generated types           | `supabase gen types --local`              | Matches hand-derived aliases; committed as `database.generated.ts`                                                                                                                                                      |
 | Accessibility             | `vitest-axe` on 5 key components          | PASS — 0 violations (MealCard, CoffeeSelector, ProfileSwitcher, DailyCompletionIndicator, WeightBanner)                                                                                                                 |
-| Browser E2E               | `playwright test` (`npm run e2e`)         | PASS — 10 specs vs live Supabase (auth/RTL/mobile, meal+coffee CRUD, custom + built-in foods/favorites/recents, fasting/workout/weigh-in, profile separation, session lifecycle, 2-context realtime, offline+reconnect) |
+| Browser E2E               | `playwright test` (`npm run e2e`)         | PASS on 2026-07-24; deliberately NOT re-run against the pilot project (it signs up `e2e_*` accounts, which would create extra households) — 10 specs vs live Supabase (auth/RTL/mobile, meal+coffee CRUD, custom + built-in foods/favorites/recents, fasting/workout/weigh-in, profile separation, session lifecycle, 2-context realtime, offline+reconnect) |
 | Build                     | `vite build`                              | PASS — SSR + client build succeeds                                                                                                                                                                                      |
 | SSR smoke                 | `vite dev` + curl                         | PASS — Home renders; profiles אריאל/אלנה, six slots, RTL; no "אני", no "ארוחת לילה"; no hydration warnings                                                                                                              |
 | Secret scan               | grep                                      | PASS — no secrets, no `.env`, no service_role                                                                                                                                                                           |
@@ -398,25 +448,40 @@ the app's activation-retry absorbs the transient auth failures. The full 10-spec
 the local Supabase stack (identical, complete schema). Recommended for CI: run E2E against a dedicated
 project (or local) to avoid shared-project rate limits.
 
-## Not present / not yet live-verified (honest gaps)
+## Remaining limitation
 
-- **Browser end-to-end of the live app** (magic-link/password sign-in → realtime across two sessions) is
-  not automated — verified at the SQL/RLS/repository layer, not through the running browser app. This
-  needs real project credentials (or the local stack) + a manual/E2E pass.
-- No E2E framework (Playwright) — component/integration coverage via Vitest + Testing Library instead.
-- Bottom-nav "history"/"more" and quick-add default slot are placeholders.
+Authenticated browser smoke verification **by Claude was not performed**, because the household
+account's credentials were unavailable and creating a throwaway account would have added a second
+household to the clean pilot project. Not observed by Claude in an authenticated session: visible
+switching between אריאל and אלנה, adding a food through the real UI, refresh persistence through the
+user account, and live Recent/Favorite behaviour through the user account. All of it is covered by
+automated tests at the logic and component level.
 
-## Risks
+This will be completed naturally through the user's first real interaction. **It is not a database or
+deployment blocker.**
 
-- R1 — Persistence is local-only; a new device / cleared storage starts empty. Real multi-device sync needs Supabase.
-- R2 — SSR hydration renders the seed first, then swaps to persisted state on mount (brief, expected).
-- R4 — Single source for day completeness is `src/lib/completion.ts`, shared by home + calendar (good).
+## Active risks
 
-## Next step
+1. **R1** — The first authenticated UI interaction has not yet been directly observed by Claude.
+2. **R2** — The user may discover a UI-only issue during first use.
+3. **R3** — The successful bootstrap SQL must not be rerun unnecessarily (DEC-021). Troubleshooting uses
+   `supabase/verify_catalog.sql`, which is read-only.
+4. **R4** — Future schema or seed changes must continue through new forward-only migrations, never by
+   editing the applied one or re-running it.
 
-The Supabase backend is implemented, deployed to the remote, and verified — the project is
-**pilot-ready** (tag `pilot-ready-2026-07-24`). Recommended next task: **add Playwright E2E to CI
-against a dedicated Supabase project** (not the shared pilot project) so the full 10-spec suite runs
-green in one pass without the sign-up rate-limit / clock-skew flakiness. Then run the actual 2-person
-pilot and, separately, the branding illustration pass (see the Branding section and `gpt-handover.md`
-§10–11). Open backlog is in `todo.md`.
+Non-blocking, carried over: bottom-nav "history"/"more" and the quick-add default slot are
+placeholders; the full 10-spec Playwright suite must run against a dedicated project, never against
+this one (it signs up `e2e_*` accounts, which would create extra households).
+
+## First next step
+
+`Use the application for the first real meal entry. Confirm profile switching, food search, saving, and persistence after refresh. If a problem appears, capture the visible behavior and continue from the current production baseline without rerunning migrations.`
+
+## Session closure — 2026-07-25
+
+- Production bootstrap completed.
+- Catalog seeded with 390 foods.
+- Database baseline verified `READY`.
+- Documentation reconciled.
+- First real use is the next milestone.
+- No user technical action remains.
