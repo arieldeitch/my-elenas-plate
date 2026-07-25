@@ -4,16 +4,25 @@ Fast-start context for Claude Code. The latest user instruction always overrides
 Updated 2026-07-25. **Pilot-ready** — verified backend/E2E checkpoint at tag `pilot-ready-2026-07-24`
 (`29ac1d5`); current `main` also merges Lovable's branding illustration work (`BrandIllustration`).
 
-## FIRST NEXT STEP (2026-07-25)
+## DATABASE IS LIVE (2026-07-25)
 
-Apply **one** migration by hand, then review its output:
-`supabase/migrations/20260725190000_cleanup_mock_data_and_seed_food_catalog.sql` → Supabase
-Dashboard (project `rqgoiuztphkcvbwtbxbj`) → SQL Editor → paste → run once → read the returned
-audit table. It cannot be applied from this machine: the logged-in CLI account does not own the
-project (403 on `supabase migration list`), there is no DB password, and Docker is not running.
-Until it runs, **no production cleanup or seeding has happened** — the app falls back to the
-bundled catalog and any mock rows are still in the database. See `supabase/DEPLOY.md` and T-033.
-After that: re-run `npm run e2e` (T-034).
+Project `rqgoiuztphkcvbwtbxbj` is set up and verified: **1 household, 2 memberships, profiles
+אריאל/אלנה, 6 meal slots, RLS on 10 tables, 390 active foods, zero tracking data, status READY.**
+Applied with `supabase/bootstrap_and_seed.sql`. **Do not re-run any SQL** — both scripts are
+idempotent, but there is nothing left to apply.
+
+Note for future sessions: the catalog seed inserts one row **per household**
+(`from public.households h cross join catalog c`), so it silently seeds nothing on a project where no
+account has signed in yet (no household ⇒ no rows). That is what caused the first zero-row report.
+`bootstrap_and_seed.sql` is the fix and is safe to reuse on a fresh project.
+
+## FIRST NEXT STEP
+
+Confirm the first real log in the browser (T-034): both profiles switch, search returns catalog foods,
+one entry saves and deletes, מועדפים/אחרונים start empty, a refresh brings nothing back. This needs the
+household account's credentials, so the assistant cannot do it — a throwaway account would create a
+second household. Do **not** run `npm run e2e` against this project (it signs up `e2e_*` accounts and
+would add households); use a dedicated project (T-029/T-041).
 
 ## What this is
 
@@ -102,9 +111,9 @@ writes localStorage. Tests stay hermetic via `vi.stubEnv` in
 
 ## Quality gate
 
-`tsc --noEmit`, `eslint .` (0 errors, 8 dev-only HMR warnings), `vitest run` (**173 passed**, 2 gated
+`tsc --noEmit`, `eslint .` (0 errors, 8 dev-only HMR warnings), `vitest run` (**186 passed**, 2 gated
 live suites skipped without env), `vitest-axe` (0 violations) and `vite build` — all green as of
-2026-07-25. `npm run e2e` (Playwright, 10 specs) was **not** re-run this session: it drives the real
-remote project, which is exactly what T-033 is about to change. Test tooling: Vitest + Testing
+2026-07-25. `npm run e2e` (Playwright, 10 specs) is intentionally **not** run against the pilot
+project: it signs up fresh `e2e_*` accounts, which would create extra households. Test tooling: Vitest + Testing
 Library + vitest-axe + Playwright; `npm run coverage` for the report. See `project-status.md` for the
 full table and `decisions.md` for the rationale of recent changes.

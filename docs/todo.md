@@ -5,21 +5,21 @@ Updated 2026-07-25. Project is **pilot-ready** — verified backend/E2E checkpoi
 tag `pilot-ready-2026-07-24` (`29ac1d5`); current `main` also merges Lovable's branding illustration work.
 All P0/P1 MVP + Supabase + T-027/T-028 are Done.
 
-## Blocking for the 2026-07-26 pilot start
+## Pilot start 2026-07-26
 
-- **T-033 (P0) — Apply the cleanup + catalog migration to the remote. Blocked on user action.**
-  `supabase/migrations/20260725190000_cleanup_mock_data_and_seed_food_catalog.sql` is written,
-  tested and committed but **NOT applied**. It cannot be applied from here: the CLI account
-  logged in on this machine does not own project `rqgoiuztphkcvbwtbxbj` (`supabase migration list`
-  → HTTP 403 "account does not have the necessary privileges"), no `SUPABASE_DB_PASSWORD` is
-  available, and Docker is not running so there is no local stack either.
-  **Action:** Supabase Dashboard → project `rqgoiuztphkcvbwtbxbj` → SQL Editor → paste the
-  migration → run once → paste the returned audit table back. Details in `supabase/DEPLOY.md`.
-  Until then the app is usable (the bundled catalog is the fallback) but the database catalog is
-  empty and any mock rows are still there.
-- **T-034 (P1) — Re-run `npm run e2e` after T-033.** Not run in this session: it drives the real
-  browser against the remote project, which is exactly the environment T-033 changes. Running it
-  before the migration would also create fresh `e2e_*` test households in the pilot project.
+- **T-033 (P0) DONE (2026-07-25)** — database applied to `rqgoiuztphkcvbwtbxbj` via
+  `supabase/bootstrap_and_seed.sql`. Verified: 1 household, 2 memberships, profiles אריאל/אלנה,
+  6 meal slots, RLS on 10 tables, **390 active foods**, `weigh_ins = 0`, status `READY`.
+  Root cause of the first zero-row report: the seed inserts one row per household and the project had
+  no household yet (`bootstrap_household()` had never run there) — see `project-status.md`.
+- **T-034 (P1, open) — First real-use confirmation in the browser.** Not doable by the assistant:
+  it needs the household account's credentials, and a throwaway account would create a second
+  household. Covered by automated tests, not observed live. On the first log, confirm: both profiles
+  switch, a search returns catalog foods, one entry saves and deletes, מועדפים/אחרונים start empty,
+  and a refresh brings nothing back.
+- **T-041 (P1, open) — Re-run `npm run e2e`.** Deliberately not run: it signs up fresh `e2e_*`
+  accounts, which would create extra households in the now-clean pilot project. Run it against a
+  dedicated project (see T-029).
 
 ## Done (2026-07-25) — production catalog + mock-data removal
 
@@ -37,7 +37,8 @@ All P0/P1 MVP + Supabase + T-027/T-028 are Done.
   cannot repopulate the cloud after cleanup.
 - **T-040 Done** Cleanup + seed migration authored with fingerprint-based identification and a
   self-reporting audit; `supabase/verify_catalog.sql` added for read-only re-checks.
-  Application is T-033 (above).
+  **Applied to the remote on 2026-07-25** together with `supabase/bootstrap_and_seed.sql`, which
+  supplies the household/profiles the seed needs (see T-033).
 
 ## Done (this session)
 

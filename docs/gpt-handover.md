@@ -2,25 +2,29 @@
 
 Continuity handover across tools. Updated 2026-07-25 (production catalog + mock-data removal).
 
-## 0. Read this first — one open action
+## 0. Read this first — the database is live
 
-The pilot is meant to start **2026-07-26 morning**. Everything in code is done and green, but **one
-database action is outstanding and cannot be done by the assistant**:
+The pilot can start **2026-07-26 morning**. Project `rqgoiuztphkcvbwtbxbj` was set up and verified on
+2026-07-25 via `supabase/bootstrap_and_seed.sql`:
 
-> Supabase Dashboard → project `rqgoiuztphkcvbwtbxbj` → SQL Editor → paste
-> `supabase/migrations/20260725190000_cleanup_mock_data_and_seed_food_catalog.sql` → run once →
-> paste the returned audit table back for review.
+| households | memberships | profiles אריאל/אלנה | meal slots | RLS tables | active foods | tracking data | status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | 2 | 2 | 6 | 10 | **390** | 0 | **READY** |
 
-Why it cannot be automated (all verified, not assumed): the Supabase CLI account logged in on this
-machine does not own that project (`supabase migration list` → HTTP 403; the project is absent from
-`supabase projects list`), no `SUPABASE_DB_PASSWORD` is available, and Docker is not running so there
-is no local stack. Only the anon key is present, and RLS correctly refuses unauthenticated reads — so
-not even row counts could be measured. **Therefore no production cleanup or seeding has happened, and
-no production numbers appear in any doc.** Until it runs, the app still works (the bundled catalog is
-the fallback) but the database catalog is empty and mock rows remain.
+**No further SQL is needed.** Both SQL scripts are idempotent, but there is nothing left to apply.
 
-After it runs: re-run `npm run e2e` (it was intentionally not run this session — it drives the real
-remote project and creates `e2e_*` test households there).
+Why the first attempt reported zeros: the catalog seed inserts one row **per household**
+(`from public.households h cross join catalog c`), and the project had the full schema but no household,
+because `bootstrap_household()` only runs when an account signs in and that had never happened there.
+So the seed correctly inserted 0 rows — the cleanup migration was never at fault, and running it twice
+was harmless (its only `foods` delete targets the literal `מאכל בדיקה`, so it can never remove a seeded
+catalog). `bootstrap_and_seed.sql` created the household, membership and the two profiles, then seeded.
+
+One open confirmation (T-034): the in-browser first-use check — profile switching, catalog rendering
+from Supabase, one entry saved and deleted, empty מועדפים/אחרונים, nothing back after refresh. The
+assistant cannot do it: it needs the household account's credentials, and a throwaway account would
+create a second household. Do **not** run `npm run e2e` against this project — it signs up `e2e_*`
+accounts and would add households; use a dedicated project (T-029/T-041).
 
 ## Product
 
@@ -167,9 +171,10 @@ profile.
 
 ## 13. First recommended task for the next session
 
-1. **Apply the pending migration** (§0) and review the audit table it returns. Nothing else should
-   start before that — it is what makes the catalog real and removes the mock rows.
-2. Re-run `npm run e2e` against the remote and confirm no mock rows return after a refresh.
-3. Then: add Playwright E2E to CI pointed at a **dedicated** Supabase project (not the shared pilot
-   project), so the full 10-spec suite runs green in one pass without the sign-up rate-limit /
-   clock-skew flakiness.
+1. **Pilot with real data** — the database is ready (§0). Watch sync state and realtime during the
+   first days of actual logging.
+2. Add Playwright E2E to CI pointed at a **dedicated** Supabase project (never the pilot project, which
+   must stay at exactly one household), so the full 10-spec suite runs green in one pass without the
+   sign-up rate-limit / clock-skew flakiness.
+3. Then the P2 backlog: catalog management UI (rename/archive seeded foods — `is_active = false`
+   already hides a food in the app), weigh-in history, export.

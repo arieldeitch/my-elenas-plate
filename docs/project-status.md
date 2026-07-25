@@ -1,31 +1,69 @@
 # Project Status
 
-**Date:** 2026-07-25 (production catalog + mock-data removal)
+**Date:** 2026-07-25 (production catalog applied to Supabase)
 **Branch:** main
 **Commit before this work started:** `2dfe91e` (docs(handover): reconcile with Lovable's branding illustration)
 **Pilot-ready checkpoint:** tag `pilot-ready-2026-07-24` → `29ac1d5` (verified backend + E2E code).
-**Phase:** **Pilot-ready in code; ONE manual database action outstanding.** Full Supabase backend
-implemented, deployed and verified; MVP hardening, coffee, favorites/recents/custom foods and browser
-E2E complete. The 390-item Hebrew catalog, Hebrew normalization, duplicate prevention and the
-cleanup/seed migration are implemented and tested locally — the migration is **not yet applied to the
-remote** (see below).
+**Phase:** **Ready for the pilot.** Full Supabase backend implemented and deployed; MVP hardening,
+coffee, favorites/recents/custom foods and browser E2E complete. The 390-item Hebrew catalog, Hebrew
+normalization and duplicate prevention are implemented, tested, and **live in project
+`rqgoiuztphkcvbwtbxbj`**: 1 household, 2 profiles (אריאל/אלנה), 390 active foods, RLS on all 10 tables,
+zero tracking data. Remaining confirmation is the first real log in the browser on 2026-07-26.
 
 > Rule: nothing is listed as "working" unless it was actually run/verified.
 
-## 2026-07-25 — Production food catalog + removal of mock-data paths
+## 2026-07-25 — DATABASE APPLIED. Catalog live in Supabase.
 
-### Status honestly stated
+### Applied result (verified by the user in the SQL Editor, project `rqgoiuztphkcvbwtbxbj`)
 
-- **Code + migration: complete, green locally.** tsc 0 errors, eslint 0 errors, 173 unit/component
-  tests passing, `vite build` OK.
-- **Database: UNCHANGED.** No cleanup ran, no catalog row was inserted, no mock row was deleted.
-  Privileged access is unavailable from this machine, verified: `supabase migration list` → HTTP 403
-  ("account does not have the necessary privileges"); project `rqgoiuztphkcvbwtbxbj` is not in
-  `supabase projects list` (the CLI account belongs to a different org); no `SUPABASE_DB_PASSWORD`;
-  Docker daemon not running, so no local stack. Only the anon key exists locally, and RLS correctly
-  denies unauthenticated reads — so even row counts could not be obtained. **No production counts are
-  reported anywhere in these docs, because none could be measured.**
-- **Blocking action:** T-033 in `todo.md` / `supabase/DEPLOY.md`.
+`supabase/bootstrap_and_seed.sql` was run once. Final report:
+
+| check | value |
+| --- | --- |
+| households | 1 |
+| household_memberships | 2 |
+| profiles_ariel_alena | 2 |
+| meal_slots_defined | 6 |
+| tables_with_rls | 10 |
+| foods_active (`result`) | **390** |
+| weigh_ins | 0 |
+| **status** | **READY** |
+
+### Why the first attempt reported zeros (root cause, resolved)
+
+The catalog seed inserts one row per household
+(`from public.households h cross join catalog c`). Project `rqgoiuztphkcvbwtbxbj` had the full schema
+and RLS but **zero households**, because `bootstrap_household()` only runs when an account signs in
+and that had never happened there. So the seed correctly inserted 0 rows. The cleanup migration was
+never at fault, and running it twice was harmless: its only `DELETE` against `foods` targets the exact
+literal `מאכל בדיקה`, so it can never remove a previously seeded catalog (now test-asserted).
+`supabase/bootstrap_and_seed.sql` created the household, its membership and the two profiles — the
+same thing `bootstrap_household()` does — and then seeded.
+
+### Post-deployment verification (2026-07-25)
+
+Verified here:
+
+- **Connectivity** — the running app's client module resolves to project `rqgoiuztphkcvbwtbxbj`
+  (checked in the served bundle, not just in `.env`); `vite dev` serves HTTP 200.
+- **RLS still enforced** — anonymous REST reads of `profiles`, `foods` and `food_entries` all return
+  `[]` (rows hidden, not missing — the SQL report proves 390 exist), and
+  `rpc/bootstrap_household` unauthenticated returns HTTP 400 ("not authenticated").
+- **Catalog + search** — 107 targeted tests green, including all 13 checklist searches
+  (מלפפון · עגבניה→עגבנייה · גבינה צהובה · שניצל · אורז · חזה עוף · סלט · מים · קפה · קוטג→קוטג׳ ·
+  פיתה · טחינה, plus `קוטג'`, `צ'יפס`, vocalised `לֶחֶם מָלֵא`), exact-match-ranks-first, the 20-result
+  cap, and the per-food unit sets.
+- **No mock data can be produced** — no seed path exists in the app; the store starts empty in every
+  mode; the localStorage→cloud import is disabled; the seed writes no favorite, recent or entry row
+  (all test-asserted). `weigh_ins = 0` in the applied report.
+- **No temporary verification rows were created**, so there was nothing to clean up and the database
+  is pristine for the first real day.
+
+Not verified here, and why: signing in to the app needs the household account's credentials, which are
+not available to the assistant, and creating a throwaway account would create a second household. So
+the in-browser checks — profile switching, the catalog rendering from Supabase, and adding then
+deleting one entry per profile — are covered by automated tests but were not observed in the live UI.
+The first real log on 2026-07-26 is that confirmation.
 
 ### Catalog
 
