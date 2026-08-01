@@ -1,13 +1,81 @@
 # Project Status
 
-**Date:** 2026-07-25
-**Branch:** main
-**Commit:** `90df85f` (docs: record the applied Supabase setup and the zero-row root cause)
+**Date:** 2026-08-01
+**Branch:** `chore/t-034-smoke-verification` (from `main` @ `8667b3c`)
 **Supabase project:** `rqgoiuztphkcvbwtbxbj`
-**Stage:** **Production bootstrap complete — ready for first real-use smoke verification**
+**Stage:** **Production bootstrap complete — T-034 partially verified, production sign-in still unproven**
 **Pilot-ready code checkpoint:** tag `pilot-ready-2026-07-24` → `29ac1d5`.
 
 > Rule: nothing is listed as "working" unless it was actually run/verified.
+
+## 2026-08-01 — T-034 partial verification (data layer proven, production UI not)
+
+**T-034 remains OPEN.** What was proven, and what was not, is listed precisely below. Nothing here
+claims that anyone signed in to production.
+
+### Verified against the live production project `rqgoiuztphkcvbwtbxbj`
+
+Read-only anonymous probe over REST. **No row was created, updated or deleted.** 11/11 passed:
+
+| probe                                                                                                                                                 | result                                           |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| anonymous read of `profiles`, `households`, `foods`, `food_entries`, `meal_statuses`, `food_preferences`, `weigh_ins`, `fasting_logs`, `workout_logs` | **PASS** — 9/9 return zero rows (RLS hides them) |
+| `rpc/bootstrap_household` unauthenticated                                                                                                             | **PASS** — rejected, HTTP 400                    |
+| anonymous `INSERT` into `weigh_ins`                                                                                                                   | **PASS** — rejected, HTTP 401                    |
+
+This confirms RLS is enforced in production and that there is no anonymous read or write access.
+
+### Verified against a local stack running the identical migrations
+
+Both gated live suites — **12/12 passed** (previously skipped for lack of env):
+
+- bootstrap creates exactly two profiles (אריאל, אלנה) and is **idempotent**
+- the shared account can write **and** read **both** profiles' data
+- household isolation: an unrelated account sees none of the household's rows
+- coffee milk-type CHECK constraint rejected at the DB
+- anonymous reads denied
+- CRUD across every table for a profile
+- coffee round-trip through the DB
+- upsert idempotency — no optimistic duplication
+- local→cloud migration transform uploads a legacy state
+- custom foods + favorites + recents sync **per profile with isolation**
+- realtime: a second context sees INSERT, UPDATE and DELETE
+
+Test accounts and households created by these suites exist **only in the ephemeral local Docker stack**.
+No household or account was created in production.
+
+### Bug found and fixed — flaky realtime test (test-only, see DEC-022)
+
+`realtime: a second context sees insert, update and delete` failed consistently against the local
+stack. Isolated diagnosis (broadcast vs `postgres_changes`) proved the WebSocket, the publication and
+the app code were all correct, and that `REPLICA IDENTITY FULL` was **not** the cause (tried and
+reverted). Root cause: realtime evaluates the RLS check for a `postgres_changes` event against the
+**current** row, so firing `insert → update → delete` back-to-back lets the delete land before the
+UPDATE WAL record is processed — the row is gone, the check finds nothing, and the UPDATE event is
+silently dropped. The test now awaits each event before the next mutation. Runtime dropped from 85 s
+(timeout) to **3.7 s**. **No product code, schema, RLS or migration was changed.**
+
+Two local-environment faults were also cleared during diagnosis, both infrastructure-only: a Kong
+container needing a restart before WebSocket upgrades succeeded, and auth 504s under load (three
+Supabase stacks were running on the machine at once).
+
+### Still unproven — why T-034 stays open
+
+Everything requiring the real household account: production sign-in, both profiles rendering in the
+live UI, profile switching, catalog search against the live 390-item catalog, adding a real entry to
+production, and refresh persistence against production. The assistant has no credentials, and creating
+a throwaway account would add a second household to the clean pilot project.
+
+### Quality gate (2026-08-01)
+
+| Check                            | Result                                                     |
+| -------------------------------- | ---------------------------------------------------------- |
+| `tsc --noEmit`                   | PASS — 0 errors                                            |
+| `eslint .`                       | PASS — 0 errors, 8 pre-existing dev-only HMR warnings      |
+| `vitest run`                     | PASS — 186 passed, 12 gated live tests skipped without env |
+| Gated live suites vs local stack | PASS — **12/12**                                           |
+| `vite build`                     | PASS                                                       |
+| `prettier --check`               | PASS                                                       |
 
 ## Current verified state (2026-07-25)
 
@@ -30,29 +98,29 @@
 
 ### Verified baseline counts
 
-| check | value |
-| --- | --- |
-| households | 1 |
-| household_memberships | 2 |
-| profiles (אריאל / אלנה) | 2 |
-| meal_slots_defined | 6 |
-| tables_with_rls | 10 |
-| active foods | **390** |
-| weigh_ins | 0 |
-| duplicate normalized food names | 0 |
-| **status** | **READY** |
+| check                           | value     |
+| ------------------------------- | --------- |
+| households                      | 1         |
+| household_memberships           | 2         |
+| profiles (אריאל / אלנה)         | 2         |
+| meal_slots_defined              | 6         |
+| tables_with_rls                 | 10        |
+| active foods                    | **390**   |
+| weigh_ins                       | 0         |
+| duplicate normalized food names | 0         |
+| **status**                      | **READY** |
 
 ### Quality status (verified 2026-07-25)
 
-| Check | Result |
-| --- | --- |
-| TypeScript typecheck (`tsc --noEmit`) | PASS — 0 errors |
-| Lint (`eslint .`) | PASS — 0 errors, 8 pre-existing dev-only HMR warnings |
-| Automated tests (`vitest run`) | PASS — 186 passed, 2 gated live suites skipped (12 tests, no env) |
-| Production build (`vite build`) | PASS |
-| Formatting (`prettier --check`) | PASS |
-| Deterministic catalog SQL generator | PASS — regenerating is byte-identical; a staled block is restored exactly |
-| Secret scan | PASS — no secrets, no `.env`, no service_role committed |
+| Check                                 | Result                                                                    |
+| ------------------------------------- | ------------------------------------------------------------------------- |
+| TypeScript typecheck (`tsc --noEmit`) | PASS — 0 errors                                                           |
+| Lint (`eslint .`)                     | PASS — 0 errors, 8 pre-existing dev-only HMR warnings                     |
+| Automated tests (`vitest run`)        | PASS — 186 passed, 2 gated live suites skipped (12 tests, no env)         |
+| Production build (`vite build`)       | PASS                                                                      |
+| Formatting (`prettier --check`)       | PASS                                                                      |
+| Deterministic catalog SQL generator   | PASS — regenerating is byte-identical; a staled block is restored exactly |
+| Secret scan                           | PASS — no secrets, no `.env`, no service_role committed                   |
 
 The 186 figure supersedes the 173 reported at commit `6768c99`: the bootstrap-script tests
 (13 additional assertions on `supabase/bootstrap_and_seed.sql`) were added afterwards.
@@ -63,16 +131,16 @@ The 186 figure supersedes the 173 reported at commit `6768c99`: the bootstrap-sc
 
 `supabase/bootstrap_and_seed.sql` was run once. Final report:
 
-| check | value |
-| --- | --- |
-| households | 1 |
-| household_memberships | 2 |
-| profiles_ariel_alena | 2 |
-| meal_slots_defined | 6 |
-| tables_with_rls | 10 |
-| foods_active (`result`) | **390** |
-| weigh_ins | 0 |
-| **status** | **READY** |
+| check                   | value     |
+| ----------------------- | --------- |
+| households              | 1         |
+| household_memberships   | 2         |
+| profiles_ariel_alena    | 2         |
+| meal_slots_defined      | 6         |
+| tables_with_rls         | 10        |
+| foods_active (`result`) | **390**   |
+| weigh_ins               | 0         |
+| **status**              | **READY** |
 
 ### Why the first attempt reported zeros (root cause, resolved)
 
@@ -148,13 +216,13 @@ The first real log on 2026-07-26 is that confirmation.
 
 ### Mock-data paths removed from production code
 
-| Path | Action |
-| --- | --- |
-| `src/lib/demo-data.ts` (fake days, weigh-ins, favorites, recents, fasting, workout) | **Deleted** |
-| `store.tsx` seeding of days/weighIns/favorites/recents | **Removed** — starts empty in every mode |
-| `store.tsx` localStorage hydration in configured mode | **Guarded** — demo mode only |
-| localStorage→cloud one-time import | **Disabled** (`LOCAL_IMPORT_ENABLED = false`) so a stale demo snapshot cannot repopulate the cloud after cleanup |
-| Old 23-item client catalog + weak `normalize` | **Replaced** by `src/data/foods/*` + `food-normalize.ts` |
+| Path                                                                                | Action                                                                                                           |
+| ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `src/lib/demo-data.ts` (fake days, weigh-ins, favorites, recents, fasting, workout) | **Deleted**                                                                                                      |
+| `store.tsx` seeding of days/weighIns/favorites/recents                              | **Removed** — starts empty in every mode                                                                         |
+| `store.tsx` localStorage hydration in configured mode                               | **Guarded** — demo mode only                                                                                     |
+| localStorage→cloud one-time import                                                  | **Disabled** (`LOCAL_IMPORT_ENABLED = false`) so a stale demo snapshot cannot repopulate the cloud after cleanup |
+| Old 23-item client catalog + weak `normalize`                                       | **Replaced** by `src/data/foods/*` + `food-normalize.ts`                                                         |
 
 Legitimate test fixtures were kept. Tests that had asserted against the demo seed
 (`WeightBanner`, `FastingCard`, `WorkoutCard`) now create their own data through the store API.
@@ -211,13 +279,13 @@ block is restored exactly.
 
 ### Tests added (2026-07-25)
 
-| Suite | Tests | Covers |
-| --- | --- | --- |
-| `food-normalize.test.ts` | 11 | geresh/apostrophe variants, niqqud, ktiv male, separators, punctuation, Latin case, idempotency, false-merge guards (`פטה`≠`פיתה`) |
-| `food-catalog.test.ts` | 25 | ≥300 items, no blank/duplicate normalized names, unique `f_*` ids, valid units, default ∈ allowed, ≥15 distinct unit sets, all categories used & populated, no nutrition/favorite fields, no placeholder or numbered names, one coffee-kind food, 13 checklist searches, ranking, result cap, `mergeCatalog` supersede/archive/dedupe |
-| `catalog-seed.test.ts` | 16 | SQL is the current generated form, one row per item, idempotent upsert, seeds every household, writes no preferences/entries, schema-only columns, no RLS/policy/TRUNCATE/auth changes, no unqualified DELETE, delete-target allowlist, fingerprint & epoch presence, before/after reporting |
-| `store.test.tsx` (extended) | +6 | empty start for both profiles, catalog exposed with no preferences, normalized-duplicate reuse, genuine custom food still created, favorite only on request, recent only after logging, per-profile separation |
-| `MealEditor.test.tsx` (extended) | +5 | favorites/recents empty until use, capped results, subjective mode, food-specific units (פרוסה not חצי יחידה), apostrophe duplicate resolves to the catalog item |
+| Suite                            | Tests | Covers                                                                                                                                                                                                                                                                                                                                |
+| -------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `food-normalize.test.ts`         | 11    | geresh/apostrophe variants, niqqud, ktiv male, separators, punctuation, Latin case, idempotency, false-merge guards (`פטה`≠`פיתה`)                                                                                                                                                                                                    |
+| `food-catalog.test.ts`           | 25    | ≥300 items, no blank/duplicate normalized names, unique `f_*` ids, valid units, default ∈ allowed, ≥15 distinct unit sets, all categories used & populated, no nutrition/favorite fields, no placeholder or numbered names, one coffee-kind food, 13 checklist searches, ranking, result cap, `mergeCatalog` supersede/archive/dedupe |
+| `catalog-seed.test.ts`           | 16    | SQL is the current generated form, one row per item, idempotent upsert, seeds every household, writes no preferences/entries, schema-only columns, no RLS/policy/TRUNCATE/auth changes, no unqualified DELETE, delete-target allowlist, fingerprint & epoch presence, before/after reporting                                          |
+| `store.test.tsx` (extended)      | +6    | empty start for both profiles, catalog exposed with no preferences, normalized-duplicate reuse, genuine custom food still created, favorite only on request, recent only after logging, per-profile separation                                                                                                                        |
+| `MealEditor.test.tsx` (extended) | +5    | favorites/recents empty until use, capped results, subjective mode, food-specific units (פרוסה not חצי יחידה), apostrophe duplicate resolves to the catalog item                                                                                                                                                                      |
 
 ### Not verified / cannot be claimed
 
@@ -280,21 +348,21 @@ block is restored exactly.
 
 ## Quality gate (latest verified run: 2026-07-25)
 
-| Check                     | Command                                   | Result                                                                                                                                                                                                                  |
-| ------------------------- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Type check                | `tsc --noEmit`                            | PASS — 0 errors                                                                                                                                                                                                         |
-| Lint                      | `eslint .`                                | PASS — 0 errors, 8 warnings (see "Remaining warnings" below)                                                                                                                                                            |
-| Format                    | `prettier`                                | PASS — changed + previously-unformatted source files normalised; `endOfLine: auto` added for cross-platform CRLF                                                                                                        |
-| Unit/integration tests    | `vitest run`                              | PASS — 186 passed / 12 skipped (2 live suites, no env)                                                                                                                                                                  |
-| Live DB (RLS + bootstrap) | `supabase start` + gated integration test | PASS — 5/5 against local Supabase (bootstrap, isolation, anon-denied, coffee CHECK)                                                                                                                                     |
-| Live remote (RLS+CRUD+RT) | 2 gated suites vs remote project          | PASS — 12/12 (auth, bootstrap, RLS isolation, CRUD all tables, coffee, idempotency, migration, custom foods + favorites/recents + isolation, 2-context realtime)                                                        |
-| Migration validation      | `psql < each migration`                   | PASS — all 5 apply cleanly (10 tables, 35 policies, 8 realtime tables; food_id->text)                                                                                                                                   |
-| Generated types           | `supabase gen types --local`              | Matches hand-derived aliases; committed as `database.generated.ts`                                                                                                                                                      |
-| Accessibility             | `vitest-axe` on 5 key components          | PASS — 0 violations (MealCard, CoffeeSelector, ProfileSwitcher, DailyCompletionIndicator, WeightBanner)                                                                                                                 |
+| Check                     | Command                                   | Result                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Type check                | `tsc --noEmit`                            | PASS — 0 errors                                                                                                                                                                                                                                                                                                                                              |
+| Lint                      | `eslint .`                                | PASS — 0 errors, 8 warnings (see "Remaining warnings" below)                                                                                                                                                                                                                                                                                                 |
+| Format                    | `prettier`                                | PASS — changed + previously-unformatted source files normalised; `endOfLine: auto` added for cross-platform CRLF                                                                                                                                                                                                                                             |
+| Unit/integration tests    | `vitest run`                              | PASS — 186 passed / 12 skipped (2 live suites, no env)                                                                                                                                                                                                                                                                                                       |
+| Live DB (RLS + bootstrap) | `supabase start` + gated integration test | PASS — 5/5 against local Supabase (bootstrap, isolation, anon-denied, coffee CHECK)                                                                                                                                                                                                                                                                          |
+| Live remote (RLS+CRUD+RT) | 2 gated suites vs remote project          | PASS — 12/12 (auth, bootstrap, RLS isolation, CRUD all tables, coffee, idempotency, migration, custom foods + favorites/recents + isolation, 2-context realtime)                                                                                                                                                                                             |
+| Migration validation      | `psql < each migration`                   | PASS — all 5 apply cleanly (10 tables, 35 policies, 8 realtime tables; food_id->text)                                                                                                                                                                                                                                                                        |
+| Generated types           | `supabase gen types --local`              | Matches hand-derived aliases; committed as `database.generated.ts`                                                                                                                                                                                                                                                                                           |
+| Accessibility             | `vitest-axe` on 5 key components          | PASS — 0 violations (MealCard, CoffeeSelector, ProfileSwitcher, DailyCompletionIndicator, WeightBanner)                                                                                                                                                                                                                                                      |
 | Browser E2E               | `playwright test` (`npm run e2e`)         | PASS on 2026-07-24; deliberately NOT re-run against the pilot project (it signs up `e2e_*` accounts, which would create extra households) — 10 specs vs live Supabase (auth/RTL/mobile, meal+coffee CRUD, custom + built-in foods/favorites/recents, fasting/workout/weigh-in, profile separation, session lifecycle, 2-context realtime, offline+reconnect) |
-| Build                     | `vite build`                              | PASS — SSR + client build succeeds                                                                                                                                                                                      |
-| SSR smoke                 | `vite dev` + curl                         | PASS — Home renders; profiles אריאל/אלנה, six slots, RTL; no "אני", no "ארוחת לילה"; no hydration warnings                                                                                                              |
-| Secret scan               | grep                                      | PASS — no secrets, no `.env`, no service_role                                                                                                                                                                           |
+| Build                     | `vite build`                              | PASS — SSR + client build succeeds                                                                                                                                                                                                                                                                                                                           |
+| SSR smoke                 | `vite dev` + curl                         | PASS — Home renders; profiles אריאל/אלנה, six slots, RTL; no "אני", no "ארוחת לילה"; no hydration warnings                                                                                                                                                                                                                                                   |
+| Secret scan               | grep                                      | PASS — no secrets, no `.env`, no service_role                                                                                                                                                                                                                                                                                                                |
 
 ### Remaining warnings (8, non-blocking, dev-only)
 

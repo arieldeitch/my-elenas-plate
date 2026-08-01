@@ -10,20 +10,33 @@ All P0 work is Done. The only open P1 is T-034 below, and it needs no technical 
 
 ### T-034 (P1) — Authenticated first-use smoke verification
 
-**Status:** Ready / Pending first real use.
+**Status:** **Partially verified 2026-08-01 — still OPEN.** The data layer is fully proven; the
+production sign-in path is not.
 
 Requires **no SQL and no Terminal commands** — it is ordinary use of the application. Claude cannot
-perform it: it needs the household account's credentials, and a throwaway account would create a second
+complete it: it needs the household account's credentials, and a throwaway account would create a second
 household in the clean pilot project.
 
-Acceptance criteria:
+**Verified on 2026-08-01** (see `project-status.md` → "T-034 partial verification"):
 
-- User can sign in normally.
-- אריאל and אלנה are both visible.
+- Production project `rqgoiuztphkcvbwtbxbj` — **RLS enforced, 11/11 anonymous probes rejected**
+  (9 tables hidden, `bootstrap_household` rejected, anonymous INSERT rejected). Read-only; no row
+  created.
+- Data layer — **12/12 gated live tests pass** against a local stack running the identical migrations:
+  bootstrap creates exactly אריאל + אלנה and is idempotent, the shared account reads/writes both
+  profiles, household isolation holds, CRUD on every table, coffee CHECK constraint, upsert
+  idempotency, per-profile favorites/recents isolation, and realtime INSERT/UPDATE/DELETE to a second
+  context.
+- localStorage is **not** the source of truth (code-gated on `isSupabaseConfigured()`, test-asserted).
+
+**Still unproven — this is what keeps T-034 open.** All of it needs the real household account:
+
+- Sign in to production with the shared account.
+- אריאל and אלנה both visible in the real UI.
 - Switching profiles preserves the active date.
-- Food search returns catalog items.
-- A real food entry can be added.
-- Refresh preserves the entry.
+- Food search returns catalog items from the live 390-item catalog.
+- A real food entry can be added **against production**.
+- Refresh preserves the entry **against production**.
 - No mock records appear.
 - Recent Foods updates after genuine use.
 - Favorite Foods remains user-controlled.

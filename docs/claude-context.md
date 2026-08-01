@@ -1,21 +1,26 @@
 # Claude Context
 
 Fast-start context for Claude Code. The latest user instruction always overrides older docs.
-Updated 2026-07-25.
+Updated 2026-08-01.
 
 ## Start state
 
 - **Project:** shared Nutrition Tracker for **אריאל (Ariel)** and **אלנה (Elena)** — Hebrew, RTL,
   mobile-first daily logging.
-- **Branch:** `main` · **Commit:** `90df85f` · synchronized with `origin/main`.
+- **Branch:** `chore/t-034-smoke-verification` (from `main` @ `8667b3c`).
 - **Supabase project:** `rqgoiuztphkcvbwtbxbj`.
 - **Production status:** bootstrap complete, catalog seeded, **ready for real use**.
+- **T-034 (2026-08-01): partially verified, still OPEN.** Production RLS confirmed enforced (11/11
+  anonymous probes rejected, read-only). Data layer confirmed by **12/12 gated live tests** against a
+  local stack with identical migrations. **Production sign-in and the live UI remain unproven** — that
+  needs the household account. One flaky realtime _test_ was fixed (DEC-022); no product code, schema,
+  RLS or migration changed.
 
 ## Verified production baseline (2026-07-25)
 
-| households | memberships | profiles | meal slots | RLS tables | active foods | transactional logs | status |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 2 | 2 | 6 | 10 | **390** | 0 | **READY** |
+| households | memberships | profiles | meal slots | RLS tables | active foods | transactional logs | status    |
+| ---------- | ----------- | -------- | ---------- | ---------- | ------------ | ------------------ | --------- |
+| 1          | 2           | 2        | 6          | 10         | **390**      | 0                  | **READY** |
 
 ## Important instructions
 
@@ -51,9 +56,14 @@ Not a repository audit, and not a migration:
 2. Read `docs/project-status.md`.
 3. Read `docs/todo.md`.
 4. Check the current branch, HEAD and `git status` (read-only).
-5. Ask what happened during the user's first real use, or process the issue they already supplied.
+5. **Ask the user to complete the remaining half of T-034** — it is ordinary app use, not SQL: sign in,
+   confirm אריאל and אלנה both appear, switch profiles, search the catalog, add one real entry, refresh
+   and confirm it persists. The data layer behind all of that is already proven (12/12 live tests); only
+   the authenticated production path is missing.
 6. Continue from the existing production baseline.
 7. Never rerun the bootstrap as a troubleshooting shortcut — use `supabase/verify_catalog.sql`.
+8. Do not re-run the gated live suites against production — they sign up accounts and would create
+   extra households. Run them against a local stack (`npx supabase start`) as on 2026-08-01.
 
 ## Known limitation
 

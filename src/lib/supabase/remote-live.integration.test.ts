@@ -431,14 +431,20 @@ describe.skipIf(!run)("Supabase live data layer (remote)", () => {
           slot: "dinner",
         },
       );
+      // Await each event before triggering the next mutation. Realtime evaluates
+      // the RLS check for a postgres_changes event against the CURRENT row, so
+      // firing insert -> update -> delete back-to-back lets the delete land before
+      // the UPDATE record is processed; the row is then gone, the check finds
+      // nothing and the UPDATE event is silently dropped. Sequencing makes this
+      // deterministic instead of dependent on server latency.
       await b.from("food_entries").insert(row).throwOnError();
-      await b.from("food_entries").update({ amount: 2 }).eq("id", id).throwOnError();
-      await b.from("food_entries").delete().eq("id", id).throwOnError();
+      await waitFor(() => events.includes("INSERT"), 25000);
 
-      await waitFor(
-        () => events.includes("INSERT") && events.includes("UPDATE") && events.includes("DELETE"),
-        25000,
-      );
+      await b.from("food_entries").update({ amount: 2 }).eq("id", id).throwOnError();
+      await waitFor(() => events.includes("UPDATE"), 25000);
+
+      await b.from("food_entries").delete().eq("id", id).throwOnError();
+      await waitFor(() => events.includes("DELETE"), 25000);
       expect(events).toContain("INSERT");
       expect(events).toContain("UPDATE");
       expect(events).toContain("DELETE");

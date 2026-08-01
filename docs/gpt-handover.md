@@ -1,6 +1,11 @@
 # GPT Handover
 
-Continuity handover across tools. Updated **2026-07-25** — production bootstrap session closed.
+Continuity handover across tools. Updated **2026-08-01** — T-034 partially verified (data layer proven,
+production sign-in still unproven). See `project-status.md` → "T-034 partial verification" and DEC-022.
+
+> **T-034 status in one line:** production RLS is confirmed enforced and the whole data layer passes
+> 12/12 gated live tests, but **nobody has signed in to production yet** — that half of T-034 is still
+> open and needs the household account. Do not record it as done.
 
 > Any future GPT must rely on the documentation in this repository, not on conversation memory.
 > On conflict, the newest user instruction wins, then `project-status.md`, then this file.
@@ -23,10 +28,14 @@ good, bad, healthy or forbidden.
 - The **390-food Hebrew catalog is live** in the database.
 - **No further SQL action is pending.** Do not instruct the user to rerun the migration.
 - The single remaining check is the user's **first real-use interaction** in the app.
+- **RLS is confirmed enforced in production** (2026-08-01, read-only anonymous probe, 11/11 rejected).
+- The **data layer is confirmed working** (12/12 gated live tests against a local stack with identical
+  migrations): auth, bootstrap idempotency, both profiles, profile isolation, CRUD, coffee constraint,
+  upsert idempotency, favorites/recents per profile, and realtime to a second context.
 
-| households | memberships | profiles (אריאל/אלנה) | meal slots | RLS tables | active foods | transactional logs | status |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 2 | 2 | 6 | 10 | **390** | 0 | **READY** |
+| households | memberships | profiles (אריאל/אלנה) | meal slots | RLS tables | active foods | transactional logs | status    |
+| ---------- | ----------- | --------------------- | ---------- | ---------- | ------------ | ------------------ | --------- |
+| 1          | 2           | 2                     | 6          | 10         | **390**      | 0                  | **READY** |
 
 ## 3. Repository and commits
 
@@ -81,7 +90,7 @@ good, bad, healthy or forbidden.
   decision (DEC-004, DEC-009), not by omission.
 - The bootstrap created **no** Favorites, Recents or Food Entries.
 - **Supabase is the source of truth** (DEC-019). The TypeScript modules under `src/data/foods/` are the
-  canonical *definition*: they generate the seed SQL and act as the offline / pre-seed fallback. They
+  canonical _definition_: they generate the seed SQL and act as the offline / pre-seed fallback. They
   must **not** be documented as the primary production source.
 - Per-food practical units (e.g. גבינה צהובה = פרוסה/גרם, מים = מ״ל/כוס/ליטר); the default unit is
   always one of the offered units.
