@@ -1,12 +1,67 @@
 # Project Status
 
 **Date:** 2026-08-01
-**Branch:** `chore/t-034-smoke-verification` (from `main` @ `8667b3c`)
+**Branch:** `main` @ `d5d2ce3` — merged (fast-forward) and synchronized with `origin/main`
 **Supabase project:** `rqgoiuztphkcvbwtbxbj`
 **Stage:** **Production bootstrap complete — T-034 closed as Backend Verified; T-034-UI blocked**
+**Deployment:** none required, none performed (no runtime code changed since `8667b3c`)
 **Pilot-ready code checkpoint:** tag `pilot-ready-2026-07-24` → `29ac1d5`.
 
 > Rule: nothing is listed as "working" unless it was actually run/verified.
+
+## 2026-08-01 — Deployment assessment: none required, none performed
+
+`main` is at `d5d2ce3` and synchronized with `origin/main`. **No deployment was required and none was
+performed.**
+
+### Why no deployment is required
+
+Everything merged since the last known production state (`8667b3c`) is documentation plus one test file:
+
+| File                                                                                                            | Ships to production?           |
+| --------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| `docs/claude-context.md`, `docs/decisions.md`, `docs/gpt-handover.md`, `docs/project-status.md`, `docs/todo.md` | No                             |
+| `src/lib/supabase/remote-live.integration.test.ts`                                                              | No — `.test.ts`, never bundled |
+
+`git diff --name-only 8667b3c..d5d2ce3` filtered for non-docs, non-test files returns **nothing**. Zero
+runtime code changed, so a production bundle built from `d5d2ce3` is functionally identical to one built
+from `8667b3c`. Deploying would be a no-op.
+
+### Deployment mechanism, as verified (not assumed)
+
+| Check                                                                          | Result                                                                          |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| `.github/workflows/`                                                           | **Absent** — no GitHub Actions                                                  |
+| `gh run list`                                                                  | **Zero runs** — no CI has ever executed                                         |
+| GitHub Deployments API                                                         | **Empty** — no platform integration has ever registered a deployment            |
+| GitHub Pages                                                                   | 404 — not used                                                                  |
+| `deploy`/`publish` script in `package.json`                                    | **None**                                                                        |
+| Committed `wrangler.toml` / `nitro.config.ts` / `vercel.json` / `netlify.toml` | **None** — `.output/server/wrangler.json` is generated per build and gitignored |
+| `npx wrangler whoami`                                                          | **Not authenticated**                                                           |
+| Production URL documented anywhere in the repo                                 | **None found**                                                                  |
+
+**Conclusion: pushing to `main` triggers nothing.** The project is a Lovable project
+(`.lovable/project.json`, template `tanstack_start_ts_current`); per the README, GitHub and Lovable sync
+_code_, and publishing is a manual action in the Lovable editor. That is the real deployment path, it is
+outside this environment, and it requires the owner's Lovable session.
+
+### Not verified, and why
+
+The live production state could not be inspected: no production URL is recorded in the repository, docs
+or environment, and no deployment integration exposes one. So this section asserts only what was checked
+— that no runtime code changed and that no automated deployment exists. It does **not** claim to have
+observed the running site.
+
+### Quality gate (2026-08-01, on `main` @ `d5d2ce3`)
+
+| Check                                    | Result                                                                                                                                                                                                                                        |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tsc --noEmit`                           | **PASS** — exit 0                                                                                                                                                                                                                             |
+| `eslint .`                               | **PASS** — 0 errors, 8 pre-existing dev-only HMR warnings                                                                                                                                                                                     |
+| `vitest run`                             | **PASS** — 186 passed, 12 gated skipped                                                                                                                                                                                                       |
+| `vite build`                             | **PASS**                                                                                                                                                                                                                                      |
+| `prettier --check` on all authored files | **PASS**                                                                                                                                                                                                                                      |
+| `prettier --check .` repo-wide           | 5 pre-existing offenders, none authored here: `AGENTS.md` and `src/routes/README.md` (both last touched by Lovable, 2026-07-22), two untracked local user files, and `supabase/.temp/` (gitignored CLI artifact). Left untouched deliberately |
 
 ## 2026-08-01 — T-034 split into backend (Done) and UI (Blocked) — DEC-023
 

@@ -10,6 +10,12 @@ Verified**; **T-034-UI** is the only open verification. See `project-status.md` 
 > **Do not build a production self-test.** Diagnostics tables, feature flags, background self-tests,
 > temporary migrations, diagnostic entities, production writes and deployment-only verification code
 > were all considered and **rejected** (DEC-023). The production schema is unchanged.
+>
+> **Deployment: no automated pipeline exists.** Verified 2026-08-01 — no GitHub Actions, zero workflow
+> runs, zero GitHub deployments, no deploy script, no committed wrangler config, `wrangler`
+> unauthenticated. **Pushing to `main` deploys nothing.** Publishing is a manual action in the Lovable
+> editor. No deployment was needed for `d5d2ce3` anyway: everything since `8667b3c` is docs plus one
+> test file, so zero runtime code changed. No production URL is recorded in the repo.
 
 > Any future GPT must rely on the documentation in this repository, not on conversation memory.
 > On conflict, the newest user instruction wins, then `project-status.md`, then this file.

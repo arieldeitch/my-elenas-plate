@@ -20,6 +20,11 @@ Updated 2026-08-01.
 - **Do not build a production self-test** (DEC-023) — no diagnostics tables, feature flags, background
   self-tests, temporary migrations, diagnostic entities, production writes, or deployment-only
   verification code. This was considered and rejected.
+- **Deployment: there is no automated pipeline.** Verified 2026-08-01 — no `.github/workflows`, zero
+  GitHub Actions runs, zero GitHub deployments, no `deploy` script, no committed wrangler config, and
+  `wrangler` is unauthenticated. **Pushing to `main` deploys nothing.** This is a Lovable project;
+  publishing is a manual action in the Lovable editor, outside this environment. No production URL is
+  recorded anywhere in the repo, so the live site cannot be inspected from here.
 
 ## Verified production baseline (2026-07-25)
 
