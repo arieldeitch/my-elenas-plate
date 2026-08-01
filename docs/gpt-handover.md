@@ -1,11 +1,15 @@
 # GPT Handover
 
-Continuity handover across tools. Updated **2026-08-01** — T-034 partially verified (data layer proven,
-production sign-in still unproven). See `project-status.md` → "T-034 partial verification" and DEC-022.
+Continuity handover across tools. Updated **2026-08-01** — T-034 split and closed as **Backend
+Verified**; **T-034-UI** is the only open verification. See `project-status.md` and DEC-022 / DEC-023.
 
-> **T-034 status in one line:** production RLS is confirmed enforced and the whole data layer passes
-> 12/12 gated live tests, but **nobody has signed in to production yet** — that half of T-034 is still
-> open and needs the household account. Do not record it as done.
+> **T-034 status in one line:** the backend half is **Done** — production RLS enforced (11/11 read-only
+> probes) and the data layer passes 12/12 gated live tests. The browser half is **T-034-UI**, which is
+> **Blocked** until browser automation exists. Never describe T-034 as fully verified until then.
+>
+> **Do not build a production self-test.** Diagnostics tables, feature flags, background self-tests,
+> temporary migrations, diagnostic entities, production writes and deployment-only verification code
+> were all considered and **rejected** (DEC-023). The production schema is unchanged.
 
 > Any future GPT must rely on the documentation in this repository, not on conversation memory.
 > On conflict, the newest user instruction wins, then `project-status.md`, then this file.
@@ -27,7 +31,8 @@ good, bad, healthy or forbidden.
   final report of `READY`.
 - The **390-food Hebrew catalog is live** in the database.
 - **No further SQL action is pending.** Do not instruct the user to rerun the migration.
-- The single remaining check is the user's **first real-use interaction** in the app.
+- The single remaining check is **T-034-UI** — the user's first real-use interaction in the app,
+  observed in a rendered browser. It is Blocked on browser-automation capability, not on effort.
 - **RLS is confirmed enforced in production** (2026-08-01, read-only anonymous probe, 11/11 rejected).
 - The **data layer is confirmed working** (12/12 gated live tests against a local stack with identical
   migrations): auth, bootstrap idempotency, both profiles, profile isolation, CRUD, coffee constraint,

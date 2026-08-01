@@ -3,15 +3,27 @@
 **Date:** 2026-08-01
 **Branch:** `chore/t-034-smoke-verification` (from `main` @ `8667b3c`)
 **Supabase project:** `rqgoiuztphkcvbwtbxbj`
-**Stage:** **Production bootstrap complete — T-034 partially verified, production sign-in still unproven**
+**Stage:** **Production bootstrap complete — T-034 closed as Backend Verified; T-034-UI blocked**
 **Pilot-ready code checkpoint:** tag `pilot-ready-2026-07-24` → `29ac1d5`.
 
 > Rule: nothing is listed as "working" unless it was actually run/verified.
 
-## 2026-08-01 — T-034 partial verification (data layer proven, production UI not)
+## 2026-08-01 — T-034 split into backend (Done) and UI (Blocked) — DEC-023
 
-**T-034 remains OPEN.** What was proven, and what was not, is listed precisely below. Nothing here
-claims that anyone signed in to production.
+**T-034 is closed as "Backend Verified".** Every acceptance criterion not requiring a rendered browser
+is proven; the evidence is in the section below. The browser-dependent remainder is tracked separately
+as **T-034-UI**, which is **Blocked** until a browser automation capability exists.
+
+A **Silent Production Self-Test** was designed and then **deliberately not built** (DEC-023). It would
+have added diagnostics tables, a feature flag, a two-stage background engine and a migration, and would
+have written to production automatically on a household member's device — to save about two minutes of
+ordinary app use. It also would not have closed the real gap, because profile rendering, profile
+switching and on-screen search results cannot be observed from a headless in-app test. **No diagnostics
+table, feature flag, background self-test, temporary migration, diagnostic entity, production write or
+deployment-only verification code was added. The production schema is unchanged.**
+
+What was proven, and what was not, is listed precisely below. Nothing here claims that anyone signed in
+to production.
 
 ### Verified against the live production project `rqgoiuztphkcvbwtbxbj`
 
@@ -59,12 +71,18 @@ Two local-environment faults were also cleared during diagnosis, both infrastruc
 container needing a restart before WebSocket upgrades succeeded, and auth 504s under load (three
 Supabase stacks were running on the machine at once).
 
-### Still unproven — why T-034 stays open
+### Still unproven — now tracked as T-034-UI (Blocked)
 
-Everything requiring the real household account: production sign-in, both profiles rendering in the
-live UI, profile switching, catalog search against the live 390-item catalog, adding a real entry to
-production, and refresh persistence against production. The assistant has no credentials, and creating
-a throwaway account would add a second household to the clean pilot project.
+Everything requiring a rendered, authenticated browser: production sign-in, both profiles rendering in
+the live UI, profile switching preserving the active date, catalog search returning items on screen,
+adding a real entry to production through the UI, and refresh persistence against production. The
+assistant has no credentials, and creating a throwaway account would add a second household to the clean
+pilot project.
+
+This is **not** a defect and **not** a pending fix — it is a verification that requires a capability the
+project does not currently have. It runs when browser automation becomes available (Chrome DevTools MCP,
+Playwright against an authenticated session, or equivalent). Until then T-034-UI stays open, and T-034
+must be described as **Backend Verified**, never as fully verified.
 
 ### Quality gate (2026-08-01)
 

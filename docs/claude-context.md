@@ -10,11 +10,16 @@ Updated 2026-08-01.
 - **Branch:** `chore/t-034-smoke-verification` (from `main` @ `8667b3c`).
 - **Supabase project:** `rqgoiuztphkcvbwtbxbj`.
 - **Production status:** bootstrap complete, catalog seeded, **ready for real use**.
-- **T-034 (2026-08-01): partially verified, still OPEN.** Production RLS confirmed enforced (11/11
-  anonymous probes rejected, read-only). Data layer confirmed by **12/12 gated live tests** against a
-  local stack with identical migrations. **Production sign-in and the live UI remain unproven** — that
-  needs the household account. One flaky realtime _test_ was fixed (DEC-022); no product code, schema,
-  RLS or migration changed.
+- **T-034 (2026-08-01): closed as Backend Verified** (DEC-023). Production RLS confirmed enforced
+  (11/11 anonymous probes rejected, read-only). Data layer confirmed by **12/12 gated live tests**
+  against a local stack with identical migrations. One flaky realtime _test_ was fixed (DEC-022); no
+  product code, schema, RLS or migration changed.
+- **T-034-UI: Blocked.** The browser-dependent half (profiles rendering, profile switching, on-screen
+  search, adding an entry through the real UI, refresh persistence) runs only when a browser automation
+  capability exists. **Never describe T-034 as fully verified until T-034-UI is done.**
+- **Do not build a production self-test** (DEC-023) — no diagnostics tables, feature flags, background
+  self-tests, temporary migrations, diagnostic entities, production writes, or deployment-only
+  verification code. This was considered and rejected.
 
 ## Verified production baseline (2026-07-25)
 
@@ -56,14 +61,15 @@ Not a repository audit, and not a migration:
 2. Read `docs/project-status.md`.
 3. Read `docs/todo.md`.
 4. Check the current branch, HEAD and `git status` (read-only).
-5. **Ask the user to complete the remaining half of T-034** — it is ordinary app use, not SQL: sign in,
-   confirm אריאל and אלנה both appear, switch profiles, search the catalog, add one real entry, refresh
-   and confirm it persists. The data layer behind all of that is already proven (12/12 live tests); only
-   the authenticated production path is missing.
+5. **Do not reopen T-034** — it is closed as Backend Verified (DEC-023). The only remaining verification
+   is **T-034-UI**, and it is Blocked by capability, not by effort. Run it only if browser automation is
+   available; otherwise leave it open and say so plainly.
 6. Continue from the existing production baseline.
 7. Never rerun the bootstrap as a troubleshooting shortcut — use `supabase/verify_catalog.sql`.
 8. Do not re-run the gated live suites against production — they sign up accounts and would create
    extra households. Run them against a local stack (`npx supabase start`) as on 2026-08-01.
+9. Do not propose a production self-test, diagnostics table or background verification engine — the
+   design was reviewed and rejected (DEC-023).
 
 ## Known limitation
 

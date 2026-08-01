@@ -1,35 +1,41 @@
 # TODO
 
 Status legend: Done / In Progress / Blocked / Deferred / Not Started.
-Updated 2026-07-25. **Production bootstrap is complete** — Supabase project `rqgoiuztphkcvbwtbxbj`
+Updated 2026-08-01. **Production bootstrap is complete** — Supabase project `rqgoiuztphkcvbwtbxbj`
 holds 1 household, 2 profiles (אריאל/אלנה), 6 meal slots, RLS on 10 tables and 390 active foods
 (status `READY`). Rollback code checkpoint: tag `pilot-ready-2026-07-24` (`29ac1d5`).
-All P0 work is Done. The only open P1 is T-034 below, and it needs no technical action.
+All P0 work is Done. **T-034 was split on 2026-08-01** (DEC-023): the backend half is **Done**, and the
+browser-dependent half is tracked separately as **T-034-UI**, which is **Blocked** until a browser
+automation capability exists. There is no open work that needs technical action today.
 
-## Next task (the only open P1)
+## T-034 (P1) — Backend verification — **Done (2026-08-01)**
 
-### T-034 (P1) — Authenticated first-use smoke verification
-
-**Status:** **Partially verified 2026-08-01 — still OPEN.** The data layer is fully proven; the
-production sign-in path is not.
-
-Requires **no SQL and no Terminal commands** — it is ordinary use of the application. Claude cannot
-complete it: it needs the household account's credentials, and a throwaway account would create a second
-household in the clean pilot project.
-
-**Verified on 2026-08-01** (see `project-status.md` → "T-034 partial verification"):
+Closed as **Backend Verified**. Every acceptance criterion that does not require a rendered browser has
+been proven. Evidence in `project-status.md` → "T-034 partial verification".
 
 - Production project `rqgoiuztphkcvbwtbxbj` — **RLS enforced, 11/11 anonymous probes rejected**
-  (9 tables hidden, `bootstrap_household` rejected, anonymous INSERT rejected). Read-only; no row
-  created.
+  (9 tables hidden, `bootstrap_household` rejected HTTP 400, anonymous INSERT rejected HTTP 401).
+  Read-only; **no production row was created, updated or deleted**.
 - Data layer — **12/12 gated live tests pass** against a local stack running the identical migrations:
-  bootstrap creates exactly אריאל + אלנה and is idempotent, the shared account reads/writes both
-  profiles, household isolation holds, CRUD on every table, coffee CHECK constraint, upsert
+  bootstrap creates exactly אריאל + אלנה and is idempotent, the shared account reads **and** writes
+  **both** profiles, household isolation holds, CRUD on every table, coffee CHECK constraint, upsert
   idempotency, per-profile favorites/recents isolation, and realtime INSERT/UPDATE/DELETE to a second
   context.
+- Persistence, profile separation by `profile_id`, and realtime — all verified.
+- Offline queue — covered by `src/lib/sync/queue.test.ts`; re-queue-on-failure path reviewed. No real
+  network partition was induced.
 - localStorage is **not** the source of truth (code-gated on `isSupabaseConfigured()`, test-asserted).
+- Quality gate green: tsc 0 errors · eslint 0 errors · vitest 186 passed · live 12/12 · build · prettier.
 
-**Still unproven — this is what keeps T-034 open.** All of it needs the real household account:
+## T-034-UI (P2) — Live UI verification — **Blocked**
+
+**Status:** Blocked — deliberately **not** automated inside the production application (DEC-023).
+
+Runs only if and when a browser automation capability becomes available: Chrome DevTools MCP, Playwright
+driving an already-authenticated session, or equivalent. Until then it stays open and unproven, and must
+not be described as done.
+
+Acceptance criteria (all require a rendered, authenticated browser):
 
 - Sign in to production with the shared account.
 - אריאל and אלנה both visible in the real UI.
@@ -41,6 +47,10 @@ household in the clean pilot project.
 - Recent Foods updates after genuine use.
 - Favorite Foods remains user-controlled.
 - Any failure is documented with the exact visible behaviour.
+
+**Explicitly out of scope for this task** (DEC-023): production diagnostics tables, feature flags,
+background self-tests, temporary migrations, diagnostic entities, production writes, and any
+verification code that exists only to serve a deployment.
 
 ## Production bootstrap — done 2026-07-25
 
