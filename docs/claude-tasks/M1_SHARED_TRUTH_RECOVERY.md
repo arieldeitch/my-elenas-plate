@@ -5,6 +5,7 @@
 **Baseline:** `ada47d2d25dc401c9c4c8b347e39460b7770e3ba`
 **Canonical product/audit reference:** Google Drive `AI Projects/04_Nutrition_App/02_Product_Architecture/TAKEOVER_AUDIT_AND_RECOVERY_PLAN`
 **Supabase production project:** `rqgoiuztphkcvbwtbxbj`
+**Development-environment policy:** `docs/NO_LOCAL_DOCKER_POLICY.md`
 
 ## 1. Objective
 
@@ -23,6 +24,7 @@ This is a recovery task, not a rewrite.
 - RLS remains household-scoped.
 - Built-in catalog + remote catalog behavior stays intact.
 - Existing public UX concepts (six meal slots, fasting, workout, weigh-in, favorites/recents) stay intact for M1.
+- **No local Docker dependency.** The application runtime is Docker-free and the development/test workflow must also be Docker-free on Ariel's workstation by default.
 
 Do **not** introduce separate-account invitations, a new household membership architecture, a new framework, a new database, or a large UI redesign in M1.
 
@@ -66,6 +68,23 @@ M1 should solve this as a **device preference**, not as nutrition source-of-trut
 The production repository documents that the running application pointed to Supabase project `rqgoiuztphkcvbwtbxbj` in July 2026, but publishing is manual through Lovable and there is no CI/CD or Git SHA embedded in the deployed artifact.
 
 Current read-only inspection of that Supabase project shows the catalog/household baseline but no transactional nutrition rows. The current household memberships are QA/bootstrap accounts. Therefore M1 must re-prove what the currently published build is actually running before declaring production fixed.
+
+### 3.7 Docker is not an application requirement
+
+The repository has no Docker runtime/test script in `package.json`. Docker entered the project only because prior Supabase verification used `supabase start`, which launches the full local Supabase stack.
+
+The existing live integration suites already support `SUPABASE_TEST_URL` / `SUPABASE_TEST_ANON_KEY` and describe their target as remote **or** local. Therefore local Docker is a tooling choice, not an architecture requirement.
+
+Ariel's workstation experiences unacceptable resource contention when the local Supabase Docker stack runs. M1 must follow `docs/NO_LOCAL_DOCKER_POLICY.md`:
+
+- run hermetic/local tests without containers;
+- run real Auth/RLS/Realtime/concurrency tests against an isolated hosted Supabase development branch or dedicated non-production test project;
+- never use production as an automated mutation-test target;
+- do not fall back to local Docker merely because prior project notes used it.
+
+The Supabase organization is on the Pro plan and currently has no development branches. Provisioning a hosted test branch is an orchestration/release action, not permission for Claude to create one without the required cost/owner approval.
+
+Production migration history currently records migrations through `20260723090400`, while the repository also contains `20260725190000_cleanup_mock_data_and_seed_food_catalog.sql`. The first hosted test branch must therefore be treated as a reproducibility check; do not assume its catalog/data matches production, and do not use this mismatch as a reason to run Docker locally.
 
 ## 4. Required implementation
 
@@ -133,6 +152,15 @@ The queue must contain operations, not whole-day snapshots.
 4. If the affected entity is on the current screen, update/rehydrate it promptly; if it is the partner profile, retain enough state to surface it when the partner is viewed and to support the later couple-first UI.
 5. Keep RLS/auth token handling intact.
 
+### Phase F — Docker-free verification path
+
+1. Do **not** run `supabase start`, local `supabase db reset`, Docker Desktop, Testcontainers, or a self-hosted Supabase stack on Ariel's workstation.
+2. Run unit/component/sync-logic tests locally with Vitest.
+3. Run Playwright without containers. Backend-dependent browser tests must point to the isolated hosted Supabase test environment.
+4. Run RLS/Realtime/live-data suites only against a hosted isolated Supabase development branch or dedicated non-production test project.
+5. If the hosted test environment is not yet provisioned, complete all hermetic implementation/testing that can be done safely, then report the real-backend integration gate as **pending**. Do not substitute production and do not silently launch Docker.
+6. If any schema change is actually required, create/review explicit SQL migration files and validate them on the hosted test environment. Do not use a local Docker-backed schema-diff workflow by default.
+
 ## 5. Mandatory regression/concurrency tests
 
 Add tests that fail on the current snapshot algorithm and pass after M1.
@@ -189,11 +217,16 @@ Second context receives each operation without manual refresh. Keep the existing
 - With Supabase env present: auth/cloud path is active and demo-only persistence copy is absent.
 - Without Supabase env: demo/development mode is clearly identifiable and cannot masquerade as production cloud sync.
 
+### Test environment rule
+
+Tests 1–6 that require real database/Auth/Realtime semantics must run against the isolated hosted Supabase test environment, **not** production and **not** local Docker on Ariel's workstation. Tests 7–8 should remain hermetic/browser-local wherever possible.
+
 ## 6. Safety constraints
 
 - **No destructive production writes.**
 - **Do not create more production Auth users or test households.**
-- Use local Supabase / isolated test configuration for automated mutation tests.
+- **No local Docker/Supabase stack on Ariel's workstation unless Ariel explicitly approves a documented exception.**
+- Default live-test target = isolated hosted Supabase branch/project.
 - Do not run E2E signup flows against production.
 - Do not alter RLS semantics unless a failing M1 acceptance test requires it and the change is separately justified.
 - Do not delete existing production Auth users during M1.
@@ -215,6 +248,7 @@ Second context receives each operation without manual refresh. Keep the existing
 9. Cloud/demo mode is explicit and misleading demo-only persistence copy is removed in cloud mode.
 10. Typecheck, lint, unit/component tests, relevant live integration tests, E2E tests, and production build all pass.
 11. No production data was modified as part of automated verification.
+12. M1's normal development/test path completes without starting Docker on Ariel's workstation. If an exception was required, it is explicitly documented and approved rather than silently treated as a prerequisite.
 
 ## 8. Required final report from implementer
 
@@ -228,7 +262,8 @@ Return:
 - exact branch HEAD SHA;
 - diff summary vs baseline;
 - any remaining M1 blocker;
-- explicit statement that production data was not modified.
+- explicit statement that production data was not modified;
+- explicit statement whether any Docker/container runtime was started, where it ran, and why. The expected answer is `No local Docker used`.
 
 If any required acceptance criterion cannot be proven, do not mark M1 complete. State the blocker precisely.
 
