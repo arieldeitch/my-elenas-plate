@@ -6,7 +6,13 @@
  * without UI components knowing about it (`useSupabaseSync` below hydrates and
  * pushes through the same setters).
  *
- * All tracking state starts empty in every mode — there is no demo or mock seed
+ * M1 (shared-truth recovery): every interactive edit applies optimistically to
+ * local state AND emits narrow operations (`sync/operations.ts`) that describe
+ * exactly the rows it touched. In cloud mode those ops are persisted in the
+ * durable queue and drained to Supabase one by one; nothing here ever pushes a
+ * whole-day snapshot, so a stale device cannot erase its partner's entries.
+ *
+ * All tracking data starts empty in every mode — there is no demo or mock seed
  * anywhere in the app. Content comes from Supabase when configured, or from
  * localStorage in local demo mode.
  */
@@ -38,8 +44,17 @@ import { FOOD_CATALOG, mergeCatalog } from "./food-catalog";
 import { normalizeFoodName } from "./food-normalize";
 import { toISODate } from "./format";
 import { loadState, saveState } from "./persistence";
+import { loadDeviceProfile, saveDeviceProfile } from "./device-profile";
 import { isSupabaseConfigured } from "./supabase/client";
-import { useSupabaseSync } from "./sync/use-supabase-sync";
+import { useSupabaseSync, type SyncDetail } from "./sync/use-supabase-sync";
+import {
+  opsForAddEntry,
+  opsForRemoveEntry,
+  opsForSetFasting,
+  opsForSetMealSkipped,
+  opsForSetWorkout,
+  opsForUpdateEntry,
+} from "./sync/operations";
 
 export const PROFILES: Profile[] = [
   { id: "me", name: "אריאל", initials: "א" },
@@ -54,7 +69,17 @@ interface StoreValue {
   selectedDate: Date;
   setSelectedDate: (d: Date) => void;
 
+  /** This device's stored default profile (null until chosen). Never nutrition data. */
+  deviceProfile: ProfileId | null;
+  deviceChooserOpen: boolean;
+  chooseDeviceProfile: (p: ProfileId) => void;
+  openDeviceChooser: () => void;
+  closeDeviceChooser: () => void;
+
   syncState: SyncState;
+  syncDetail: SyncDetail;
+  retryFailedSync: () => void;
+  discardFailedSync: () => void;
 
   getDay: (profile: ProfileId, iso: string) => DayData;
   getAllDays: (profile: ProfileId) => Record<string, DayData>;
@@ -96,9 +121,17 @@ const genId = (p = "x") =>
     : `${p}_${++localId}`;
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [activeProfile, setActiveProfile] = useState<ProfileId>("me");
+  // Per-device default profile (M1 Phase B). Read synchronously on the client
+  // so the first render already shows the right person; SSR has no window and
+  // falls back to "me", which the client corrects before anything is logged.
+  const [deviceProfile, setDeviceProfile] = useState<ProfileId | null>(() => loadDeviceProfile());
+  const [activeProfile, setActiveProfile] = useState<ProfileId>(() => loadDeviceProfile() ?? "me");
+  const [deviceChooserOpen, setDeviceChooserOpen] = useState<boolean>(
+    () => typeof window !== "undefined" && loadDeviceProfile() === null,
+  );
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [syncState, setSyncState] = useState<SyncState>("saved");
+  const [syncDetail, setSyncDetail] = useState<SyncDetail>({ pending: 0, failed: 0 });
 
   // Tracking data always starts EMPTY, in every mode. There is no demo/mock seed
   // anywhere in the app: a seed once leaked into a real cloud account (see
@@ -129,6 +162,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     activeProfile,
     iso,
     setSyncState,
+    setSyncDetail,
   });
 
   // Interim demo persistence (localStorage) — used ONLY when Supabase is not the
@@ -139,7 +173,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     // Only demo mode reads localStorage. When Supabase is configured it is the
     // source of truth, and restoring a legacy local snapshot here would
     // resurrect data the cloud no longer has (including any pre-cleanup rows).
-    // The one-time local->cloud import reads storage separately, in the sync layer.
     if (isSupabaseConfigured()) {
       setHydrated(true);
       return;
@@ -153,7 +186,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // Merge rather than replace: a snapshot taken before a catalog update must
       // not shrink the catalog back to its older contents.
       setFoods(mergeCatalog(FOOD_CATALOG, saved.foods));
-      setActiveProfile(saved.activeProfile);
+      // The device preference always wins over the snapshot's last-active profile.
+      if (loadDeviceProfile() === null) setActiveProfile(saved.activeProfile);
     }
     setHydrated(true);
   }, []);
@@ -174,12 +208,32 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [hydrated, activeProfile, days, weighInsMap, favoritesMap, recentsMap, foods]);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Never let the demo "saved" pulse fire on an unmounted provider.
+  useEffect(
+    () => () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    },
+    [],
+  );
 
+  // Demo-mode-only "saving → saved" pulse for localStorage writes. In cloud
+  // mode the sync state is derived exclusively from the durable queue (see
+  // useSupabaseSync) so the UI can never claim "saved" while ops are pending.
   const triggerSave = useCallback(() => {
+    if (isSupabaseConfigured()) return;
     setSyncState("saving");
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => setSyncState("saved"), 650);
   }, []);
+
+  const chooseDeviceProfile = useCallback((p: ProfileId) => {
+    saveDeviceProfile(p);
+    setDeviceProfile(p);
+    setActiveProfile(p);
+    setDeviceChooserOpen(false);
+  }, []);
+  const openDeviceChooser = useCallback(() => setDeviceChooserOpen(true), []);
+  const closeDeviceChooser = useCallback(() => setDeviceChooserOpen(false), []);
 
   const getDay = useCallback(
     (profile: ProfileId, isoDate: string): DayData => {
@@ -198,9 +252,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return { ...prev, [profile]: { ...prev[profile], [isoDate]: next } };
       });
       triggerSave();
-      sync.markDayDirty(profile, isoDate);
     },
-    [triggerSave, sync],
+    [triggerSave],
   );
 
   const pushRecent = useCallback(
@@ -210,10 +263,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         list.unshift(foodId);
         return { ...prev, [activeProfile]: list.slice(0, 12) };
       });
-      sync.markRecentDirty(activeProfile, foodId, new Date().toISOString());
+      sync.enqueue([
+        { kind: "pref.recent", profile: activeProfile, foodId, at: new Date().toISOString() },
+      ]);
     },
     [activeProfile, sync],
   );
+
+  const dayCtx = { profile: activeProfile, iso };
 
   const addEntry: StoreValue["addEntry"] = (slot, entry) => {
     const withId: FoodEntry = { ...entry, id: genId("e") };
@@ -223,6 +280,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       meal.status = "logged";
       return d;
     });
+    sync.enqueue(opsForAddEntry(dayCtx, slot, withId));
     pushRecent(withId.foodId);
   };
 
@@ -232,6 +290,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       meal.entries = meal.entries.map((e) => (e.id === entry.id ? entry : e));
       return d;
     });
+    sync.enqueue(opsForUpdateEntry(dayCtx, slot, entry));
   };
 
   const removeEntry: StoreValue["removeEntry"] = (slot, entryId) => {
@@ -239,15 +298,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     // runs after this function returns, so capturing it inside would yield
     // undefined and break the undo toast.
     const current = days[activeProfile][iso] ?? emptyDay();
-    const removed = current.meals[slot].entries.find((e) => e.id === entryId);
+    const meal = current.meals[slot];
+    const removed = meal.entries.find((e) => e.id === entryId);
+    const remaining = meal.entries.filter((e) => e.id !== entryId).length;
     mutateDay(activeProfile, iso, (d) => {
-      const meal = d.meals[slot];
-      meal.entries = meal.entries.filter((e) => e.id !== entryId);
-      if (meal.entries.length === 0 && meal.status === "logged") {
-        meal.status = "empty";
+      const m = d.meals[slot];
+      m.entries = m.entries.filter((e) => e.id !== entryId);
+      if (m.entries.length === 0 && m.status === "logged") {
+        m.status = "empty";
       }
       return d;
     });
+    sync.enqueue(opsForRemoveEntry(dayCtx, slot, entryId, remaining, meal.status));
     return removed;
   };
 
@@ -258,9 +320,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       meal.status = "logged";
       return d;
     });
+    sync.enqueue(opsForAddEntry(dayCtx, slot, entry));
   };
 
   const setMealSkipped: StoreValue["setMealSkipped"] = (slot, skipped) => {
+    const current = days[activeProfile][iso] ?? emptyDay();
+    const visibleIds = current.meals[slot].entries.map((e) => e.id);
     mutateDay(activeProfile, iso, (d) => {
       const meal = d.meals[slot];
       if (skipped) {
@@ -271,6 +336,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
       return d;
     });
+    sync.enqueue(opsForSetMealSkipped(dayCtx, slot, skipped, visibleIds));
   };
 
   const setFasting: StoreValue["setFasting"] = (f) => {
@@ -278,6 +344,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       d.fasting = f;
       return d;
     });
+    sync.enqueue(opsForSetFasting(dayCtx, f));
   };
 
   const setWorkout: StoreValue["setWorkout"] = (w) => {
@@ -285,6 +352,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       d.workout = w;
       return d;
     });
+    sync.enqueue(opsForSetWorkout(dayCtx, w));
   };
 
   const addFood: StoreValue["addFood"] = (name, category) => {
@@ -305,7 +373,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       suggestedUnits: ["יחידה", "גרם", "מנה"],
     };
     setFoods((prev) => [f, ...prev]);
-    sync.markFoodDirty(f);
+    sync.enqueue([{ kind: "food.upsert", food: f }]);
     return f;
   };
 
@@ -317,7 +385,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return { ...prev, [activeProfile]: next };
     });
     triggerSave();
-    sync.markFavoriteDirty(activeProfile, foodId, isNowFavorite);
+    sync.enqueue([
+      { kind: "pref.favorite", profile: activeProfile, foodId, isFavorite: isNowFavorite },
+    ]);
   };
 
   const addWeighIn: StoreValue["addWeighIn"] = (w) => {
@@ -329,7 +399,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ),
     }));
     triggerSave();
-    sync.markWeighDirty(activeProfile);
+    sync.enqueue([{ kind: "weighin.insert", profile: activeProfile, weighIn: wi }]);
   };
 
   const value = useMemo<StoreValue>(
@@ -338,7 +408,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setActiveProfile,
       selectedDate,
       setSelectedDate,
+      deviceProfile,
+      deviceChooserOpen,
+      chooseDeviceProfile,
+      openDeviceChooser,
+      closeDeviceChooser,
       syncState,
+      syncDetail,
+      retryFailedSync: sync.retryFailed,
+      discardFailedSync: sync.discardFailed,
       getDay,
       getAllDays,
       foods,
@@ -357,7 +435,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addWeighIn,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeProfile, selectedDate, syncState, days, weighInsMap, favoritesMap, recentsMap, foods],
+    [
+      activeProfile,
+      selectedDate,
+      deviceProfile,
+      deviceChooserOpen,
+      syncState,
+      syncDetail,
+      days,
+      weighInsMap,
+      favoritesMap,
+      recentsMap,
+      foods,
+    ],
   );
 
   return <StoreCtx.Provider value={value}>{children}</StoreCtx.Provider>;

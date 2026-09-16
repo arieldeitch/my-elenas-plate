@@ -158,6 +158,49 @@ export async function upsertFasting(
   if (error) throw error;
 }
 
+/** Clears the fasting record for one profile/date (no-op when absent). */
+export async function deleteFasting(profileId: string, logDate: string): Promise<void> {
+  const sb = requireSupabase();
+  const { error } = await sb
+    .from("fasting_logs")
+    .delete()
+    .eq("profile_id", profileId)
+    .eq("log_date", logDate);
+  if (error) throw error;
+}
+
+export async function upsertWorkout(
+  householdId: string,
+  profileId: string,
+  logDate: string,
+  workout: { performed: boolean | null; type?: string; feeling?: string },
+): Promise<void> {
+  const sb = requireSupabase();
+  const { error } = await sb.from("workout_logs").upsert(
+    {
+      household_id: householdId,
+      profile_id: profileId,
+      log_date: logDate,
+      performed: workout.performed,
+      workout_type: workout.type ?? null,
+      feeling: workout.feeling ?? null,
+    },
+    { onConflict: "profile_id,log_date" },
+  );
+  if (error) throw error;
+}
+
+/** Clears the workout record for one profile/date (no-op when absent). */
+export async function deleteWorkout(profileId: string, logDate: string): Promise<void> {
+  const sb = requireSupabase();
+  const { error } = await sb
+    .from("workout_logs")
+    .delete()
+    .eq("profile_id", profileId)
+    .eq("log_date", logDate);
+  if (error) throw error;
+}
+
 export async function loadWeighIns(profileId: string): Promise<WeighIn[]> {
   const sb = requireSupabase();
   const { data, error } = await sb
@@ -189,6 +232,31 @@ export async function insertWeighIn(
     weight_kg: w.weightKg,
     body_fat_pct: w.bodyFatPct ?? null,
   });
+  if (error) throw error;
+}
+
+/**
+ * Idempotent weigh-in write keyed by the client-generated uuid: a retried
+ * operation (offline → reconnect → replay) can never create a second row.
+ */
+export async function upsertWeighIn(
+  householdId: string,
+  profileId: string,
+  w: WeighIn,
+): Promise<void> {
+  const sb = requireSupabase();
+  const { error } = await sb.from("weigh_ins").upsert(
+    {
+      id: w.id,
+      household_id: householdId,
+      profile_id: profileId,
+      measured_on: w.dateISO,
+      measured_at: w.time ?? null,
+      weight_kg: w.weightKg,
+      body_fat_pct: w.bodyFatPct ?? null,
+    },
+    { onConflict: "id" },
+  );
   if (error) throw error;
 }
 

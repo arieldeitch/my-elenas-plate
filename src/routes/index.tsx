@@ -17,13 +17,19 @@ import { WeighInForm } from "@/components/nutrition/WeighInForm";
 import { CalendarView } from "@/components/nutrition/CalendarView";
 import { BottomNav } from "@/components/nutrition/BottomNav";
 import { BrandMark } from "@/components/nutrition/BrandMark";
+import { RuntimeModeNotice } from "@/components/nutrition/RuntimeModeNotice";
+import { DeviceProfileChooser } from "@/components/nutrition/DeviceProfileChooser";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
+
+// The page title must not claim "demo" when the build is a connected cloud build.
+const TITLE = isSupabaseConfigured() ? "מעקב תזונה משותף" : "מעקב תזונה משותף — גרסת הדגמה";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "מעקב תזונה משותף — גרסת הדגמה" },
+      { title: TITLE },
       { name: "description", content: "אפליקציית תיעוד תזונה משותפת עם ממשק פשוט, מהיר ורגוע." },
-      { property: "og:title", content: "מעקב תזונה משותף — גרסת הדגמה" },
+      { property: "og:title", content: TITLE },
       {
         property: "og:description",
         content: "אפליקציית תיעוד תזונה משותפת עם ממשק פשוט, מהיר ורגוע.",
@@ -89,11 +95,10 @@ function Home() {
           <FastingCard />
         </div>
 
-        <p className="mt-8 text-center text-xs text-[#94A3B4]">
-          הנתונים בגרסת ההדגמה נשמרים באופן זמני בדפדפן בלבד.
-        </p>
+        <RuntimeModeNotice />
       </div>
 
+      <DeviceProfileChooser />
       <MealEditor slot={openSlot} onClose={closeSlot} />
       <CalendarView open={calendarOpen} onClose={closeCalendar} />
       <WeighInForm open={weighOpen} onClose={closeWeigh} />
