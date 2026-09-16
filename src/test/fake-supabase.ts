@@ -67,13 +67,41 @@ export class FakeSupabase {
     return { data: null, error: { code: "42883", message: `unknown rpc ${name}` } };
   }
 
+  /** Realtime handlers registered via channel().on(), keyed by table. */
+  handlers = new Map<string, Array<(payload: unknown) => void>>();
+  channelCount = 0;
+
   channel() {
-    const ch = { on: () => ch, subscribe: () => ch };
+    this.channelCount += 1;
+    const ch = {
+      on: (_ev: string, filter: { table: string }, cb: (payload: unknown) => void) => {
+        const list = this.handlers.get(filter.table) ?? [];
+        list.push(cb);
+        this.handlers.set(filter.table, list);
+        return ch;
+      },
+      subscribe: () => ch,
+    };
     return ch;
   }
   removeChannel() {
+    this.handlers.clear();
     return Promise.resolve("ok");
   }
+
+  /** Simulates a postgres_changes event as the realtime socket would deliver it. */
+  emit(table: string, eventType: "INSERT" | "UPDATE" | "DELETE", row: Row, old: Row = {}) {
+    for (const cb of this.handlers.get(table) ?? []) {
+      cb({
+        eventType,
+        new: eventType === "DELETE" ? {} : row,
+        old: eventType === "DELETE" ? old : {},
+      });
+    }
+  }
+
+  /** Simulates a network outage: every query rejects like fetch would. */
+  offline = false;
 
   // --- execution ---------------------------------------------------------------
   execute(table: string, action: Action, filters: Filter[], mode: "many" | "single" | "maybe") {
@@ -215,6 +243,7 @@ class Query implements PromiseLike<Result> {
     onrejected?: ((reason: unknown) => R2 | PromiseLike<R2>) | null,
   ): PromiseLike<R1 | R2> {
     const run = async (): Promise<Result> => {
+      if (this.db.offline) throw new TypeError("Failed to fetch");
       const res = this.db.execute(this.table, this.action, this.filters, this.mode);
       if (this.throwing && res.error) throw res.error;
       return res;

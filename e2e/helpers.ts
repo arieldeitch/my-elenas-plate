@@ -18,10 +18,19 @@ export async function signIn(page: Page, email: string): Promise<void> {
   await waitForApp(page);
 }
 
-/** Waits for the authenticated app (profile switcher + meal grid). */
-export async function waitForApp(page: Page): Promise<void> {
+/**
+ * Waits for the authenticated app (profile switcher + meal grid) and answers
+ * the one-time device chooser (M1 Phase B) as Ariel so the meal grid is
+ * interactive. Pass `device` to pick Elena for a "second phone" context.
+ */
+export async function waitForApp(page: Page, device: "me" | "elena" = "me"): Promise<void> {
   await expect(page.getByRole("tab", { name: /אריאל/ })).toBeVisible({ timeout: 40_000 });
   await expect(page.getByRole("heading", { name: "ארוחות היום" })).toBeVisible();
+  const chooser = page.getByRole("dialog", { name: "מי משתמש/ת במכשיר הזה?" });
+  if (await chooser.isVisible({ timeout: 3_000 }).catch(() => false)) {
+    await chooser.getByRole("button", { name: device === "me" ? /אריאל/ : /אלנה/ }).click();
+    await expect(chooser).toBeHidden();
+  }
 }
 
 /** Opens a meal editor by its Hebrew slot label (matches the tile aria-label). */
@@ -34,12 +43,13 @@ export async function closeDialog(page: Page): Promise<void> {
   await page.getByRole("button", { name: "סגירה" }).first().click();
 }
 
-/** True once the sync indicator shows "נשמר" (saved) — best-effort settle. */
+/**
+ * Waits until the sync indicator shows "נשמר". Since M1 the state is derived
+ * from the durable queue, so "saved" means every operation was confirmed by
+ * Supabase — no extra settle time is needed.
+ */
 export async function waitSaved(page: Page): Promise<void> {
-  await expect(page.getByText("נשמר", { exact: true }))
-    .toBeVisible({ timeout: 20_000 })
-    .catch(() => {});
-  await page.waitForTimeout(1500); // let the debounced push flush to Supabase
+  await expect(page.locator("[data-sync-state='saved']")).toBeVisible({ timeout: 30_000 });
 }
 
 /** Opens a meal and adds a catalog food by name via search. Leaves the dialog open. */

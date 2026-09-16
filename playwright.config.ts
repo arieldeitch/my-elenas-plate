@@ -24,8 +24,11 @@ export default defineConfig({
   },
   projects: [{ name: "mobile-chrome", use: { ...devices["Pixel 7"] } }],
   webServer: {
-    // `--mode e2e` loads `.env.e2e` when present (point it at a local Supabase
-    // stack for reliable runs); otherwise it falls back to `.env` (remote).
+    // `--mode e2e` loads `.env.e2e` when present. Per docs/NO_LOCAL_DOCKER_POLICY.md
+    // it must point at the ISOLATED HOSTED Supabase test branch — never at
+    // production and never at a local Docker stack. Without `.env.e2e` Vite
+    // falls back to `.env`, so do not run this config while `.env` targets
+    // production: these specs sign up accounts and write rows.
     command: `npx vite dev --mode e2e --port ${PORT}`,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: true,

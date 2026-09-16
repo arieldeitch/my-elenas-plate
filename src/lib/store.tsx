@@ -121,14 +121,13 @@ const genId = (p = "x") =>
     : `${p}_${++localId}`;
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  // Per-device default profile (M1 Phase B). Read synchronously on the client
-  // so the first render already shows the right person; SSR has no window and
-  // falls back to "me", which the client corrects before anything is logged.
-  const [deviceProfile, setDeviceProfile] = useState<ProfileId | null>(() => loadDeviceProfile());
-  const [activeProfile, setActiveProfile] = useState<ProfileId>(() => loadDeviceProfile() ?? "me");
-  const [deviceChooserOpen, setDeviceChooserOpen] = useState<boolean>(
-    () => typeof window !== "undefined" && loadDeviceProfile() === null,
-  );
+  // Per-device default profile (M1 Phase B). SSR has no window, so the initial
+  // render is always "me" with the chooser closed; the mount effect below applies
+  // this device's stored preference (or opens the chooser) before anything can
+  // be logged. Keeping the initial state SSR-identical avoids hydration errors.
+  const [deviceProfile, setDeviceProfile] = useState<ProfileId | null>(null);
+  const [activeProfile, setActiveProfile] = useState<ProfileId>("me");
+  const [deviceChooserOpen, setDeviceChooserOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [syncState, setSyncState] = useState<SyncState>("saved");
   const [syncDetail, setSyncDetail] = useState<SyncDetail>({ pending: 0, failed: 0 });
@@ -190,6 +189,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (loadDeviceProfile() === null) setActiveProfile(saved.activeProfile);
     }
     setHydrated(true);
+  }, []);
+
+  // Apply the device preference after the demo snapshot (declaration order):
+  // the stored device profile always wins; a device that never chose is asked.
+  useEffect(() => {
+    const stored = loadDeviceProfile();
+    if (stored) {
+      setDeviceProfile(stored);
+      setActiveProfile(stored);
+    } else {
+      setDeviceChooserOpen(true);
+    }
   }, []);
 
   useEffect(() => {
