@@ -28,9 +28,15 @@ vi.mock("../supabase/client", () => ({
   requireSupabase: () => fake,
   validateSupabaseEnv: () => ({ ok: true }),
 }));
+const auth = vi.hoisted(() => ({
+  callback: null as null | ((s: unknown) => void),
+}));
 vi.mock("../supabase/auth", () => ({
   getSession: async () => ({ user: { id: USER }, access_token: "token" }),
-  onAuthChange: () => () => {},
+  onAuthChange: (cb: (s: unknown) => void) => {
+    auth.callback = cb;
+    return () => {};
+  },
 }));
 
 const { StoreProvider, useStore } = await import("../store");
@@ -76,6 +82,7 @@ beforeEach(() => {
   window.localStorage.setItem(DEVICE_PROFILE_KEY, "me");
   seedHousehold();
   fake.log.length = 0;
+  fake.channelCount = 0;
   fake.offline = false;
   setOnline(true);
 });
@@ -260,6 +267,39 @@ describe("active cloud path (hermetic)", () => {
     act(() => hook.result.current.discardFailedSync());
     await waitFor(() => expect(hook.result.current.syncState).toBe("saved"));
     fake.execute = original;
+    hook.unmount();
+  });
+});
+
+describe("account boundaries", () => {
+  it("sign-out removes the realtime channel; sign-in subscribes exactly once again", async () => {
+    const hook = await mountActive();
+    expect(fake.channelCount).toBe(1);
+    act(() => auth.callback!(null));
+    expect(fake.handlers.size).toBe(0);
+    act(() => auth.callback!({ user: { id: USER }, access_token: "token" }));
+    await waitFor(() => expect(fake.handlers.size).toBe(7));
+    expect(fake.channelCount).toBe(2);
+    hook.unmount();
+  });
+
+  it("ops left by another account are quarantined, never written into this household", async () => {
+    const foreign = queue.toQueued({
+      kind: "fasting.set",
+      profile: "me",
+      iso: today(),
+      fasting: { start: "20:00", end: "12:00" },
+    });
+    queue.enqueue({ ...foreign, owner: "someone-else" });
+    const hook = await mountActive();
+    // Not applied, not silently pending: visible as failed with a reason.
+    expect(fake.rows("fasting_logs")).toHaveLength(0);
+    expect(queue.pending()).toHaveLength(0);
+    expect(queue.quarantined()[0].lastError).toContain("another signed-in account");
+    await waitFor(() => expect(hook.result.current.syncState).toBe("error"));
+    expect(hook.result.current.syncDetail.failed).toBe(1);
+    act(() => hook.result.current.discardFailedSync());
+    await waitFor(() => expect(hook.result.current.syncState).toBe("saved"));
     hook.unmount();
   });
 });

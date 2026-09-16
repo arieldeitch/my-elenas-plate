@@ -280,6 +280,14 @@ export function useSupabaseSync(args: Args): SyncControls {
       try {
         userIdRef.current = session.user.id;
         queue.setQueueOwner(session.user.id);
+        // Ops left behind by a DIFFERENT account on this device must never be
+        // written into this household. Quarantine them (visible, discardable)
+        // instead of letting them sit invisibly in the pending count.
+        for (const m of queue.pending()) {
+          if (!queue.ownedBy(m, session.user.id)) {
+            queue.quarantine(m.id, "belongs to another signed-in account");
+          }
+        }
         setSyncState("saving");
         const ctx = await bootstrapHousehold();
         if (disposed) return;
@@ -337,10 +345,14 @@ export function useSupabaseSync(args: Args): SyncControls {
     void activate();
     const unsubAuth = onAuthChange((s) => {
       if (!s) {
+        // Sign-out: drop the household context AND the realtime channel, so a
+        // later sign-in subscribes exactly once instead of stacking channels.
         setActive(false);
         ctxRef.current = null;
         userIdRef.current = undefined;
         queue.setQueueOwner(undefined);
+        unsubRealtime?.();
+        unsubRealtime = null;
       } else {
         void activate();
       }

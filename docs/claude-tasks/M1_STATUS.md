@@ -30,7 +30,7 @@
 | 7   | Sync UI never says "saved" with queued mutations     | **Proven hermetically**: state derived from the queue; demo pulse disabled in cloud mode; failed ops visible with retry/discard.                                                          |
 | 8   | Artifact exposes a traceable Git SHA                 | **Proven for local build** (`66b0805` / `2624a52` embedded). Published artifact: **pending** (no publish in this run).                                                                    |
 | 9   | Cloud/demo explicit; demo copy removed in cloud mode | **Proven** (`RuntimeModeNotice.test.tsx`, `build-info.test.ts`, hermetic Playwright `runtime-mode.spec.ts`).                                                                              |
-| 10  | typecheck, lint, unit, live, E2E, build all pass     | typecheck ✅ lint ✅ (0 errors, 8 pre-existing warnings) vitest ✅ (250 passed, 12 skipped live suites) hermetic Playwright ✅ (3) build ✅. Live integration + backend E2E: **pending**. |
+| 10  | typecheck, lint, unit, live, E2E, build all pass     | typecheck ✅ lint ✅ (0 errors, 8 pre-existing warnings) vitest ✅ (252 passed, 12 skipped live suites) hermetic Playwright ✅ (3) build ✅. Live integration + backend E2E: **pending**. |
 | 11  | No production data modified                          | **True** — no write to any Supabase project in this run.                                                                                                                                  |
 | 12  | No Docker on the workstation                         | **True** — no container runtime started.                                                                                                                                                  |
 
@@ -51,6 +51,7 @@
    and perform the read-only production verification in
    `docs/RUNTIME_CONFIG.md §4`. If the footer shows `demo` / the red alert, the
    missing runtime configuration is the blocker to report.
-5. Optional hardening: hook-level test for the queue owner guard across a
-   sign-out/sign-in of a different user; surface `lastError` text of failed ops
-   in the UI.
+5. Optional hardening: surface `lastError` text of failed ops in the UI;
+   exponential backoff for the 3 s retry interval while the server is
+   unreachable (currently a fixed, bounded interval; network failures do not
+   consume the retry budget by design).
