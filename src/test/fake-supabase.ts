@@ -80,7 +80,10 @@ export class FakeSupabase {
         this.handlers.set(filter.table, list);
         return ch;
       },
-      subscribe: () => ch,
+      subscribe: (cb?: (status: string) => void) => {
+        cb?.("SUBSCRIBED");
+        return ch;
+      },
     };
     return ch;
   }

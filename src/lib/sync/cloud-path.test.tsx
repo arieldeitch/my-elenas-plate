@@ -234,8 +234,9 @@ describe("active cloud path (hermetic)", () => {
     hook.unmount();
   });
 
-  it("subscribes to every mutable daily table", async () => {
+  it("subscribes to every mutable daily table and reports the live state", async () => {
     const hook = await mountActive();
+    await waitFor(() => expect(hook.result.current.syncDetail.realtime).toBe("subscribed"));
     expect([...fake.handlers.keys()].sort()).toEqual(
       [
         "fasting_logs",
@@ -267,6 +268,34 @@ describe("active cloud path (hermetic)", () => {
     act(() => hook.result.current.discardFailedSync());
     await waitFor(() => expect(hook.result.current.syncState).toBe("saved"));
     fake.execute = original;
+    hook.unmount();
+  });
+});
+
+describe("activation resilience", () => {
+  it("retries activation after a transient failure instead of staying inactive", async () => {
+    // Bootstrap fails (server unreachable while navigator says online).
+    fake.offline = true;
+    const hook = renderHook(() => useStore(), { wrapper });
+    await waitFor(() => expect(hook.result.current.syncState).toBe("error"));
+    expect(fake.handlers.size).toBe(0);
+    // Server comes back; the bounded retry timer (3 s) re-activates.
+    fake.offline = false;
+    await waitFor(() => expect(fake.handlers.size).toBe(7), { timeout: 6000 });
+    await waitFor(() => expect(hook.result.current.syncState).toBe("saved"));
+    // Exactly one activation: one bootstrap rpc, one channel.
+    expect(fake.channelCount).toBe(1);
+    hook.unmount();
+  }, 10_000);
+
+  it("activates exactly once even when the auth event fires during activation", async () => {
+    const hook = renderHook(() => useStore(), { wrapper });
+    // SIGNED_IN arrives while the initial activation is still bootstrapping.
+    act(() => auth.callback!({ user: { id: USER }, access_token: "token" }));
+    await waitFor(() => expect(hook.result.current.syncState).toBe("saved"));
+    await waitFor(() => expect(fake.handlers.size).toBe(7));
+    await new Promise((r) => setTimeout(r, 100));
+    expect(fake.channelCount).toBe(1);
     hook.unmount();
   });
 });

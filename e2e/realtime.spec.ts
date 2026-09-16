@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { addSearchedFood, closeDialog, signIn, uniqueEmail } from "./helpers";
+import { addSearchedFood, closeDialog, signIn, uniqueEmail, waitLive, waitSaved } from "./helpers";
 
 test("realtime: a second browser context reflects a change to the shared account", async ({
   browser,
@@ -15,8 +15,8 @@ test("realtime: a second browser context reflects a change to the shared account
   await signIn(pageB, email); // same shared account, second session
   // Let B's realtime subscription establish before A mutates — postgres_changes
   // does not replay events that occurred before SUBSCRIBED.
-  await expect(pageB.getByText("נשמר", { exact: true })).toBeVisible();
-  await pageB.waitForTimeout(4000);
+  await waitSaved(pageB);
+  await waitLive(pageB);
 
   // A logs a food in ארוחת ערב
   await addSearchedFood(pageA, "ארוחת ערב", "תפוח");

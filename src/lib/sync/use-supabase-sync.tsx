@@ -33,6 +33,7 @@ import {
   profileIdFor,
   subscribeHousehold,
   type RealtimeChange,
+  type RealtimeStatus,
 } from "./supabase-sync";
 import { isFoodsMigrated, isMigrated, markFoodsMigrated, markMigrated } from "./migrate-local";
 import { dayKey, dayKeyOf, type Operation } from "./operations";
@@ -61,7 +62,11 @@ export interface SyncDetail {
   pending: number;
   /** Ops Supabase rejected permanently; visible until retried or discarded. */
   failed: number;
+  /** Realtime channel state: "off" until activation, then the channel status. */
+  realtime: "off" | RealtimeStatus;
 }
+
+export const INITIAL_SYNC_DETAIL: SyncDetail = { pending: 0, failed: 0, realtime: "off" };
 
 export interface SyncControls {
   /** True once Supabase is the active source of truth (disables localStorage). */
@@ -78,6 +83,7 @@ const WEIGH_KINDS = new Set(["weighin.insert"]);
 const PREF_KINDS = new Set(["pref.favorite", "pref.recent"]);
 const DRAIN_DEBOUNCE_MS = 400;
 const RETRY_INTERVAL_MS = 3000;
+const ACTIVATION_RETRY_MS = [3000, 6000, 12000, 30000];
 
 function isOnline(): boolean {
   return typeof navigator === "undefined" || navigator.onLine !== false;
@@ -102,6 +108,7 @@ export function useSupabaseSync(args: Args): SyncControls {
   const drainAgain = useRef(false);
   const inFlightDay = useRef<string | null>(null);
   const drainTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const realtimeRef = useRef<SyncDetail["realtime"]>("off");
 
   // Latest state + current view, readable from async callbacks without re-subscribing.
   const daysRef = useRef(args.days);
@@ -114,7 +121,7 @@ export function useSupabaseSync(args: Args): SyncControls {
     (phase: "idle" | "draining" | "error" = "idle") => {
       const pendingCount = queue.pending().length;
       const failedCount = queue.quarantined().length;
-      setSyncDetail({ pending: pendingCount, failed: failedCount });
+      setSyncDetail({ pending: pendingCount, failed: failedCount, realtime: realtimeRef.current });
       if (failedCount > 0 || phase === "error") setSyncState("error");
       else if (phase === "draining") setSyncState("saving");
       else if (pendingCount > 0) setSyncState(isOnline() ? "pending" : "offline");
@@ -273,8 +280,41 @@ export function useSupabaseSync(args: Args): SyncControls {
     if (!isSupabaseConfigured()) return;
     let disposed = false;
     let unsubRealtime: (() => void) | null = null;
+    // Single-flight: the auth SIGNED_IN event and the initial call can race;
+    // without this both bootstrap and both subscribe (duplicate channels).
+    let activating = false;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let retryAttempt = 0;
+
+    const setRealtime = (status: SyncDetail["realtime"]) => {
+      realtimeRef.current = status;
+      publishState();
+    };
+
+    // A transient failure at load (server unreachable, DNS hiccup) must not
+    // leave the app permanently inactive: retry with bounded backoff until the
+    // household context exists.
+    function scheduleActivationRetry() {
+      if (disposed || ctxRef.current || retryTimer) return;
+      const delay = ACTIVATION_RETRY_MS[Math.min(retryAttempt, ACTIVATION_RETRY_MS.length - 1)];
+      retryAttempt += 1;
+      retryTimer = setTimeout(() => {
+        retryTimer = null;
+        void activate();
+      }, delay);
+    }
 
     async function activate() {
+      if (activating) return;
+      activating = true;
+      try {
+        await activateOnce();
+      } finally {
+        activating = false;
+      }
+    }
+
+    async function activateOnce() {
       const session = await getSession();
       if (!session || disposed || ctxRef.current) return;
       try {
@@ -299,16 +339,20 @@ export function useSupabaseSync(args: Args): SyncControls {
         if (!isFoodsMigrated()) markFoodsMigrated();
 
         setActive(true);
+        retryAttempt = 0;
         await hydrateFoodsList();
         await hydrate(viewRef.current.profile, viewRef.current.iso);
         publishState();
 
-        unsubRealtime = subscribeHousehold(ctx, onRealtime, session.access_token);
+        unsubRealtime = subscribeHousehold(ctx, onRealtime, session.access_token, setRealtime);
         // Anything left in the durable queue from a previous session goes first.
         void drain();
       } catch (err) {
-        console.warn("supabase activation failed", err);
+        console.warn("supabase activation failed - will retry", err);
+        ctxRef.current = null;
+        setActive(false);
         publishState("error");
+        scheduleActivationRetry();
       }
     }
 
@@ -353,17 +397,23 @@ export function useSupabaseSync(args: Args): SyncControls {
         queue.setQueueOwner(undefined);
         unsubRealtime?.();
         unsubRealtime = null;
+        setRealtime("off");
       } else {
         void activate();
       }
     });
-    // Retry activation if it was interrupted (e.g. offline during bootstrap).
+    // Retry activation immediately when connectivity returns.
     const onOnline = () => {
-      if (!ctxRef.current) void activate();
+      if (!ctxRef.current) {
+        if (retryTimer) clearTimeout(retryTimer);
+        retryTimer = null;
+        void activate();
+      }
     };
     window.addEventListener("online", onOnline);
     return () => {
       disposed = true;
+      if (retryTimer) clearTimeout(retryTimer);
       unsubAuth();
       unsubRealtime?.();
       window.removeEventListener("online", onOnline);

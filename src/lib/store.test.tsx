@@ -267,7 +267,7 @@ describe("store — sync truth in demo mode", () => {
 
   it("exposes pending/failed counts (zero in demo mode) and retry controls", () => {
     const { result } = renderHook(() => useStore(), { wrapper });
-    expect(result.current.syncDetail).toEqual({ pending: 0, failed: 0 });
+    expect(result.current.syncDetail).toEqual({ pending: 0, failed: 0, realtime: "off" });
     expect(typeof result.current.retryFailedSync).toBe("function");
     expect(typeof result.current.discardFailedSync).toBe("function");
   });

@@ -1,5 +1,13 @@
 import { test, expect } from "@playwright/test";
-import { addSearchedFood, closeDialog, openMeal, signIn, uniqueEmail, waitSaved } from "./helpers";
+import {
+  addSearchedFood,
+  closeDialog,
+  openMeal,
+  signIn,
+  uniqueEmail,
+  waitLive,
+  waitSaved,
+} from "./helpers";
 
 /**
  * M1 §5 Tests 1, 2 and 4 in the real browser against a REAL backend. Runs only
@@ -18,7 +26,8 @@ async function twoDevices(browser: import("@playwright/test").Browser) {
   // Let both realtime subscriptions establish (no replay before SUBSCRIBED).
   await waitSaved(pageA);
   await waitSaved(pageB);
-  await pageB.waitForTimeout(3000);
+  await waitLive(pageA);
+  await waitLive(pageB);
   return { pageA, pageB, close: async () => Promise.all([ctxA.close(), ctxB.close()]) };
 }
 

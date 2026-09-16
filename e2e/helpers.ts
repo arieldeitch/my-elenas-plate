@@ -52,6 +52,15 @@ export async function waitSaved(page: Page): Promise<void> {
   await expect(page.locator("[data-sync-state='saved']")).toBeVisible({ timeout: 30_000 });
 }
 
+/**
+ * Waits until the realtime channel of this page is SUBSCRIBED. postgres_changes
+ * does not replay events from before the join, so a "second device" must be
+ * live before the first one mutates.
+ */
+export async function waitLive(page: Page): Promise<void> {
+  await expect(page.locator("[data-realtime='subscribed']")).toBeVisible({ timeout: 30_000 });
+}
+
 /** Opens a meal and adds a catalog food by name via search. Leaves the dialog open. */
 export async function addSearchedFood(page: Page, mealLabel: string, food: string): Promise<void> {
   await openMeal(page, mealLabel);

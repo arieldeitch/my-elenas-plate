@@ -46,7 +46,7 @@ import { toISODate } from "./format";
 import { loadState, saveState } from "./persistence";
 import { loadDeviceProfile, saveDeviceProfile } from "./device-profile";
 import { isSupabaseConfigured } from "./supabase/client";
-import { useSupabaseSync, type SyncDetail } from "./sync/use-supabase-sync";
+import { INITIAL_SYNC_DETAIL, useSupabaseSync, type SyncDetail } from "./sync/use-supabase-sync";
 import {
   opsForAddEntry,
   opsForRemoveEntry,
@@ -130,7 +130,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [deviceChooserOpen, setDeviceChooserOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [syncState, setSyncState] = useState<SyncState>("saved");
-  const [syncDetail, setSyncDetail] = useState<SyncDetail>({ pending: 0, failed: 0 });
+  const [syncDetail, setSyncDetail] = useState<SyncDetail>(INITIAL_SYNC_DETAIL);
 
   // Tracking data always starts EMPTY, in every mode. There is no demo/mock seed
   // anywhere in the app: a seed once leaked into a real cloud account (see

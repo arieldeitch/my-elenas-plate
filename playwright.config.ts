@@ -11,6 +11,8 @@ const PORT = 4330;
 
 export default defineConfig({
   testDir: "./e2e",
+  // Hermetic (no-backend) specs run under playwright.hermetic.config.ts only.
+  testIgnore: ["**/hermetic/**"],
   timeout: 90_000,
   expect: { timeout: 20_000 },
   fullyParallel: false,

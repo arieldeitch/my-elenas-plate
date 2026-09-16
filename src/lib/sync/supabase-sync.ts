@@ -286,10 +286,13 @@ let channelSeq = 0;
  * Subscribes to realtime changes for every table in `REALTIME_TABLES` and calls
  * `onChange` with a described change. Returns an unsubscribe fn.
  */
+export type RealtimeStatus = "connecting" | "subscribed" | "error";
+
 export function subscribeHousehold(
   ctx: HouseholdContext,
   onChange: (change: RealtimeChange) => void,
   accessToken?: string,
+  onStatus?: (status: RealtimeStatus) => void,
 ): () => void {
   const sb = requireSupabase();
   // Give the realtime socket the auth token so RLS lets this session receive
@@ -304,7 +307,21 @@ export function subscribeHousehold(
         onChange(describeChange(ctx, table, payload)),
     );
   }
-  channel.subscribe();
+  onStatus?.("connecting");
+  channel.subscribe((status, err) => {
+    // Observable channel lifecycle: a silent CHANNEL_ERROR / TIMED_OUT is the
+    // difference between "realtime works" and "the partner never sees it".
+    if (status === "SUBSCRIBED") {
+      console.info("[realtime] subscribed", channel.topic);
+      onStatus?.("subscribed");
+    } else if (status === "CLOSED") {
+      // Socket dropped; supabase-js rejoins automatically once it reconnects.
+      onStatus?.("connecting");
+    } else {
+      console.warn("[realtime]", status, channel.topic, err?.message ?? "");
+      onStatus?.("error");
+    }
+  });
   return () => {
     void sb.removeChannel(channel);
   };

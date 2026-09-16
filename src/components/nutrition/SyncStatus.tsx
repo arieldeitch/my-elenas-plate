@@ -50,6 +50,7 @@ export function SyncStatus() {
         data-sync-state={syncState}
         data-sync-pending={syncDetail.pending}
         data-sync-failed={syncDetail.failed}
+        data-realtime={syncDetail.realtime}
         className={cn(
           "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
           STYLE[syncState],
@@ -63,6 +64,11 @@ export function SyncStatus() {
           </span>
         )}
       </div>
+      {syncDetail.realtime === "error" && (
+        <span className="rounded-full bg-destructive-soft px-2 py-1 text-[10px] font-medium text-destructive">
+          ללא עדכון חי
+        </span>
+      )}
       {syncState === "error" && syncDetail.failed > 0 && (
         <>
           <button

@@ -78,5 +78,15 @@ production runtime configuration remains **unverified**.
   hermetic Playwright tests.
 - `npm run e2e` (`--mode e2e`) — loads `.env.e2e`, which **must** point at the
   isolated hosted Supabase test branch (not production, not local Docker).
+  Since 2026-09-16 it points at branch `m1-shared-truth-test`
+  (`uyroeumwmjhrcbkesmgb`); the live Vitest suites use `SUPABASE_TEST_URL` /
+  `SUPABASE_TEST_ANON_KEY` for the same branch.
+- Migrations reach the branch with `supabase db push --db-url <branch session
+pooler URL>`. The CLI link file (`supabase/.temp/project-ref`) points at
+  production, so never run `db push` without `--db-url` for the branch.
+- Table privileges: since `20260916120000_grant_table_privileges.sql` the
+  migrations grant SELECT/INSERT/UPDATE/DELETE explicitly to `authenticated` and
+  `service_role` (a fresh environment no longer grants them by default). `anon`
+  deliberately has no data privileges; RLS remains the authorisation gate.
 - Vitest — `src/test/setup.ts` blanks the Supabase env; cloud-path tests mock
   the client module and use `src/test/fake-supabase.ts`.
