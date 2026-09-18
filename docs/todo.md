@@ -48,12 +48,15 @@ Spec `docs/claude-tasks/M1_SHARED_TRUTH_RECOVERY.md`, status `M1_STATUS.md`, run
       explicit switch. Store-only, no new reads. Hermetic loop `e2e/hermetic/day-review.spec.ts`.
 - [x] M2-5 — one-tap quantity (DEC-029, `aab380e`): − / + pill on count-unit rows, floor 1, fractions
       kept, Hebrew plurals, coalesced writes; grams/subjective keep the editor. "2 eggs" 6 → 4 taps.
-- [ ] **M2-6 (selected next) — no confirm step for search results with a usual unit:** tapping a
-      search result adds "1 × usual unit" immediately (like a chip) and relies on the row stepper for
-      corrections; the quantity screen stays only for foods without a usual unit, custom-food creation
-      and the pencil. Measured: typed food today = type + result + "הוספת המאכל" + סיום (3 taps); after
-      = 2 taps. The confirm now only ever confirms the default. Touches ~10 tests/e2e helpers that
-      encode "הוספת המאכל" after a result — update them with the change.
+- [x] M2-6 — direct add from search results (DEC-030, `7da1a3d`): one choose path for chips and
+      results; trusted usual quantity = 1 × count unit; weight-first foods keep the quantity screen;
+      results show what a tap does; search clears after an add. Typed count-unit food: 3 → 2 taps.
+- [ ] **M2-7 (selected next) — real-device validation, not another feature.** The measured daily loop
+      is now tile → chip/result → optional + → סיום → review, each one tap; the only remaining
+      non-one-tap step is typing an amount for weight-first foods, and default amounts would be guesses.
+      Once the M1 owner actions land: 3 days of real use by both on their phones, with a short
+      observed-friction log (what took more than one tap, what was misread, what was missed), then pick
+      M2-8 from that log. Candidates to watch: repeat yesterday's meal, weight-first amounts.
 - [ ] M2-6 — "repeat yesterday's meal" / frequently-used foods per slot (needs a few weeks of real
       cloud data first to be worth it).
 - [ ] M2-5 — run the ported hosted-branch e2e (`npm run e2e` against `uyroeumwmjhrcbkesmgb`) on a

@@ -1,21 +1,23 @@
 # Claude Context
 
 Fast-start context for Claude Code. The latest user instruction always overrides older docs.
-Updated 2026-09-18 (sixth run).
+Updated 2026-09-18 (seventh run).
 
 ## Start state
 
 - **Project:** shared Nutrition Tracker for **אריאל (Ariel)** and **אלנה (Elena)** — Hebrew, RTL,
   mobile-first daily logging.
-- **Branch:** `main` (M1 merged; fail-safe runtime + preflight; M2 steps 1–5 — all 2026-09-18).
+- **Branch:** `main` (M1 merged; fail-safe runtime + preflight; M2 steps 1–6 — all 2026-09-18).
   M1 status: `docs/claude-tasks/M1_STATUS.md`; **M1 release entrypoint:**
   `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md`; latest run record:
-  `docs/claude-tasks/RUN_2026-09-18_M2_5_QUANTITY_STEP.md` (previous: `RUN_2026-09-18_M2_4_DAY_REVIEW.md`).
+  `docs/claude-tasks/RUN_2026-09-18_M2_6_DIRECT_ADD.md` (previous: `RUN_2026-09-18_M2_5_QUANTITY_STEP.md`).
 - **Home (M2, DEC-026/027):** `TodayCard` (me) → `PartnerGlance` (partner) → six compact `MealCard`s →
   `DailyContextRow` (weight · workout · fasting, inline editors). `DayReview` sheet (DEC-028) opens from
   the today card / partner card: read-only day per slot for either person; edit only for the active
   person; looking never switches person or date. Meal-editor rows have a − / + pill for count units only
-  (DEC-029; `lib/quantity.ts` `COUNT_UNITS`, `stepAmount`, `formatQuantity`). Visual check: `scripts/home-snapshots.mjs`
+  (DEC-029; `lib/quantity.ts` `COUNT_UNITS`, `stepAmount`, `formatQuantity`). Chips AND typed results add
+  directly only when `usualQuantity(food)` is trusted (1 × count unit, DEC-030); otherwise the quantity
+  screen. Visual check: `scripts/home-snapshots.mjs`
   against `npx vite dev --mode hermetic --port 4336` (screenshots + page height + above-the-fold report).
   One-screen `MealEditor` with one-tap quick add from favourites/recents. Personal colours on
   `PROFILES` (`color`/`tint`); `data-owner` on the today card and the editor dialog. No calories/macros
@@ -96,7 +98,7 @@ seeded. Nothing was ever broken in the migration.
 Not a repository audit, and not a migration:
 
 1. Read `docs/claude-context.md`.
-2. Read `docs/claude-tasks/RUN_2026-09-18_M2_5_QUANTITY_STEP.md` (latest run record) and
+2. Read `docs/claude-tasks/RUN_2026-09-18_M2_6_DIRECT_ADD.md` (latest run record) and
    `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md` (release state).
 3. Read `docs/project-status.md` and `docs/todo.md`.
 4. Check the current branch, HEAD and `git status` (read-only).

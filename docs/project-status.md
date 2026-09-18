@@ -1,14 +1,22 @@
 # Project Status
 
-**Date:** 2026-09-18 (sixth run)
-**Branch:** `main` — M2-5 one-tap quantity adjustment on meal entry rows — see
-`docs/claude-tasks/RUN_2026-09-18_M2_5_QUANTITY_STEP.md`
+**Date:** 2026-09-18 (seventh run)
+**Branch:** `main` — M2-6 direct add from search results (one choose path for chips and results) — see
+`docs/claude-tasks/RUN_2026-09-18_M2_6_DIRECT_ADD.md`
 **Supabase project:** `rqgoiuztphkcvbwtbxbj` (production) · isolated branch `uyroeumwmjhrcbkesmgb`
-**Stage:** **M1 code complete; release blocked on owner actions (`M1_RELEASE_ACCEPTANCE.md`); M2-5 done (DEC-029)**
+**Stage:** **M1 code complete; release blocked on owner actions (`M1_RELEASE_ACCEPTANCE.md`); M2-6 done (DEC-030) — daily loop ready for real-device validation**
 **Deployment:** none performed. The published site is a **pre-M1, demo-mode build** (no Supabase env).
 **Pilot-ready code checkpoint:** tag `pilot-ready-2026-07-24` → `29ac1d5`.
 
 > Rule: nothing is listed as "working" unless it was actually run/verified.
+
+## 2026-09-18 (seventh run) — M2-6 direct add from search
+
+Full record: `docs/claude-tasks/RUN_2026-09-18_M2_6_DIRECT_ADD.md`, DEC-030. Typed results with a trusted
+usual quantity (count units) add on tap like chips; weight-first foods, unit-less foods and coffee keep
+their editor; results show "+ 1 יחידה" / "בחירת כמות" before the tap; search clears after an add. Also
+fixed: chips would have logged "1 גרם" for weight-first foods. Gate: typecheck 0 · lint 0/8 · vitest 301 ·
+hermetic Playwright 8/8 · build. Owner actions unchanged. Next: real-device validation, not a new feature.
 
 ## 2026-09-18 (sixth run) — M2-5 one-tap quantity
 
