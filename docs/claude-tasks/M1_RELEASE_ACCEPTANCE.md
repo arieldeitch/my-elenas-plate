@@ -5,8 +5,11 @@ genuinely live in production. Everything below is read-only against production; 
 writes production data except the two real-user acceptance entries in §3, made by the couple's
 own accounts through the app.
 
-**Status (updated 2026-09-18, tenth run — access simplification, DEC-031): the login is gone;
-production needs ONE migration + ONE Auth setting + a republish, then the two-minute path §3b.**
+**Status (updated 2026-09-18, eleventh run): migration applied; the no-login build `fd32a38` is
+live (`PREFLIGHT PASS`); ONE Auth switch ("Allow anonymous sign-ins", verified OFF at 17:39) + a
+republish of the hardening commits remain, then the two-minute path §3b.** Reliability run
+`RUN_2026-09-18_RELIABILITY_HARDENING.md`: auth races/storm, multi-device, realtime, offline, mobile,
+a11y and network budget verified and fixed on `main`.
 Evidence so far (`RUN_2026-09-18_M1_ACCEPTANCE.md`, `RUN_2026-09-18_ACCESS_SIMPLIFICATION.md`): §2
 `PREFLIGHT PASS` on the served `0cd3673`; database grants/ledger/RLS verified; §3 item 9 PASS. The phone
 walk-through §3a was **not** executed and is superseded: the served build still shows the email /

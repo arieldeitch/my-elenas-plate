@@ -27,11 +27,18 @@ Spec `docs/claude-tasks/M1_SHARED_TRUTH_RECOVERY.md`, status `M1_STATUS.md`, run
       the next run records it and closes M1. T-034-UI closes with it.
 - [ ] **M1-R7 — access simplification release (DEC-031, `RUN_2026-09-18_ACCESS_SIMPLIFICATION.md`).**
       Code on `main`: silent anonymous device session, no login form, one-household join, adopted
-      queue ops, tests (PGlite SQL proof, AuthGate, cloud-path, live suites ported). **Pending on
-      production (controlling GPT, not Ariel):** (1) `supabase/apply_anonymous_join_production.sql`
-      via SQL editor / Management API + `verify_anonymous_join.sql`; (2) Auth → "Allow anonymous
-      sign-ins" = ON (was OFF on 2026-09-18: `422 anonymous_provider_disabled`); (3) Lovable publish
-      of `main`; (4) `npm run preflight -- --live` (sha ≥ DEC-031 commit); (5) §3b on two phones.
+      queue ops, tests (PGlite SQL proof, AuthGate, cloud-path, live suites ported). State 2026-09-18
+      17:45: (1) migration **applied + verified** by the controlling GPT; (3) Lovable published
+      `fd32a38` (preflight PASS) — the eleventh-run hardening commits still need a publish; **(2)
+      Auth → "Allow anonymous sign-ins" = ON is still pending** (OFF at 17:39:
+      `422 anonymous_provider_disabled`); then (4) `npm run preflight -- --live` and (5) §3b on two
+      phones. Reliability run: `RUN_2026-09-18_RELIABILITY_HARDENING.md`.
+- [ ] **M1-R8 — post-pilot hardening apply (not a blocker).** `supabase/apply_hardening_post_pilot.sql`
+      (migration `20260918180000`: `set_updated_at` pinned `search_path`, `is_household_member`
+      execute revoked from anon; PGlite-proven, behaviour unchanged) + optionally enable leaked-password
+      protection (no user impact). Gated live suites (`rls.integration`, `remote-live`,
+      `shared-truth.live`, `e2e/*.spec.ts`) are ported but unexecuted — run them once against the
+      isolated hosted branch with anonymous sign-ins ON.
 - [ ] M1-R4 — housekeeping: reset the leaked branch DB password or delete branch `uyroeumwmjhrcbkesmgb`
       once M1 is closed.
 - [ ] **M1-R6 — hardening pass (after M1, not a blocker; from the Supabase security advisors,
@@ -43,6 +50,11 @@ Spec `docs/claude-tasks/M1_SHARED_TRUTH_RECOVERY.md`, status `M1_STATUS.md`, run
       candidates if that ever matters: a per-device join code checked by `bootstrap_household()`,
       rotating the publishable key, periodic deletion of stale anonymous users (memberships cascade;
       devices re-join silently). One dedicated run, reviewed migration, never a plain `db push`.
+      Threat review 2026-09-18 (`RUN_2026-09-18_RELIABILITY_HARDENING.md` §M): a stranger with the
+      link becomes a member and can read/write this household's logs only; anonymous users accumulate one
+      row per fresh device; the client never storms the sign-in endpoint. Smallest mitigations if ever
+      needed: join token in the URL fragment checked by `bootstrap_household(token)`; a "reset household
+      access" SQL keeping only the two current phones; periodic anonymous-user cleanup.
 - [ ] **M1-R5 (product decision, Ariel) — phone-local demo data.** Every entry logged on the live
       demo build since July lives only in each phone's localStorage. The connected build starts
       empty and hydrates from the cloud; the one-time local→cloud import is disabled by design

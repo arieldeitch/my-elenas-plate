@@ -1,7 +1,7 @@
 # Claude Context
 
 Fast-start context for Claude Code. The latest user instruction always overrides older docs.
-Updated 2026-09-18 (tenth run: DEC-031 access simplification — no login; production republish pending).
+Updated 2026-09-18 (eleventh run: reliability/hardening; Auth "Allow anonymous sign-ins" still OFF on production).
 
 ## Start state
 
@@ -10,17 +10,21 @@ Updated 2026-09-18 (tenth run: DEC-031 access simplification — no login; produ
 - **Branch:** `main` (M1 merged; fail-safe runtime + preflight; M2 steps 1–6 — all 2026-09-18).
   M1 status: `docs/claude-tasks/M1_STATUS.md`; **M1 release entrypoint:**
   `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md`; latest run record:
-  `docs/claude-tasks/RUN_2026-09-18_ACCESS_SIMPLIFICATION.md` (previous: `RUN_2026-09-18_M1_ACCEPTANCE.md`).
+  `docs/claude-tasks/RUN_2026-09-18_RELIABILITY_HARDENING.md` (previous: `RUN_2026-09-18_ACCESS_SIMPLIFICATION.md`).
 - **Feature work is paused (2026-09-18).** The daily loop is considered ready for first real use. Do
   not build M2-8; it will be selected from the pilot's friction log (`docs/claude-tasks/M2_7_PILOT.md`).
   **Owner actions A/B/C are complete; §2 PASSED on the served `0cd3673`; §3 item 9 PASSES — but that
   build shows a login screen, which DEC-031 (2026-09-18) removed as a product regression.** Access
   now: silent anonymous device session (`AuthGate` → `ensureSession()`), `bootstrap_household()`
-  joins the ONE household, person = device profile. **Production still needs** (controlling GPT, not
-  Ariel): `supabase/apply_anonymous_join_production.sql` + Auth "Allow anonymous sign-ins" ON +
-  Lovable publish (`supabase/DEPLOY.md` top). Next run: `npm run preflight -- --live` (sha ≥ DEC-031
-  commit), `verify_anonymous_join.sql` evidence, then §3b reply → mark M1 CLOSED and start the pilot;
-  if a §3b item fails, fix only that. No M2-8. Never ask Ariel for Supabase/GitHub/Lovable actions.
+  joins the ONE household, person = device profile. **State 2026-09-18 17:45:** DEC-031 migration
+  applied + verified on production by the controlling GPT; no-login build `fd32a38` live (preflight
+  PASS); `main` is ahead by the eleventh-run hardening (auth races, perf, mobile/a11y — republish
+  wanted); **Auth "Allow anonymous sign-ins" is still OFF** (probe: `POST /auth/v1/signup {}` →
+  `422 anonymous_provider_disabled`; nothing is created while OFF). Next run: probe the switch; when
+  ON → fresh-device production smoke (no form → chooser → footer `· cloud`; reload reuses the session;
+  one membership) → `npm run preflight -- --live` on the republished sha → §3b reply → mark M1 CLOSED,
+  start the pilot. If a §3b item fails, fix only that. No M2-8. Never ask Ariel for
+  Supabase/GitHub/Lovable actions. Post-pilot: `apply_hardening_post_pilot.sql` (M1-R8).
 - **Home (M2, DEC-026/027):** `TodayCard` (me) → `PartnerGlance` (partner) → six compact `MealCard`s →
   `DailyContextRow` (weight · workout · fasting, inline editors). `DayReview` sheet (DEC-028) opens from
   the today card / partner card: read-only day per slot for either person; edit only for the active
@@ -108,7 +112,7 @@ seeded. Nothing was ever broken in the migration.
 Not a repository audit, and not a migration:
 
 1. Read `docs/claude-context.md`.
-2. Read `docs/claude-tasks/RUN_2026-09-18_ACCESS_SIMPLIFICATION.md` (latest run record) and
+2. Read `docs/claude-tasks/RUN_2026-09-18_RELIABILITY_HARDENING.md` (latest run record) and
    `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md` (release state).
 3. Read `docs/project-status.md` and `docs/todo.md`.
 4. Check the current branch, HEAD and `git status` (read-only).

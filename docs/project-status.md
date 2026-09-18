@@ -1,13 +1,27 @@
 # Project Status
 
-**Date:** 2026-09-18 (tenth run — access simplification DEC-031: login removed; republish pending)
-**Branch:** `main` — silent device sessions (no login) ahead of production; served build still `0cd3673` (login build). Release path: `supabase/DEPLOY.md` top section → publish → preflight → §3b — see `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md`
+**Date:** 2026-09-18 (eleventh run — reliability/hardening window; Auth switch still OFF)
+**Branch:** `main` — no-login flow + this run's hardening (auth races, perf, mobile/a11y); served build `fd32a38` (no-login, before the hardening). Release path: Auth switch → publish → preflight → §3b — see `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md`
 **Supabase project:** `rqgoiuztphkcvbwtbxbj` (production) · isolated branch `uyroeumwmjhrcbkesmgb`
-**Stage:** **Feature work paused. M1 = YELLOW: the served build shows a login (regression, DEC-031); `main` fixes it; production needs one migration + one Auth setting + a republish, then §3b on two phones; M2-7 starts right after (`M2_7_PILOT.md`)**
-**Deployment:** <https://my-elenas-plate.lovable.app> serves `main` `0cd3673` (deployment `psr2.4acecc14…`): `mode=cloud`, `target=shared`, `misconfigured=false`, host `rqgoiuztphkcvbwtbxbj`, no secrets — `PREFLIGHT PASS — 14 checks` (2026-09-18).
+**Stage:** **Feature work paused. M1 = YELLOW: DEC-031 migration applied and the no-login build is live, but Supabase "Allow anonymous sign-ins" is OFF, so every fresh device sees the retry state; switch ON → republish → §3b on two phones → M1 CLOSED → M2-7 (`M2_7_PILOT.md`)**
+**Deployment:** <https://my-elenas-plate.lovable.app> serves `main` `fd32a38` (no-login build): `mode=cloud`, `target=shared`, `misconfigured=false`, host `rqgoiuztphkcvbwtbxbj`, no secrets — `PREFLIGHT PASS — 14 checks` (2026-09-18 16:40). Fresh device → one anonymous sign-in request → `422 anonymous_provider_disabled` → retry state until the Auth switch is ON.
 **Pilot-ready code checkpoint:** tag `pilot-ready-2026-07-24` → `29ac1d5`.
 
 > Rule: nothing is listed as "working" unless it was actually run/verified.
+
+## 2026-09-18 (eleventh run) — reliability / hardening before the pilot
+
+Full record: `docs/claude-tasks/RUN_2026-09-18_RELIABILITY_HARDENING.md`. Baseline green (315/16, 8/8).
+Fixed: a stale-activation race (sign-out mid-bootstrap left a realtime channel with the old JWT and the
+new session never activated); the app no longer unmounts when a session is replaced (background
+reconnect); automatic reconnects throttled 5 s after a failure (no anonymous sign-up storms); activation
+read the current day twice (18 → 12 reads) and quick add re-read it four times (→ ≤ 8, coalesced);
+360 px horizontal overflow; AA contrast palette (primary/muted/info tokens); touch targets; toast pile-up;
+landmarks — axe 0 violations on 38 states. Added: PGlite join suite 14 (history wins, 20 joins, no-JWT,
+catalog), multi-device/realtime/offline suite 11, auth-storm 4, post-pilot hardening migration
+`20260918180000` + apply script, regenerated `deploy_all.sql` (was stale/dangerous), threat review.
+Backend: DEC-031 migration applied by the GPT (verified). Production: no-login build `fd32a38` live,
+preflight PASS; **anonymous sign-ins still OFF** (probed 16:40/17:35/17:39). Gate: 336/16, 8/8.
 
 ## 2026-09-18 (tenth run) — access simplification (DEC-031): no login, silent device sessions
 

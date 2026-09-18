@@ -1,13 +1,15 @@
 # Deploying to the remote Supabase project
 
-## Access simplification (2026-09-18, DEC-031) — ONE migration + ONE Auth setting pending on production
+## Access simplification (2026-09-18, DEC-031) — migration APPLIED (controlling GPT, verified); ONE Auth setting still pending
 
 `supabase/migrations/20260918160000_anonymous_device_join.sql` replaces `bootstrap_household()` so
 that every device session (Supabase **anonymous** user) joins the one existing household instead of
 creating its own. No table DDL, no policy change, no data change, no privilege for `anon`. Proven on
 the real SQL by `src/lib/supabase/household-join.pg.test.ts`.
 
-Apply path (Dashboard SQL Editor or Management API, ~2 minutes, no CLI, no DB password):
+**State 2026-09-18 17:45:** steps 1–3 done and verified externally (1 household, 2 profiles, 390 foods,
+device-join function with the advisory lock, ledger `20260918160000`, RLS on 10, anon cannot execute).
+Step 4 (the Auth switch) was still OFF at 17:39. Apply path, for the record:
 
 1. Run `supabase/verify_anonymous_join.sql` (read-only); keep the output. §1 must show the July
    household first (seeded catalog, two profiles).
