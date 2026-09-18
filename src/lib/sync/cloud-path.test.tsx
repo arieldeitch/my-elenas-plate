@@ -199,6 +199,27 @@ describe("active cloud path (hermetic)", () => {
     hook.unmount();
   });
 
+  it("M2 — hydrates the partner's day for the viewed date, not only the active profile", async () => {
+    // Elena skipped lunch today (row already in the DB before this device loads).
+    fake.rows("meal_statuses").push({
+      id: "ms-1",
+      household_id: HOUSEHOLD,
+      profile_id: ALENA,
+      log_date: today(),
+      slot: "main_meal",
+      status: "skipped",
+    });
+    const hook = await mountActive();
+    // Ariel's device, Ariel's view — Elena's day is loaded alongside, with no
+    // profile switch and no realtime event.
+    expect(hook.result.current.activeProfile).toBe("me");
+    await waitFor(() =>
+      expect(hook.result.current.getDay("elena", today()).meals.lunch.status).toBe("skipped"),
+    );
+    expect(hook.result.current.getDay("me", today()).meals.lunch.status).toBe("empty");
+    hook.unmount();
+  });
+
   it("realtime covers fasting/workout and targets the partner profile (Test 4/6 shape)", async () => {
     const hook = await mountActive();
     // Partner (Elena) sets a workout, then clears it — both arrive via realtime.

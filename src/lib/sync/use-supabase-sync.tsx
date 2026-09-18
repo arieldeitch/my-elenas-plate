@@ -19,7 +19,14 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
-import type { DayData, Food, ProfileId, SyncState, WeighIn } from "../domain";
+import {
+  partnerOf,
+  type DayData,
+  type Food,
+  type ProfileId,
+  type SyncState,
+  type WeighIn,
+} from "../domain";
 import { isSupabaseConfigured } from "../supabase/client";
 import { getSession, onAuthChange } from "../supabase/auth";
 import { bootstrapHousehold, loadWeighIns, type HouseholdContext } from "../supabase/repositories";
@@ -429,11 +436,16 @@ export function useSupabaseSync(args: Args): SyncControls {
     setSyncState,
   ]);
 
-  // Hydrate when the viewed profile/date changes.
+  // Hydrate when the viewed profile/date changes. The partner's day for the same
+  // date is loaded too (M2 couple-first: the home screen shows both), guarded
+  // like any hydrate against unsent local ops for that day.
   useEffect(() => {
     if (!active) return;
     void hydrate(activeProfile, iso);
-  }, [active, activeProfile, iso, hydrate]);
+    void hydrateDayOnly(partnerOf(activeProfile), iso).catch((err) =>
+      console.warn("partner hydrate failed", err),
+    );
+  }, [active, activeProfile, iso, hydrate, hydrateDayOnly]);
 
   // Drain when connectivity returns; a short interval is the reliable fallback
   // (some environments never fire "online") and no-ops when nothing is pending.

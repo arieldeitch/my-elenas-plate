@@ -8,6 +8,7 @@ import { ProfileSwitcher } from "@/components/nutrition/ProfileSwitcher";
 import { DateNavigator } from "@/components/nutrition/DateNavigator";
 import { SyncStatus } from "@/components/nutrition/SyncStatus";
 import { DailyCompletionIndicator } from "@/components/nutrition/DailyCompletionIndicator";
+import { PartnerGlance } from "@/components/nutrition/PartnerGlance";
 import { MealCard } from "@/components/nutrition/MealCard";
 import { MealEditor } from "@/components/nutrition/MealEditor";
 import { FastingCard } from "@/components/nutrition/FastingCard";
@@ -75,6 +76,8 @@ function Home() {
         {/* Completion */}
         <div className="mt-4">
           <DailyCompletionIndicator info={completion} />
+          {/* M2: the partner's day for the same date, one tap away. */}
+          <PartnerGlance />
         </div>
 
         {/* Meals */}

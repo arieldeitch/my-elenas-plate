@@ -1,5 +1,10 @@
 export type ProfileId = "me" | "elena";
 
+/** The other member of the two-person household. */
+export function partnerOf(profile: ProfileId): ProfileId {
+  return profile === "me" ? "elena" : "me";
+}
+
 export interface Profile {
   id: ProfileId;
   name: string;
