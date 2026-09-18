@@ -12,7 +12,7 @@ are blocked** by account access (documented precisely below) — no false claims
 | ----------------------- | ---------------------------------------------------------------------------------------------------------- |
 | Machine                 | Second computer (work laptop): no Node/bun, no Docker Desktop, no WSL distro, no Chrome extension at start |
 | Starting branch / SHA   | `main` @ `ada47d2` (clean); verified M1 commit `edc2d54` on `origin/recovery/m1-shared-truth`              |
-| Ending branch / SHA     | `main` @ **see §10 (filled after merge)**                                                                  |
+| Ending branch / SHA     | `main` @ `3aefb6b` (merge) + final docs commit (§10)                                                       |
 | Production migrations   | **none applied** (blocked — §3)                                                                            |
 | Deployment / build id   | **none performed**; live build identified as `x-deployment-id 0c0eb717…`, demo mode (§4)                   |
 | Docker                  | not installed here; repo triggers removed/guarded (§6)                                                     |
@@ -174,7 +174,7 @@ the verified tree exactly.
 | `bun run build`                                        | OK; `edc2d54` embedded in `routes-CE3WhUix.js`                                                                                                                 |
 | `npx playwright test -c playwright.hermetic.config.ts` | **3 passed** (device profile ×2, runtime mode)                                                                                                                 |
 | `npm run e2e` / live integration suites                | **not run** — require `.env.e2e` / `SUPABASE_TEST_*` for the isolated branch, absent here; they passed 15/15 + 12/12 on 2026-09-16                             |
-| Final re-run after doc/config commits                  | see §10                                                                                                                                                        |
+| Final re-run on merged `main` @ `3aefb6b`              | typecheck 0 errors · eslint 0 errors / 8 warnings · vitest 254 passed / 15 skipped · `vite build` OK, `3aefb6b` embedded in `routes-BV1pmvvA.js`               |
 
 ## 8. Changes made by this run
 
@@ -201,11 +201,9 @@ the verified tree exactly.
 
 ## 10. Git result
 
-Filled after the merge (final commit of this run):
-
-- M1 branch tip after run commits: _see final section_
-- `main` merge commit: _see final section_
-- Push state: _see final section_
+- `recovery/m1-shared-truth` tip after this run: `c7ece89` (`edc2d54` → `91cefbd` style → `c7ece89` docs), pushed to `origin`.
+- `main`: `ada47d2` → merge commit `3aefb6b` (`--no-ff`, 58 files, +5447/−537) → final docs commit (this file, SHA recorded in `git log`), pushed to `origin/main`.
+- Lovable receives the new `main` automatically (editor/preview only); **no publish happened**.
 
 ---
 
@@ -283,7 +281,9 @@ Details §7.
 
 ## GIT
 
-See §10 (filled in the final commit).
+Ending branch `main`; merge commit `3aefb6b` (M1 `edc2d54` + `91cefbd` + `c7ece89`), followed by one docs commit
+recording this section; `main` and `recovery/m1-shared-truth` both pushed to `origin`. No history rewrite,
+no force-push.
 
 ## DOCUMENTATION
 
@@ -320,7 +320,7 @@ After actions 1–2: run the read-only production verification (`docs/RUNTIME_CO
 
 ## RUN TIMESTAMP
 
-Filled in the final commit (§10).
+2026-09-18 08:58 local time (Windows time zone "Israel Standard Time"), on the second computer.
 
 ---
 
