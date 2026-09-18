@@ -217,6 +217,14 @@ describe("active cloud path (hermetic)", () => {
       expect(hook.result.current.getDay("elena", today()).meals.lunch.status).toBe("skipped"),
     );
     expect(hook.result.current.getDay("me", today()).meals.lunch.status).toBe("empty");
+    // Bounded: one day-load per person on activation (and no refetch loop). Each
+    // day-load reads food_entries once, so ≤ 2 selects here (+1 tolerance for a
+    // post-drain converge that the idle queue does not trigger).
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 300));
+    });
+    const dayReads = fake.log.filter((l) => l.table === "food_entries" && l.action === "select");
+    expect(dayReads.length).toBeLessThanOrEqual(3);
     hook.unmount();
   });
 

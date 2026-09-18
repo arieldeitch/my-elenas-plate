@@ -1,14 +1,22 @@
 # Project Status
 
-**Date:** 2026-09-18 (third run)
-**Branch:** `main` — M2 daily couple experience (home hierarchy, one-tap logging, ownership, quiet
-sync) — see `docs/claude-tasks/RUN_2026-09-18_M2_DAILY.md`
+**Date:** 2026-09-18 (fourth run)
+**Branch:** `main` — M2-3 compact daily context row (weight · workout · fasting), home on one phone
+screen — see `docs/claude-tasks/RUN_2026-09-18_M2_3_CONTEXT_ROW.md`
 **Supabase project:** `rqgoiuztphkcvbwtbxbj` (production) · isolated branch `uyroeumwmjhrcbkesmgb`
-**Stage:** **M1 code complete; M1 release blocked on owner actions (`M1_RELEASE_ACCEPTANCE.md`); M2 step 2 done (DEC-026)**
+**Stage:** **M1 code complete; release blocked on owner actions (`M1_RELEASE_ACCEPTANCE.md`); M2-3 done (DEC-027)**
 **Deployment:** none performed. The published site is a **pre-M1, demo-mode build** (no Supabase env).
 **Pilot-ready code checkpoint:** tag `pilot-ready-2026-07-24` → `29ac1d5`.
 
 > Rule: nothing is listed as "working" unless it was actually run/verified.
+
+## 2026-09-18 (fourth run) — M2-3 compact daily context row
+
+Full record: `docs/claude-tasks/RUN_2026-09-18_M2_3_CONTEXT_ROW.md`, DEC-027. The fixed weigh-in banner and the
+workout/fasting cards became one `DailyContextRow` under the tiles (values at a glance, inline editors on
+demand); sync status sits in the header. Home height on Pixel 7 1373px → 981px; every primary block
+above the fold in all day states. Gate: typecheck 0 · lint 0/8 · vitest 276 · hermetic Playwright 6/6 ·
+build. `scripts/home-snapshots.mjs` added. Owner actions unchanged.
 
 ## 2026-09-18 (third run) — M2 daily couple experience
 

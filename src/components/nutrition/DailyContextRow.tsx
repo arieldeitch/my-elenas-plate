@@ -117,7 +117,7 @@ export function DailyContextRow({ onOpenWeight }: Props) {
               type="button"
               onClick={() => setPanel(null)}
               aria-label="סגירה"
-              className="grid h-9 w-9 place-items-center rounded-xl text-[#708197] hover:bg-[#F1F5F9]"
+              className="grid h-10 w-10 place-items-center rounded-xl text-[#708197] hover:bg-[#F1F5F9]"
             >
               <ChevronUp className="h-4 w-4" />
             </button>

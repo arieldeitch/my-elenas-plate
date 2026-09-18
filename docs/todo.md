@@ -41,9 +41,13 @@ Spec `docs/claude-tasks/M1_SHARED_TRUTH_RECOVERY.md`, status `M1_STATUS.md`, run
       (`TodayCard`, richer `PartnerGlance` with latest food + fasting/workout, compact tiles), one-screen
       meal editor with one-tap quick add, ownership colours/labels, quiet sync indicator,
       `FoodEntry.loggedAt`. Hermetic browser loop `e2e/hermetic/couple-home.spec.ts`.
-- [ ] M2-3 — quieter secondary blocks: fold the fixed weigh-in banner into the "עוד" area or a small
-      row, and shrink the workout/fasting cards into one compact row under the tiles.
-- [ ] M2-4 — "repeat yesterday's meal" / frequently-used foods per slot (needs a few weeks of real
+- [x] M2-3 — compact daily context row (DEC-027, `4d50765`): weight · workout · fasting under the tiles,
+      inline editors on demand; fixed banner and cards removed; home 1373px → 981px on Pixel 7.
+- [ ] **M2-4 (selected next) — day review:** tapping the today card's count (or a tile's status pill)
+      opens a read-only list of everything logged that day per slot — mine and my partner's — with an
+      edit shortcut per row. Observed friction: today the only way to see what is in a slot is to open
+      it, six tiles = six taps; the home shows only the latest item; "היסטוריה" opens the calendar only.
+- [ ] M2-6 — "repeat yesterday's meal" / frequently-used foods per slot (needs a few weeks of real
       cloud data first to be worth it).
 - [ ] M2-5 — run the ported hosted-branch e2e (`npm run e2e` against `uyroeumwmjhrcbkesmgb`) on a
       machine with `.env.e2e`.
