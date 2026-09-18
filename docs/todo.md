@@ -1,12 +1,31 @@
 # TODO
 
 Status legend: Done / In Progress / Blocked / Deferred / Not Started.
-Updated 2026-08-01. **Production bootstrap is complete** — Supabase project `rqgoiuztphkcvbwtbxbj`
+Updated 2026-09-18. **Production bootstrap is complete** — Supabase project `rqgoiuztphkcvbwtbxbj`
 holds 1 household, 2 profiles (אריאל/אלנה), 6 meal slots, RLS on 10 tables and 390 active foods
 (status `READY`). Rollback code checkpoint: tag `pilot-ready-2026-07-24` (`29ac1d5`).
-All P0 work is Done. **T-034 was split on 2026-08-01** (DEC-023): the backend half is **Done**, and the
-browser-dependent half is tracked separately as **T-034-UI**, which is **Blocked** until a browser
-automation capability exists. There is no open work that needs technical action today.
+**M1 code is Done and merged to `main`; the M1 release is Blocked on two owner actions** (below).
+**T-034 was split on 2026-08-01** (DEC-023): the backend half is **Done**, the browser-dependent half
+(**T-034-UI**) is **Blocked** until a browser automation capability exists.
+
+## M1 — Shared-truth recovery (P0) — **Code Done · Release Blocked (2026-09-18)**
+
+Spec `docs/claude-tasks/M1_SHARED_TRUTH_RECOVERY.md`, status `M1_STATUS.md`, run record
+`RUN_2026-09-18_M1_PROMOTION.md`, decision DEC-024.
+
+- [x] All 12 acceptance criteria proven on the isolated hosted branch (2026-09-16), Docker-free gate
+      re-run on a second machine (2026-09-18), branch merged into `main`.
+- [ ] **M1-R1 (Ariel) — Lovable runtime config + publish.** The published site is a demo-mode build
+      with no Supabase env (`docs/RUNTIME_CONFIG.md §4`). Add `VITE_SUPABASE_URL` +
+      `VITE_SUPABASE_ANON_KEY` (public values) to the Lovable project, publish from `main`, then the
+      footer must read `build <sha> · cloud`.
+- [ ] **M1-R2 (Ariel) — apply `20260916120000_grant_table_privileges.sql` to production** via
+      `supabase/DEPLOY.md` §"M1 release" (`apply_m1_grants_production.sql`, verify before/after with
+      `verify_privileges.sql`). Never a plain `supabase db push` on production.
+- [ ] **M1-R3 — live acceptance** (after R1 + R2, needs an authenticated browser session): the ten
+      checks in the run record §"LIVE ACCEPTANCE", plus T-034-UI.
+- [ ] M1-R4 — housekeeping: reset the leaked branch DB password or delete branch `uyroeumwmjhrcbkesmgb`
+      once M1 is closed.
 
 ## T-034 (P1) — Backend verification — **Done (2026-08-01)**
 

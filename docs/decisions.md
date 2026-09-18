@@ -619,3 +619,49 @@ Realtime מבצע את בדיקת ה-RLS עבור אירוע `postgres_changes` 
 - `T-034-UI` הוא פריט האימות הפתוח היחיד, ותלוי ביכולת דפדפן.
 - אין לתאר את T-034 כמאומת במלואו עד ש-T-034-UI יבוצע.
 - לא נוצרו טבלאות, migrations, flags או קוד אבחון כלשהם. הסכימה בפרודקשן לא השתנתה.
+
+## DEC-024 — הבנייה המפורסמת רצה במצב הדגמה; קידום M1 לפרודקשן דורש שתי פעולות של הבעלים בלבד
+
+**תאריך:** 2026-09-18 · **סטטוס:** מאושר · **ריצה:** `docs/claude-tasks/RUN_2026-09-18_M1_PROMOTION.md`
+
+### הקשר
+
+ריצת הקידום של M1 הייתה אמורה להחיל את migration ההרשאות על פרודקשן, לפרסם דרך Lovable ולאמת את
+האפליקציה החיה. בפועל התגלו שלוש עובדות:
+
+1. **האתר המפורסם `https://my-elenas-plate.lovable.app` נבנה ללא הגדרות Supabase.** ב-bundle
+   שמוגש ללקוח (`index-DDV3cWq7.js`) מודול הלקוח מקומפל ל-`var Lg=``,Rg=``;function zg(){return!1}` —
+   כלומר `VITE_SUPABASE_URL` ו-`VITE_SUPABASE_ANON_KEY` ריקים ו-`isSupabaseConfigured()` מחזיר תמיד
+   `false`. שום host של Supabase לא מופיע ב-HTML או ב-JS. **כל רישום של אריאל ואלנה באתר החי נשמר
+   רק ב-localStorage של אותו טלפון — שום דבר לא מגיע ל-Supabase ושום דבר אינו משותף.** זה מסביר את
+   "אפס שורות טרנזקציוניות" בפרודקשן (M1 §3.6).
+2. **חשבונות ה-MCP המחוברים ל-Claude (Supabase, Lovable) שייכים ל-workspace של Noris** ואינם רואים את
+   פרויקט הפרודקשן `rqgoiuztphkcvbwtbxbj` ולא את פרויקט Lovable `ca9aedab-a0ca-4889-a545-9d673febf3a0`.
+   גם הרחבת הדפדפן לא הייתה מחוברת. לכן אין ל-Claude שום מסלול לגיטימי להחיל migration על פרודקשן או
+   לפרסם — ולא ננקטו עקיפות.
+3. ה-ledger של ה-CLI בפרודקשן אינו מכיר את `20260725190000` (הוחל בהדבקה ב-SQL Editor), ולכן
+   `supabase db push` רגיל היה מריץ מחדש את migration הניקוי/הזריעה על נתונים אמיתיים (בניגוד ל-DEC-021).
+
+### ההחלטה
+
+- `recovery/m1-shared-truth` (`edc2d54` + תיקוני ריצה) **מוזג ל-`main`** לאחר שה-Quality Gate נטול
+  Docker שוחזר במלואו על מחשב שני (typecheck, lint, vitest 254, build עם SHA, Playwright הרמטי 3/3).
+  המיזוג אינו פורס דבר; הוא מכין את הענף המחובר ל-Lovable לפרסום.
+- migration ההרשאות `20260916120000` נסקר ואושר ללא שינוי (GRANT/ALTER DEFAULT PRIVILEGES אידמפוטנטיים
+  בלבד; ללא REVOKE; `anon` לא מקבל דבר; RLS לא נוגע; אין sequences; שתי פונקציות ה-SECURITY DEFINER
+  נועלות `search_path`). **הוא לא הוחל על פרודקשן.** מסלול ההחלה המאושר הוא `supabase/DEPLOY.md`
+  §"M1 release" — `apply_m1_grants_production.sql` (כולל רישום שתי הגרסאות ב-ledger) +
+  `verify_privileges.sql` לפני ואחרי. אסור להריץ `supabase db push` רגיל מול פרודקשן.
+- **M1 אינו "חי" ולא ייחשב כזה** עד ששתי פעולות של אריאל יבוצעו: (א) הגדרת שני ערכי ה-Supabase
+  הציבוריים בפרויקט Lovable ופרסום מ-`main`; (ב) החלת migration ההרשאות. לאחר מכן אימות קריאה-בלבד
+  (`RUNTIME_CONFIG.md §4`, `verify_privileges.sql`) ורשימת הקבלה החיה מהריצה.
+- זהות בנייה: מנגנון ה-`VITE_BUILD_SHA` של M1 אומת מקומית (`edc2d54` מוטבע ב-`routes-*.js`). לבנייה
+  המפורסמת הנוכחית אין SHA (קדמה ל-M1); זיהוי הבנייה שלה הוא `x-deployment-id` ושמות ה-assets.
+
+### השלכות
+
+- `docs/claude-context.md`, `docs/RUNTIME_CONFIG.md §4`, `docs/claude-tasks/M1_STATUS.md §4`,
+  `supabase/DEPLOY.md` ו-`docs/todo.md` מעודכנים בהתאם.
+- ההגנה מפני Docker: `.claude/settings.json` (מחויב ל-Git) חוסם פקודות שמפעילות container runtime;
+  ההנחיה הישנה "`npx supabase start`" הוסרה מ-`claude-context.md`; רשימת בדיקה לתחנת העבודה הראשית
+  ב-`docs/NO_LOCAL_DOCKER_POLICY.md`.

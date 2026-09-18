@@ -14,6 +14,10 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { StoreProvider } from "@/lib/store";
 import { AuthGate } from "@/components/auth/AuthGate";
 import { Toaster } from "@/components/ui/sonner";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
+
+// The page title must not claim "demo" when the build is a connected cloud build.
+const TITLE = isSupabaseConfigured() ? "מעקב תזונה משותף" : "מעקב תזונה משותף — גרסת הדגמה";
 
 function NotFoundComponent() {
   return (
@@ -81,12 +85,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { name: "theme-color", content: "#f5f4ef" },
-      { title: "מעקב תזונה משותף — גרסת הדגמה" },
+      { title: TITLE },
       { name: "description", content: "אפליקציית תיעוד תזונה משותפת עם ממשק פשוט, מהיר ורגוע." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { property: "og:title", content: "מעקב תזונה משותף — גרסת הדגמה" },
-      { name: "twitter:title", content: "מעקב תזונה משותף — גרסת הדגמה" },
+      { property: "og:title", content: TITLE },
+      { name: "twitter:title", content: TITLE },
       {
         property: "og:description",
         content: "אפליקציית תיעוד תזונה משותפת עם ממשק פשוט, מהיר ורגוע.",
