@@ -6,6 +6,7 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { execSync } from "node:child_process";
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+import type { Plugin, ResolvedConfig } from "vite";
 
 /**
  * Build identity (M1 Phase A). A non-secret short Git SHA is baked into the
@@ -42,6 +43,67 @@ function isHermeticMode(): boolean {
 }
 
 const hermetic = isHermeticMode();
+const buildSha = resolveBuildSha();
+const buildTime = new Date().toISOString();
+
+/** Hostname of a Supabase URL, or "" — never the key, never the full URL with params. */
+function supabaseHost(url: string | undefined): string {
+  try {
+    return url ? new URL(url).host : "";
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Emits `build-info.json` next to the client assets (served at `/build-info.json`).
+ * It is the artifact-level, non-secret statement of what this build IS:
+ * commit, time, runtime mode (cloud/demo), declared target (shared/demo) and
+ * the Supabase host it was compiled against. `scripts/release-preflight.ts`
+ * reads it from a local build or from the live URL, so "which build is
+ * published and is it connected?" is answered by a file, not by a person.
+ * Added after DEC-024 (a published build had silently shipped without any
+ * Supabase configuration). Mirrors `src/lib/build-info.ts`.
+ */
+function buildInfoManifestPlugin(): Plugin {
+  let resolved: ResolvedConfig;
+  return {
+    name: "elenas-plate:build-info-manifest",
+    apply: "build",
+    configResolved(config) {
+      resolved = config;
+    },
+    generateBundle() {
+      // Only the browser bundle gets the manifest (not the SSR / nitro server builds).
+      const envName = (this as { environment?: { name?: string } }).environment?.name;
+      const isClient = envName ? envName === "client" : !resolved.build.ssr;
+      if (!isClient) return;
+
+      const env = resolved.env as Record<string, string | undefined>;
+      const url = hermetic ? "" : (env.VITE_SUPABASE_URL ?? "").trim();
+      const key = hermetic ? "" : (env.VITE_SUPABASE_ANON_KEY ?? "").trim();
+      const rawTarget = (env.VITE_RUNTIME_TARGET ?? "").trim().toLowerCase();
+      const target = rawTarget === "shared" || rawTarget === "demo" ? rawTarget : "shared";
+      const mode = url && key ? "cloud" : "demo";
+      const manifest = {
+        sha: buildSha,
+        builtAt: buildTime,
+        mode,
+        target,
+        targetExplicit: rawTarget === "shared" || rawTarget === "demo",
+        supabaseHost: supabaseHost(url),
+        productionBuild: true,
+        hermetic,
+        misconfigured: target === "shared" && mode === "demo",
+      };
+      this.emitFile({
+        type: "asset",
+        fileName: "build-info.json",
+        source: JSON.stringify(manifest, null, 2) + "\n",
+      });
+    },
+  };
+}
 
 export default defineConfig({
   tanstackStart: {
@@ -50,9 +112,10 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
+    plugins: [buildInfoManifestPlugin()],
     define: {
-      "import.meta.env.VITE_BUILD_SHA": JSON.stringify(resolveBuildSha()),
-      "import.meta.env.VITE_BUILD_TIME": JSON.stringify(new Date().toISOString()),
+      "import.meta.env.VITE_BUILD_SHA": JSON.stringify(buildSha),
+      "import.meta.env.VITE_BUILD_TIME": JSON.stringify(buildTime),
       ...(hermetic
         ? {
             "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(""),

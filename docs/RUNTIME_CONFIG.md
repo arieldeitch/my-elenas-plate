@@ -7,19 +7,48 @@
 
 The application decides at **build time** (Vite `import.meta.env`) where data lives:
 
-| Mode    | Condition                                                          | Source of truth               | What the UI says                                                                    |
-| ------- | ------------------------------------------------------------------ | ----------------------------- | ----------------------------------------------------------------------------------- |
-| `cloud` | `VITE_SUPABASE_URL` **and** `VITE_SUPABASE_ANON_KEY` are non-empty | Supabase (shared household)   | "הנתונים נשמרים בענן המשותף ומסונכרנים בין המכשירים." + `build <sha> · cloud`       |
-| `demo`  | either variable is empty/absent                                    | this browser's `localStorage` | "מצב הדגמה — ללא סנכרון ענן" (dev) / red alert "הבנייה הזו אינה מחוברת לענן" (prod) |
+| Mode    | Condition                                                          | Source of truth               | What the UI says                                                                      |
+| ------- | ------------------------------------------------------------------ | ----------------------------- | ------------------------------------------------------------------------------------- |
+| `cloud` | `VITE_SUPABASE_URL` **and** `VITE_SUPABASE_ANON_KEY` are non-empty | Supabase (shared household)   | "הנתונים נשמרים בענן המשותף ומסונכרנים בין המכשירים." + `build <sha> · cloud`         |
+| `demo`  | either variable is empty/absent                                    | this browser's `localStorage` | "מצב הדגמה — ללא סנכרון ענן" (target `demo`) / **blocked app** (target `shared`, §1a) |
 
 Implementation: `src/lib/build-info.ts` (`getBuildInfo()`), rendered by
 `src/components/nutrition/RuntimeModeNotice.tsx`. The page `<title>` says
 "גרסת הדגמה" only in demo mode.
 
-A **production bundle without Supabase configuration** (`import.meta.env.PROD`
-and demo mode) is treated as a misconfiguration: `role="alert"` banner,
-`console.warn`, `data-runtime-mode="misconfigured"`. It can never look like a
-healthy connected build.
+### 1a. The runtime target — fail-safe added 2026-09-18 (DEC-024)
+
+Mode says where data _would_ live; the **target** says what the build was
+_meant_ to be, so a missing configuration can no longer degrade silently:
+
+| `VITE_RUNTIME_TARGET` | Meaning                                                        | Default                                               |
+| --------------------- | -------------------------------------------------------------- | ----------------------------------------------------- |
+| `shared`              | the couple app — Supabase configuration is **required**        | **every production bundle** (`vite build`) when unset |
+| `demo`                | a deliberate local/demo build — demo mode allowed and labelled | development bundles (`vite dev`) when unset           |
+
+`misconfigured = target === "shared" && mode === "demo"`. A misconfigured build
+is **blocked**: `src/components/nutrition/RuntimeGate.tsx` (mounted in
+`src/routes/__root.tsx` _outside_ `AuthGate` and `StoreProvider`) renders a
+full-screen `role="alert"` page with `data-runtime-mode="misconfigured"` and the
+build id, and nothing else mounts — no store, no auth, no localStorage writes
+(`persistence.saveState` additionally refuses to write in that state). The
+console line is `console.error(... SHARED BUILD WITHOUT SUPABASE CONFIGURATION
+(app blocked))`. The block page is server-rendered too, so even the raw HTML of a
+misconfigured publish says so.
+
+Consequences:
+
+- A production publish with the two Supabase values missing (the 2026-09-18
+  situation) now shows the block page instead of a usable demo app.
+- A production publish that is _meant_ to be a demo must set
+  `VITE_RUNTIME_TARGET=demo`; unknown values are ignored (treated as unset).
+- `vite dev` / the hermetic Playwright tests keep working without any `.env`.
+
+Tests: `src/lib/build-info.test.ts`, `src/components/nutrition/RuntimeGate.test.tsx`,
+`src/lib/persistence.test.ts`, and the browser regression
+`e2e/hermetic/misconfigured-shared.spec.ts` (dev server started with
+`VITE_RUNTIME_TARGET=shared` and no Supabase env → block page in SSR HTML and in
+the browser, empty localStorage, zero Supabase requests).
 
 ## 2. Build identity
 
@@ -32,11 +61,57 @@ healthy connected build.
 They are observable in three places on the running app:
 
 1. footer text `build <sha> · <mode>` (and `data-build-sha` on the notice element);
-2. console on load: `[elenas-plate] build=<sha> builtAt=<time> mode=<mode>`;
-3. `window.__ELENAS_PLATE_BUILD__` (`{ sha, builtAt, mode, productionBuild, misconfigured }`).
+2. console on load: `[elenas-plate] build=<sha> builtAt=<time> mode=<mode> target=<target>`;
+3. `window.__ELENAS_PLATE_BUILD__` (`{ sha, builtAt, mode, target, targetExplicit, productionBuild, misconfigured }`).
+
+### 2a. `build-info.json` — the artifact-level manifest (2026-09-18)
+
+Every `vite build` also emits **`/build-info.json`** next to the client assets
+(`.output/public/build-info.json`, served at `<site>/build-info.json`) from the
+`elenas-plate:build-info-manifest` plugin in `vite.config.ts`:
+
+```json
+{
+  "sha": "8d28d6f",
+  "builtAt": "2026-09-18T07:04:01.753Z",
+  "mode": "cloud",
+  "target": "shared",
+  "targetExplicit": true,
+  "supabaseHost": "rqgoiuztphkcvbwtbxbj.supabase.co",
+  "productionBuild": true,
+  "hermetic": false,
+  "misconfigured": false
+}
+```
+
+It contains the Supabase **host only** — never the key. It answers "which commit
+is published and was it built connected, and to which project?" without a
+browser or a sign-in. A site that returns no JSON there is a build from before
+this manifest existed (every publish up to and including the one live on
+2026-09-18).
 
 Verified locally: `npm run build` on commit `2624a52` embeds `2624a52` in
-`.output/public/assets/routes-*.js`.
+`.output/public/assets/routes-*.js`; on `8d28d6f` the manifest above is emitted.
+
+## 2b. Release preflight — `npm run preflight` (2026-09-18)
+
+`scripts/release-preflight.ts` is the executable answer to "is this build safe
+to publish as the shared app?" It is read-only, needs no secrets, and exits 1 on
+any FAIL:
+
+| Invocation                          | What it inspects                                                                                                                                                                                           |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run preflight -- --env`        | the local `.env` before building: URL host = production ref, anon key present and **not** a `service_role`/`sb_secret_` key, `VITE_RUNTIME_TARGET` unset/`shared`, project reachable                       |
+| `npm run preflight -- --local`      | `.output/public` after `vite build`: manifest present, sha = `HEAD`, mode `cloud`, target `shared`, `misconfigured=false`, compiled host = production, bundle contains the host, no secret-shaped strings  |
+| `npm run preflight -- --live [url]` | the served site (default `https://my-elenas-plate.lovable.app`): HTTP 200 + `x-deployment-id`, HTML has no block/demo markers, `/build-info.json` present and sha = `origin/main`, bundle host, no secrets |
+
+Options: `--expect-sha`, `--expect-ref`, `--allow-demo` (for a deliberate demo
+publish), `--json`. The grants/ledger state of the database is listed as `MANUAL`
+(needs the owner's Dashboard: `supabase/verify_privileges.sql`). Constants
+(production ref, URL — all public) live in `scripts/release-config.ts`.
+
+Run on 2026-09-18 against the live site: **FAIL** (`html:live` demo title,
+`manifest` missing) — i.e. it detects the current defect.
 
 ## 3. How Lovable production receives the variables (no secrets in Git)
 
@@ -90,9 +165,10 @@ curl -s https://my-elenas-plate.lovable.app/assets/<index chunk>.js \
 
 To fix: in the Lovable project settings add `VITE_SUPABASE_URL=https://rqgoiuztphkcvbwtbxbj.supabase.co`
 and `VITE_SUPABASE_ANON_KEY=<anon/publishable key>` (public values, never
-`service_role`), then **publish** from `main` and re-run §4 — the footer must
-read `build <sha> · cloud` and the index chunk must contain
-`rqgoiuztphkcvbwtbxbj.supabase.co`.
+`service_role`; leave `VITE_RUNTIME_TARGET` unset), then **publish** from `main` and run
+`npm run preflight -- --live` — it must print `PREFLIGHT PASS`; the footer must read
+`build <sha> · cloud` and `<site>/build-info.json` must show `"mode": "cloud"` with the
+production host.
 
 ## 5. Local / test modes
 

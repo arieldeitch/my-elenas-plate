@@ -16,6 +16,7 @@
     "e2e": "playwright test",
     "e2e:hermetic": "playwright test -c playwright.hermetic.config.ts",
     "catalog:seed": "vite-node -c vitest.config.ts scripts/generate-catalog-seed.ts",
+    "preflight": "vite-node scripts/release-preflight.ts",
     "format": "prettier --write ."
   },
   "dependencies": {
