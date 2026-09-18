@@ -4,7 +4,7 @@ Status legend: Done / In Progress / Blocked / Deferred / Not Started.
 Updated 2026-09-18. **Production bootstrap is complete** — Supabase project `rqgoiuztphkcvbwtbxbj`
 holds 1 household, 2 profiles (אריאל/אלנה), 6 meal slots, RLS on 10 tables and 390 active foods
 (status `READY`). Rollback code checkpoint: tag `pilot-ready-2026-07-24` (`29ac1d5`).
-**M1 code is Done and merged to `main`; the M1 release is Blocked on two owner actions** (below).
+**M1 code is Done and merged to `main`; owner release actions A/B/C are complete. M1 now waits only on live preflight + ten live acceptance checks.**
 **T-034 was split on 2026-08-01** (DEC-023): the backend half is **Done**, the browser-dependent half
 (**T-034-UI**) is **Blocked** until a browser automation capability exists.
 
@@ -15,15 +15,11 @@ Spec `docs/claude-tasks/M1_SHARED_TRUTH_RECOVERY.md`, status `M1_STATUS.md`, run
 
 - [x] All 12 acceptance criteria proven on the isolated hosted branch (2026-09-16), Docker-free gate
       re-run on a second machine (2026-09-18), branch merged into `main`.
-- [ ] **M1-R1 (Ariel) — runtime config + publish (mechanical since 2026-09-18, DEC-025). Checked
-      2026-09-18 13:30: NOT done (no key line on `origin/main`, live deployment unchanged).** Add the
-      line `VITE_SUPABASE_ANON_KEY=<anon/publishable key>` to the committed `.env.production`
-      (GitHub web editor or Lovable code mode), commit to `main`, Publish from Lovable, then
-      `npm run preflight -- --live` must print `PREFLIGHT PASS` (footer `build <sha> · cloud`).
-      Until then the published build is **blocked** by RuntimeGate, not silently demo.
-- [ ] **M1-R2 (Ariel) — apply `20260916120000_grant_table_privileges.sql` to production** via
-      `supabase/DEPLOY.md` §"M1 release" (`apply_m1_grants_production.sql`, verify before/after with
-      `verify_privileges.sql`). Never a plain `supabase db push` on production.
+- [x] **M1-R1 — runtime config + publish.** Production publishable config is committed to `main`;
+      Lovable synced the repo and a new production publish was triggered. Live preflight is part of M1-R3.
+- [x] **M1-R2 — production grants/default privileges + ledger repair.** Applied and verified directly
+      against `rqgoiuztphkcvbwtbxbj`: all 10 public tables RLS-enabled; authenticated/service_role have
+      required privileges; ledger contains `20260725190000` + `20260916120000`.
 - [ ] **M1-R3 — live acceptance** (after R1 + R2, needs an authenticated browser session): the ten
       checks in the run record §"LIVE ACCEPTANCE", plus T-034-UI.
 - [ ] M1-R4 — housekeeping: reset the leaked branch DB password or delete branch `uyroeumwmjhrcbkesmgb`
