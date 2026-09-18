@@ -46,10 +46,14 @@ Spec `docs/claude-tasks/M1_SHARED_TRUTH_RECOVERY.md`, status `M1_STATUS.md`, run
 - [x] M2-4 — Day Review (DEC-028, `cd76caa`): one tap on the today card (or the partner card) shows
       the whole day per slot for me / my partner; edit shortcut for my slots; partner read-only with an
       explicit switch. Store-only, no new reads. Hermetic loop `e2e/hermetic/day-review.spec.ts`.
-- [ ] **M2-5 (selected next) — quantity in one tap:** an inline −/+ stepper on entry rows in the meal
-      editor (and in the quick-add toast) so a quick-added "1 יחידה" becomes "2 יחידות" without the
-      quantity screen (today: pencil → quantity → confirm = 3 taps). Observed: quick add is now the main
-      path and quantities ≠ 1 (2 eggs, 2 slices) are the most common correction.
+- [x] M2-5 — one-tap quantity (DEC-029, `aab380e`): − / + pill on count-unit rows, floor 1, fractions
+      kept, Hebrew plurals, coalesced writes; grams/subjective keep the editor. "2 eggs" 6 → 4 taps.
+- [ ] **M2-6 (selected next) — no confirm step for search results with a usual unit:** tapping a
+      search result adds "1 × usual unit" immediately (like a chip) and relies on the row stepper for
+      corrections; the quantity screen stays only for foods without a usual unit, custom-food creation
+      and the pencil. Measured: typed food today = type + result + "הוספת המאכל" + סיום (3 taps); after
+      = 2 taps. The confirm now only ever confirms the default. Touches ~10 tests/e2e helpers that
+      encode "הוספת המאכל" after a result — update them with the change.
 - [ ] M2-6 — "repeat yesterday's meal" / frequently-used foods per slot (needs a few weeks of real
       cloud data first to be worth it).
 - [ ] M2-5 — run the ported hosted-branch e2e (`npm run e2e` against `uyroeumwmjhrcbkesmgb`) on a

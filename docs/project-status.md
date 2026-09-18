@@ -1,14 +1,21 @@
 # Project Status
 
-**Date:** 2026-09-18 (fifth run)
-**Branch:** `main` — M2-4 Day Review (one tap → the whole day for me and my partner) — see
-`docs/claude-tasks/RUN_2026-09-18_M2_4_DAY_REVIEW.md`
+**Date:** 2026-09-18 (sixth run)
+**Branch:** `main` — M2-5 one-tap quantity adjustment on meal entry rows — see
+`docs/claude-tasks/RUN_2026-09-18_M2_5_QUANTITY_STEP.md`
 **Supabase project:** `rqgoiuztphkcvbwtbxbj` (production) · isolated branch `uyroeumwmjhrcbkesmgb`
-**Stage:** **M1 code complete; release blocked on owner actions (`M1_RELEASE_ACCEPTANCE.md`); M2-4 done (DEC-028)**
+**Stage:** **M1 code complete; release blocked on owner actions (`M1_RELEASE_ACCEPTANCE.md`); M2-5 done (DEC-029)**
 **Deployment:** none performed. The published site is a **pre-M1, demo-mode build** (no Supabase env).
 **Pilot-ready code checkpoint:** tag `pilot-ready-2026-07-24` → `29ac1d5`.
 
 > Rule: nothing is listed as "working" unless it was actually run/verified.
+
+## 2026-09-18 (sixth run) — M2-5 one-tap quantity
+
+Full record: `docs/claude-tasks/RUN_2026-09-18_M2_5_QUANTITY_STEP.md`, DEC-029. Entry rows in the meal editor
+have a − / + pill for count units (step 1, floor 1, fractions kept); weight/volume and subjective keep
+the full editor; Hebrew plurals; rapid taps coalesce to one write (proven). "2 eggs": 6 taps → 4. Gate:
+typecheck 0 · lint 0/8 · vitest 297 · hermetic Playwright 8/8 · build. Owner actions unchanged.
 
 ## 2026-09-18 (fifth run) — M2-4 Day Review
 
