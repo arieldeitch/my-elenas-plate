@@ -37,8 +37,16 @@ Spec `docs/claude-tasks/M1_SHARED_TRUTH_RECOVERY.md`, status `M1_STATUS.md`, run
 
 - [x] M2-1 — partner's day at a glance on the home screen (`PartnerGlance`, partner day hydrated for
       the viewed date; `e2471e6`).
-- [ ] M2-2 — partner fasting / workout on the glance card; lower-friction logging from the home screen
-      (design first: `docs/02-ux-ui-guidelines.md`, keep the home compact, no food details on tiles).
+- [x] M2-2 — daily couple experience (DEC-026, `1732867`): home hierarchy ME → PARTNER → ACTION
+      (`TodayCard`, richer `PartnerGlance` with latest food + fasting/workout, compact tiles), one-screen
+      meal editor with one-tap quick add, ownership colours/labels, quiet sync indicator,
+      `FoodEntry.loggedAt`. Hermetic browser loop `e2e/hermetic/couple-home.spec.ts`.
+- [ ] M2-3 — quieter secondary blocks: fold the fixed weigh-in banner into the "עוד" area or a small
+      row, and shrink the workout/fasting cards into one compact row under the tiles.
+- [ ] M2-4 — "repeat yesterday's meal" / frequently-used foods per slot (needs a few weeks of real
+      cloud data first to be worth it).
+- [ ] M2-5 — run the ported hosted-branch e2e (`npm run e2e` against `uyroeumwmjhrcbkesmgb`) on a
+      machine with `.env.e2e`.
 
 ## T-034 (P1) — Backend verification — **Done (2026-08-01)**
 

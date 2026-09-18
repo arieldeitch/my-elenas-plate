@@ -2,6 +2,9 @@
 
 ## M1 release (2026-09-18) — ONE migration pending on production
 
+> Single entrypoint for the whole release (config, publish, this migration, live acceptance):
+> `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md`.
+
 `supabase/migrations/20260916120000_grant_table_privileges.sql` is reviewed (run record
 `docs/claude-tasks/RUN_2026-09-18_M1_PROMOTION.md` §2) and applied to the isolated branch
 `uyroeumwmjhrcbkesmgb`, but **not yet to production `rqgoiuztphkcvbwtbxbj`**. It only GRANTs

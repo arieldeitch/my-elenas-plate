@@ -1,14 +1,24 @@
 # Project Status
 
-**Date:** 2026-09-18 (second run)
-**Branch:** `main` — M1 merged; fail-safe runtime + release preflight + first M2 step (see
-`docs/claude-tasks/RUN_2026-09-18_M2_PREP.md`)
+**Date:** 2026-09-18 (third run)
+**Branch:** `main` — M2 daily couple experience (home hierarchy, one-tap logging, ownership, quiet
+sync) — see `docs/claude-tasks/RUN_2026-09-18_M2_DAILY.md`
 **Supabase project:** `rqgoiuztphkcvbwtbxbj` (production) · isolated branch `uyroeumwmjhrcbkesmgb`
-**Stage:** **M1 code complete and merged; M1 release BLOCKED on two owner actions (DEC-024)**
+**Stage:** **M1 code complete; M1 release blocked on owner actions (`M1_RELEASE_ACCEPTANCE.md`); M2 step 2 done (DEC-026)**
 **Deployment:** none performed. The published site is a **pre-M1, demo-mode build** (no Supabase env).
 **Pilot-ready code checkpoint:** tag `pilot-ready-2026-07-24` → `29ac1d5`.
 
 > Rule: nothing is listed as "working" unless it was actually run/verified.
+
+## 2026-09-18 (third run) — M2 daily couple experience
+
+Full record: `docs/claude-tasks/RUN_2026-09-18_M2_DAILY.md`, decisions DEC-026. Home is now ME (`TodayCard`)
+→ PARTNER (`PartnerGlance` with latest food, slot dots, fasting/workout when present) → ACTION (six
+compact tiles on one screen). One-screen meal editor with one-tap quick add from favourites/recents
+(2 taps + close instead of 5–6). Ownership: personal colours, "<slot> · <person>" editor header,
+`data-owner`. Sync indicator quiet when confirmed. `FoodEntry.loggedAt` read from `created_at`.
+`M1_RELEASE_ACCEPTANCE.md` is the single release entrypoint. Gate: typecheck 0 · lint 0/8 · vitest
+278 · hermetic Playwright 5/5 · build. Owner actions unchanged.
 
 ## 2026-09-18 (second run) — fail-safe runtime, release preflight, `.env.production`, M2 partner glance
 

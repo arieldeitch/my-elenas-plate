@@ -150,6 +150,10 @@ The delivery path is now:
 
 ## 4. How to verify what production is actually running (read-only)
 
+> The end-to-end release check (owner actions → `npm run preflight -- --live` → DB check → ten live
+> acceptance items) is `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md`. This section is the underlying
+> manual detail.
+
 1. Open the published app, sign in, and read the footer: it must show
    `build <sha> · cloud`. `· demo`, a red alert, or the title "גרסת הדגמה" means the
    published build has no Supabase configuration → **blocker, report it**.

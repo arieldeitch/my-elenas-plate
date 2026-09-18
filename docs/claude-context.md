@@ -1,15 +1,20 @@
 # Claude Context
 
 Fast-start context for Claude Code. The latest user instruction always overrides older docs.
-Updated 2026-09-18.
+Updated 2026-09-18 (third run).
 
 ## Start state
 
 - **Project:** shared Nutrition Tracker for **אריאל (Ariel)** and **אלנה (Elena)** — Hebrew, RTL,
   mobile-first daily logging.
-- **Branch:** `main` (M1 merged 2026-09-18; fail-safe runtime + preflight + M2 step 1 the same day).
-  M1 status: `docs/claude-tasks/M1_STATUS.md`; latest run record:
-  `docs/claude-tasks/RUN_2026-09-18_M2_PREP.md` (previous: `RUN_2026-09-18_M1_PROMOTION.md`).
+- **Branch:** `main` (M1 merged; fail-safe runtime + preflight; M2 steps 1–2 — all 2026-09-18).
+  M1 status: `docs/claude-tasks/M1_STATUS.md`; **M1 release entrypoint:**
+  `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md`; latest run record:
+  `docs/claude-tasks/RUN_2026-09-18_M2_DAILY.md` (previous: `RUN_2026-09-18_M2_PREP.md`).
+- **Home (M2, DEC-026):** `TodayCard` (me) → `PartnerGlance` (partner) → six compact `MealCard`s.
+  One-screen `MealEditor` with one-tap quick add from favourites/recents. Personal colours on
+  `PROFILES` (`color`/`tint`); `data-owner` on the today card and the editor dialog. No calories/macros
+  anywhere (DEC-004) — do not add them to the partner card.
 - **Supabase project:** `rqgoiuztphkcvbwtbxbj` (production). Isolated test branch
   `m1-shared-truth-test` (`uyroeumwmjhrcbkesmgb`).
 - **Production DB status:** bootstrap complete, catalog seeded. **Pending:** the reviewed grants
@@ -86,13 +91,14 @@ seeded. Nothing was ever broken in the migration.
 Not a repository audit, and not a migration:
 
 1. Read `docs/claude-context.md`.
-2. Read `docs/claude-tasks/RUN_2026-09-18_M2_PREP.md` (latest run record + blockers).
+2. Read `docs/claude-tasks/RUN_2026-09-18_M2_DAILY.md` (latest run record) and
+   `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md` (release state).
 3. Read `docs/project-status.md` and `docs/todo.md`.
 4. Check the current branch, HEAD and `git status` (read-only).
-5. **M1 release is blocked on two actions only Ariel can do** (see the latest run record §"YOU"):
-   add the anon/publishable key line to the committed `.env.production` + publish from Lovable
-   (DEC-025; the published build is BLOCKED by `RuntimeGate` until then), and apply the grants
-   migration to production. `npm run preflight -- --live` is the pass/fail check for the publish. Verify each with the read-only checks in `docs/RUNTIME_CONFIG.md §4` and
+5. **M1 release:** everything — owner actions, the automated check (`npm run preflight -- --live`),
+   the DB check and the ten live acceptance items — is in ONE place:
+   `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md`. Run §2 first; if it passes, do §3 only with an
+   authenticated browser session. Do not re-explain the blockers elsewhere. Verify each with the read-only checks in `docs/RUNTIME_CONFIG.md §4` and
    `supabase/verify_privileges.sql`; then run the live M1 acceptance (T-034-UI + run record §"LIVE
    ACCEPTANCE") if a browser session is available. Otherwise leave them open and say so plainly.
 6. **Do not reopen T-034** — closed as Backend Verified (DEC-023). Do not propose a production self-test
@@ -194,7 +200,8 @@ writes localStorage. Tests stay hermetic via `vi.stubEnv` in
 ## Guardrails
 
 - Mobile-first, RTL, large touch targets, no color-only status, calm/neutral tone.
-- Home stays compact: large meal icons, **no food details on the home tiles**.
+- Home stays compact: ME → PARTNER → ACTION, six compact tiles on one phone screen, **no food
+  details on the tiles**; the only food name on the home is the one-line "לאחרונה" (DEC-026).
 - Don't add out-of-scope analytics features. Follow the global Approval-Brief rule before any
   Supabase/auth/RLS/schema/migration/secret/env change.
 
