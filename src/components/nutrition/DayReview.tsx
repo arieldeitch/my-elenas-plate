@@ -8,6 +8,7 @@ import { formatShortDate, isSameDay, toISODate } from "@/lib/format";
 import { calcCompletion } from "@/lib/completion";
 import { countEntries } from "@/lib/activity";
 import { coffeeSummary } from "@/lib/coffee";
+import { formatQuantity } from "@/lib/quantity";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -274,8 +275,7 @@ function SlotRow({
 }
 
 function entryDetail(e: FoodEntry): string {
-  const qty =
-    e.mode === "measured" ? `${e.amount ?? ""} ${e.unit ?? ""}`.trim() : (e.subjective ?? "");
+  const qty = formatQuantity(e);
   return e.coffee ? [coffeeSummary(e.coffee), qty].filter(Boolean).join(" · ") : qty;
 }
 

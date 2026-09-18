@@ -280,6 +280,35 @@ describe("active cloud path (hermetic)", () => {
     hook.unmount();
   });
 
+  it("M2-5 — rapid quantity taps coalesce into one pending op and one write with the final amount", async () => {
+    const hook = await mountActive();
+    act(() => hook.result.current.addEntry("dinner", apple));
+    await waitFor(() => expect(hook.result.current.syncState).toBe("saved"));
+    const entry = hook.result.current.getDay("me", today()).meals.dinner.entries[0];
+    const writesBefore = fake.log.filter(
+      (l) => l.action === "upsert" && l.table === "food_entries",
+    ).length;
+
+    // Three taps faster than the drain debounce: 1 → 2 → 3 → 4.
+    act(() => {
+      hook.result.current.updateEntry("dinner", { ...entry, amount: 2 });
+      hook.result.current.updateEntry("dinner", { ...entry, amount: 3 });
+      hook.result.current.updateEntry("dinner", { ...entry, amount: 4 });
+    });
+    const pendingForEntry = queue.pending().filter((m) => m.key === `entry:${entry.id}`);
+    expect(pendingForEntry).toHaveLength(1);
+    expect((pendingForEntry[0].op as { entry: { amount: number } }).entry.amount).toBe(4);
+    expect(hook.result.current.syncState).not.toBe("saved");
+
+    await waitFor(() => expect(hook.result.current.syncState).toBe("saved"));
+    const writesAfter = fake.log.filter(
+      (l) => l.action === "upsert" && l.table === "food_entries",
+    ).length;
+    expect(writesAfter - writesBefore).toBe(1);
+    expect(fake.rows("food_entries")[0]).toMatchObject({ id: entry.id, amount: 4 });
+    hook.unmount();
+  });
+
   it("a permanently rejected op stays visible as failed and can be discarded", async () => {
     const hook = await mountActive();
     // Make the fake reject the next write like a constraint violation would.

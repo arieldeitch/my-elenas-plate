@@ -77,11 +77,12 @@ describe("MealEditor (M2 one-screen logging loop)", () => {
     await user.click(screen.getByRole("button", { name: "הוספת המאכל" }));
 
     const entries = screen.getByTestId("meal-entries");
-    const row = within(entries).getByText("תפוח").closest("div")!.parentElement!;
-    expect(within(row).getByText(/יחידה/)).toBeInTheDocument();
+    const row = within(entries).getByTestId("meal-entry");
+    expect(within(row).getByText("תפוח")).toBeInTheDocument();
+    expect(row).toHaveAttribute("data-quantity", "1 יחידה");
     expect(store!.getDay("me", isoToday()).meals.dinner.entries[0].loggedAt).toMatch(/^\d{4}-/);
 
-    await user.click(screen.getByRole("button", { name: "מחיקה" }));
+    await user.click(screen.getByRole("button", { name: "מחיקה: תפוח" }));
     expect(screen.queryByTestId("meal-entries")).not.toBeInTheDocument();
   });
 

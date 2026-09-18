@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { X, Pencil, Trash2, Star, MinusCircle, RotateCcw, Check } from "lucide-react";
+import { X, Pencil, Trash2, Star, MinusCircle, RotateCcw, Check, Minus, Plus } from "lucide-react";
 import { toast } from "sonner";
 import type { Food, FoodEntry, MealSlotId } from "@/lib/domain";
 import { MEAL_ICONS, MEAL_LABELS } from "@/lib/meal-slots";
 import { useStore, PROFILES } from "@/lib/store";
 import { formatShortDate } from "@/lib/format";
 import { coffeeSummary } from "@/lib/coffee";
+import { canStep, formatQuantity, stepAmount } from "@/lib/quantity";
 import { cn } from "@/lib/utils";
 import { FoodSearch } from "./FoodSearch";
 import { QuantitySelector } from "./QuantitySelector";
@@ -29,6 +30,9 @@ type View =
 export function MealEditor({ slot, onClose }: Props) {
   const store = useStore();
   const [view, setView] = useState<View>({ kind: "meal" });
+  // M2-5: the row that was just quick-added is highlighted briefly so "tap + once"
+  // needs no hunting. Cleared when another meal opens.
+  const [justAdded, setJustAdded] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Reset the view ONLY when a different meal opens. Depending on `onClose`
@@ -37,6 +41,7 @@ export function MealEditor({ slot, onClose }: Props) {
   useEffect(() => {
     if (!slot) return;
     setView({ kind: "meal" });
+    setJustAdded(null);
     // Focus the panel for Escape / screen readers unless a child (the search box
     // of an empty meal) already took focus — child effects run first.
     const panel = panelRef.current;
@@ -93,12 +98,15 @@ export function MealEditor({ slot, onClose }: Props) {
       amount: 1,
       unit,
     });
-    toast(`נוסף: ${food.name} · 1 ${unit}`, {
-      action: {
-        label: "עריכת כמות",
-        onClick: () => setView({ kind: "quantity", food, editing: added }),
-      },
-    });
+    setJustAdded(added.id);
+    toast(`נוסף: ${food.name} · ${formatQuantity(added)}`, { duration: 2500 });
+  }
+
+  /** M2-5: one-tap − / + on a count-unit row; the same upsert path as any edit. */
+  function handleStep(entry: FoodEntry, direction: 1 | -1) {
+    const amount = stepAmount(entry, direction);
+    if (amount == null) return;
+    store.updateEntry(slot!, { ...entry, amount });
   }
 
   function handleUpdate(entry: FoodEntry) {
@@ -208,6 +216,8 @@ export function MealEditor({ slot, onClose }: Props) {
                           if (food) setView({ kind: "quantity", food, editing: e });
                         }}
                         onDelete={() => handleDelete(e)}
+                        onStep={(dir) => handleStep(e, dir)}
+                        highlighted={e.id === justAdded}
                       />
                     ))}
                   </div>
@@ -303,55 +313,110 @@ function SkippedState({ onUndo }: { onUndo: () => void }) {
 function EntryRow({
   entry,
   isFavorite,
+  highlighted,
   onToggleFavorite,
   onEdit,
   onDelete,
+  onStep,
 }: {
   entry: FoodEntry;
   isFavorite: boolean;
+  highlighted?: boolean;
   onToggleFavorite: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onStep: (direction: 1 | -1) => void;
 }) {
-  const quantityText =
-    entry.mode === "measured"
-      ? `${entry.amount} ${entry.unit ?? ""}`.trim()
-      : (entry.subjective ?? "");
+  const quantityText = formatQuantity(entry);
   const detail = entry.coffee
     ? [coffeeSummary(entry.coffee), quantityText].filter(Boolean).join(" · ")
     : quantityText;
+  const steppable = canStep(entry);
+  const canDecrement = steppable && stepAmount(entry, -1) != null;
+
   return (
-    <div className="flex items-center gap-1 rounded-2xl border border-border bg-card p-2 pr-3">
-      <div className="min-w-0 flex-1">
-        <div className="truncate font-medium text-foreground">{entry.foodName}</div>
-        <div className="text-sm text-muted-foreground">{detail}</div>
-        {entry.coffee?.note && (
-          <div className="truncate text-xs text-muted-foreground/80">{entry.coffee.note}</div>
-        )}
+    <div
+      data-testid="meal-entry"
+      data-entry-id={entry.id}
+      data-quantity={quantityText}
+      className={cn(
+        "rounded-2xl border border-border bg-card p-2 pr-3 transition-colors duration-700",
+        highlighted && "border-primary/40 bg-primary-soft/40",
+      )}
+    >
+      {/* Line 1: the food + the rare actions */}
+      <div className="flex items-center gap-1">
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-medium text-foreground">{entry.foodName}</div>
+          {entry.coffee && <div className="truncate text-xs text-muted-foreground">{detail}</div>}
+          {entry.coffee?.note && (
+            <div className="truncate text-xs text-muted-foreground/80">{entry.coffee.note}</div>
+          )}
+        </div>
+        <button
+          onClick={onToggleFavorite}
+          aria-label={
+            isFavorite ? `הסרת ${entry.foodName} מהמועדפים` : `הוספת ${entry.foodName} למועדפים`
+          }
+          className="grid h-11 w-11 place-items-center rounded-xl hover:bg-muted"
+        >
+          <Star
+            className={cn("h-4 w-4", isFavorite ? "text-warn fill-warn" : "text-muted-foreground")}
+          />
+        </button>
+        <button
+          onClick={onEdit}
+          aria-label={`עריכה: ${entry.foodName}`}
+          className="grid h-11 w-11 place-items-center rounded-xl hover:bg-muted"
+        >
+          <Pencil className="h-4 w-4" />
+        </button>
+        <button
+          onClick={onDelete}
+          aria-label={`מחיקה: ${entry.foodName}`}
+          className="grid h-11 w-11 place-items-center rounded-xl text-destructive hover:bg-muted"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
       </div>
-      <button
-        onClick={onToggleFavorite}
-        aria-label={isFavorite ? "הסרה ממועדפים" : "הוספה למועדפים"}
-        className="grid h-11 w-11 place-items-center rounded-xl hover:bg-muted"
-      >
-        <Star
-          className={cn("h-4 w-4", isFavorite ? "text-warn fill-warn" : "text-muted-foreground")}
-        />
-      </button>
-      <button
-        onClick={onEdit}
-        aria-label="עריכה"
-        className="grid h-11 w-11 place-items-center rounded-xl hover:bg-muted"
-      >
-        <Pencil className="h-4 w-4" />
-      </button>
-      <button
-        onClick={onDelete}
-        aria-label="מחיקה"
-        className="grid h-11 w-11 place-items-center rounded-xl text-destructive hover:bg-muted"
-      >
-        <Trash2 className="h-4 w-4" />
-      </button>
+
+      {/* Line 2: the quantity — one-tap − / + for count units (M2-5), text otherwise */}
+      {steppable ? (
+        <div
+          className="mt-1 inline-flex items-center rounded-full border border-border bg-secondary"
+          role="group"
+          aria-label={`כמות של ${entry.foodName}`}
+        >
+          <button
+            type="button"
+            onClick={() => onStep(-1)}
+            disabled={!canDecrement}
+            aria-label={`פחות ${entry.foodName}`}
+            data-testid="qty-minus"
+            className="grid h-10 w-11 place-items-center rounded-full text-foreground hover:bg-card disabled:text-muted-foreground/50 disabled:cursor-not-allowed"
+          >
+            <Minus className="h-4 w-4" />
+          </button>
+          <span
+            className="min-w-[84px] px-1 text-center text-sm font-medium text-foreground tabular-nums"
+            aria-live="polite"
+            data-testid="qty-value"
+          >
+            {quantityText}
+          </span>
+          <button
+            type="button"
+            onClick={() => onStep(1)}
+            aria-label={`עוד ${entry.foodName}`}
+            data-testid="qty-plus"
+            className="grid h-10 w-11 place-items-center rounded-full text-foreground hover:bg-card"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+        </div>
+      ) : (
+        !entry.coffee && <div className="mt-0.5 text-sm text-muted-foreground">{detail}</div>
+      )}
     </div>
   );
 }
