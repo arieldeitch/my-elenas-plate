@@ -89,6 +89,12 @@ export interface SyncControls {
 const WEIGH_KINDS = new Set(["weighin.insert"]);
 const PREF_KINDS = new Set(["pref.favorite", "pref.recent"]);
 const DRAIN_DEBOUNCE_MS = 400;
+/**
+ * Converging a day from the cloud after our own drain and after each realtime
+ * echo of the rows we just wrote would fetch the same day three or four times
+ * within a few hundred ms. Day re-reads are coalesced per profile/date instead.
+ */
+const DAY_CONVERGE_MS = 150;
 const RETRY_INTERVAL_MS = 3000;
 const ACTIVATION_RETRY_MS = [3000, 6000, 12000, 30000];
 
@@ -114,6 +120,9 @@ export function useSupabaseSync(args: Args): SyncControls {
   const draining = useRef(false);
   const drainAgain = useRef(false);
   const inFlightDay = useRef<string | null>(null);
+  // The view (profile::iso) that activation itself hydrated, so the view
+  // effect does not fetch the same day a second time right after activation.
+  const hydratedAtActivation = useRef<string | null>(null);
   const drainTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const realtimeRef = useRef<SyncDetail["realtime"]>("off");
 
@@ -209,6 +218,34 @@ export function useSupabaseSync(args: Args): SyncControls {
     [setDays],
   );
 
+  // Coalesced day re-read (post-drain converge + realtime echoes → one fetch).
+  const convergeTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const scheduleDayConverge = useCallback(
+    (profile: ProfileId, isoDate: string) => {
+      const key = dayKey(profile, isoDate);
+      const timers = convergeTimers.current;
+      const existing = timers.get(key);
+      if (existing) clearTimeout(existing);
+      timers.set(
+        key,
+        setTimeout(() => {
+          timers.delete(key);
+          void hydrateDayOnly(profile, isoDate).catch((err) =>
+            console.warn("day converge failed", err),
+          );
+        }, DAY_CONVERGE_MS),
+      );
+    },
+    [hydrateDayOnly],
+  );
+  useEffect(() => {
+    const timers = convergeTimers.current;
+    return () => {
+      for (const t of timers.values()) clearTimeout(t);
+      timers.clear();
+    };
+  }, []);
+
   const hydrate = useCallback(
     async (profile: ProfileId, isoDate: string) => {
       const ctx = ctxRef.current;
@@ -262,20 +299,17 @@ export function useSupabaseSync(args: Args): SyncControls {
       draining.current = false;
     }
     // Converge the days we just wrote from the source of truth (cheap; also
-    // covers the case where realtime is delayed or dropped).
+    // covers the case where realtime is delayed or dropped). Coalesced with the
+    // realtime echoes of the same writes.
     for (const key of touchedDays) {
       const [profile, isoDate] = key.split("::") as [ProfileId, string];
-      try {
-        await hydrateDayOnly(profile, isoDate);
-      } catch (err) {
-        console.warn("post-drain hydrate failed", err);
-      }
+      scheduleDayConverge(profile, isoDate);
     }
     if (drainAgain.current) {
       drainAgain.current = false;
       void drain();
     }
-  }, [hydrateDayOnly, publishState]);
+  }, [scheduleDayConverge, publishState]);
 
   const scheduleDrain = useCallback(() => {
     if (drainTimer.current) clearTimeout(drainTimer.current);
@@ -360,11 +394,19 @@ export function useSupabaseSync(args: Args): SyncControls {
         if (!isMigrated()) markMigrated();
         if (!isFoodsMigrated()) markFoodsMigrated();
 
-        setActive(true);
         retryAttempt = 0;
         await hydrateFoodsList();
-        await hydrate(viewRef.current.profile, viewRef.current.iso);
+        // Initial hydrate of the current view (own + partner day) BEFORE the
+        // hook is flagged active, so the view effect below does not fetch the
+        // same day a second time (it skips exactly this key once).
+        const view = viewRef.current;
+        await hydrate(view.profile, view.iso);
+        await hydrateDayOnly(partnerOf(view.profile), view.iso).catch((err) =>
+          console.warn("partner hydrate failed", err),
+        );
         if (disposed || gen !== generation) return;
+        hydratedAtActivation.current = dayKey(view.profile, view.iso);
+        setActive(true);
         publishState();
 
         unsubRealtime = subscribeHousehold(ctx, onRealtime, session.access_token, setRealtime);
@@ -402,9 +444,7 @@ export function useSupabaseSync(args: Args): SyncControls {
             if (found) ({ profile, isoDate } = found);
           }
           if (!profile || !isoDate) ({ profile, iso: isoDate } = view);
-          void hydrateDayOnly(profile, isoDate).catch((err) =>
-            console.warn("realtime hydrate failed", err),
-          );
+          scheduleDayConverge(profile, isoDate);
         }
       }
     }
@@ -450,6 +490,7 @@ export function useSupabaseSync(args: Args): SyncControls {
     hydratePrefsFor,
     hydrateWeighInsFor,
     publishState,
+    scheduleDayConverge,
     setSyncState,
   ]);
 
@@ -458,6 +499,11 @@ export function useSupabaseSync(args: Args): SyncControls {
   // like any hydrate against unsent local ops for that day.
   useEffect(() => {
     if (!active) return;
+    // Activation already loaded exactly this view (own + partner day).
+    if (hydratedAtActivation.current === dayKey(activeProfile, iso)) {
+      hydratedAtActivation.current = null;
+      return;
+    }
     void hydrate(activeProfile, iso);
     void hydrateDayOnly(partnerOf(activeProfile), iso).catch((err) =>
       console.warn("partner hydrate failed", err),

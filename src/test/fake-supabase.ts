@@ -44,7 +44,13 @@ export class FakeSupabase {
   tables = new Map<string, Row[]>();
   /** Every executed mutation, in order — handy for asserting narrowness. */
   log: Array<{ table: string; action: string; rows?: Row[]; filters?: Filter[] }> = [];
-  realtime = { setAuth: (_token: string) => {} };
+  /** Realtime auth as the client sees it; `events` records the lifecycle order. */
+  realtime = {
+    setAuth: (token: string) => {
+      this.events.push(`setAuth:${token}`);
+    },
+  };
+  events: string[] = [];
 
   rows(table: string): Row[] {
     if (!this.tables.has(table)) this.tables.set(table, []);
@@ -67,40 +73,72 @@ export class FakeSupabase {
     return { data: null, error: { code: "42883", message: `unknown rpc ${name}` } };
   }
 
-  /** Realtime handlers registered via channel().on(), keyed by table. */
-  handlers = new Map<string, Array<(payload: unknown) => void>>();
+  /**
+   * Realtime channels. Each channel keeps its own handlers so that removing one
+   * (sign-out, unmount) never silences another still-subscribed "device", and
+   * `emit` reaches every live channel like the socket would.
+   */
+  channels = new Set<FakeChannel>();
   channelCount = 0;
+  /** When true, every mutation is echoed to the live channels on the next tick. */
+  autoEmit = false;
 
-  channel() {
+  /** Handlers of all live channels merged by table (legacy view used by tests). */
+  get handlers(): Map<string, Array<(payload: unknown) => void>> {
+    const merged = new Map<string, Array<(payload: unknown) => void>>();
+    for (const ch of this.channels) {
+      for (const [table, list] of ch.handlers) {
+        merged.set(table, [...(merged.get(table) ?? []), ...list]);
+      }
+    }
+    return merged;
+  }
+
+  channel(topic = `ch-${this.channelCount + 1}`): FakeChannel {
     this.channelCount += 1;
-    const ch = {
-      on: (_ev: string, filter: { table: string }, cb: (payload: unknown) => void) => {
-        const list = this.handlers.get(filter.table) ?? [];
+    this.events.push(`channel:${topic}`);
+    const ch: FakeChannel = {
+      topic,
+      handlers: new Map(),
+      on: (_ev, filter, cb) => {
+        const list = ch.handlers.get(filter.table) ?? [];
         list.push(cb);
-        this.handlers.set(filter.table, list);
+        ch.handlers.set(filter.table, list);
         return ch;
       },
-      subscribe: (cb?: (status: string) => void) => {
+      subscribe: (cb) => {
+        this.channels.add(ch);
+        this.events.push(`subscribe:${topic}`);
         cb?.("SUBSCRIBED");
         return ch;
       },
     };
     return ch;
   }
-  removeChannel() {
-    this.handlers.clear();
+  removeChannel(ch?: FakeChannel) {
+    if (ch) {
+      this.channels.delete(ch);
+      this.events.push(`remove:${ch.topic}`);
+    } else this.channels.clear();
     return Promise.resolve("ok");
   }
 
   /** Simulates a postgres_changes event as the realtime socket would deliver it. */
   emit(table: string, eventType: "INSERT" | "UPDATE" | "DELETE", row: Row, old: Row = {}) {
-    for (const cb of this.handlers.get(table) ?? []) {
-      cb({
-        eventType,
-        new: eventType === "DELETE" ? {} : row,
-        old: eventType === "DELETE" ? old : {},
-      });
+    for (const ch of this.channels) {
+      for (const cb of ch.handlers.get(table) ?? []) {
+        cb({
+          eventType,
+          new: eventType === "DELETE" ? {} : row,
+          old: eventType === "DELETE" ? old : {},
+        });
+      }
     }
+  }
+
+  private echo(table: string, eventType: "INSERT" | "UPDATE" | "DELETE", row: Row, old: Row = {}) {
+    if (!this.autoEmit) return;
+    setTimeout(() => this.emit(table, eventType, { ...row }, { ...old }), 0);
   }
 
   /** Simulates a network outage: every query rejects like fetch would. */
@@ -132,7 +170,9 @@ export class FakeSupabase {
         for (const r of action.rows) {
           const dup = this.findConflict(table, rows, r);
           if (dup) return { data: null, error: { code: "23505", message: "duplicate key" } };
-          rows.push(this.withDefaults(r));
+          const stored = this.withDefaults(r);
+          rows.push(stored);
+          this.echo(table, "INSERT", stored);
         }
         return finish(action.rows);
       }
@@ -143,11 +183,15 @@ export class FakeSupabase {
           const existing = rows.find((x) =>
             keyCols.every((c) => r[c] !== undefined && x[c] === r[c]),
           );
-          if (existing) Object.assign(existing, r, { updated_at: new Date().toISOString() });
-          else {
+          if (existing) {
+            Object.assign(existing, r, { updated_at: new Date().toISOString() });
+            this.echo(table, "UPDATE", existing);
+          } else {
             const dup = this.findConflict(table, rows, r);
             if (dup) return { data: null, error: { code: "23505", message: "duplicate key" } };
-            rows.push(this.withDefaults(r));
+            const stored = this.withDefaults(r);
+            rows.push(stored);
+            this.echo(table, "INSERT", stored);
           }
         }
         return finish(action.rows);
@@ -155,15 +199,20 @@ export class FakeSupabase {
       case "update": {
         this.log.push({ table, action: "update", rows: [action.patch], filters });
         const hit = rows.filter(matches);
-        for (const r of hit) Object.assign(r, action.patch);
+        for (const r of hit) {
+          Object.assign(r, action.patch);
+          this.echo(table, "UPDATE", r);
+        }
         return finish(hit);
       }
       case "delete": {
         this.log.push({ table, action: "delete", filters });
         const keep = rows.filter((r) => !matches(r));
-        const removed = rows.length - keep.length;
+        const gone = rows.filter(matches);
         rows.splice(0, rows.length, ...keep);
-        return finish(new Array(removed).fill({}));
+        // Default replica identity: a DELETE event carries only the primary key.
+        for (const r of gone) this.echo(table, "DELETE", {}, { id: r.id });
+        return finish(new Array(gone.length).fill({}));
       }
     }
   }
@@ -180,6 +229,13 @@ export class FakeSupabase {
     }
     return undefined;
   }
+}
+
+export interface FakeChannel {
+  topic: string;
+  handlers: Map<string, Array<(payload: unknown) => void>>;
+  on: (ev: string, filter: { table: string }, cb: (payload: unknown) => void) => FakeChannel;
+  subscribe: (cb?: (status: string) => void) => FakeChannel;
 }
 
 class Query implements PromiseLike<Result> {
