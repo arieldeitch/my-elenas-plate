@@ -9,9 +9,7 @@ import { TodayCard } from "@/components/nutrition/TodayCard";
 import { PartnerGlance } from "@/components/nutrition/PartnerGlance";
 import { MealCard } from "@/components/nutrition/MealCard";
 import { MealEditor } from "@/components/nutrition/MealEditor";
-import { FastingCard } from "@/components/nutrition/FastingCard";
-import { WorkoutCard } from "@/components/nutrition/WorkoutCard";
-import { WeightBanner } from "@/components/nutrition/WeightBanner";
+import { DailyContextRow } from "@/components/nutrition/DailyContextRow";
 import { WeighInForm } from "@/components/nutrition/WeighInForm";
 import { CalendarView } from "@/components/nutrition/CalendarView";
 import { BottomNav } from "@/components/nutrition/BottomNav";
@@ -57,23 +55,23 @@ function Home() {
   const nextSlot: MealSlotId = MEAL_SLOTS.find((s) => day.meals[s].status === "empty") ?? "lunch";
 
   return (
-    <div className="min-h-screen bg-background pb-40">
+    <div className="min-h-screen bg-background pb-28">
       <div className="mx-auto max-w-[820px] px-5 pt-5 sm:pt-6">
-        {/* Header: profile switcher + brand */}
-        <header className="mb-3 flex items-center justify-between gap-3">
+        {/* Header: who is logging (switcher + device default) · brand + sync, one block */}
+        <header className="mb-3 flex items-start justify-between gap-3">
           <ProfileSwitcher />
-          <BrandMark />
+          <div className="flex flex-col items-end gap-1">
+            <BrandMark />
+            <SyncStatus />
+          </div>
         </header>
 
-        {/* M2 hierarchy: ME (today card) → PARTNER (glance) → ACTION (the six slots). */}
-        <div className="mb-2 flex justify-end">
-          <SyncStatus />
-        </div>
+        {/* M2 hierarchy: ME (today card) → PARTNER (glance) → ACTION (the six slots) → context row. */}
         <TodayCard onOpenCalendar={() => setCalendarOpen(true)} />
         <PartnerGlance />
 
         {/* Meals — the action: tap a slot to log into it */}
-        <section className="mt-4">
+        <section className="mt-4" data-testid="meal-tiles">
           <h2 className="mb-2 px-1 text-[14px] font-semibold text-foreground text-right">
             ארוחות היום
           </h2>
@@ -84,11 +82,8 @@ function Home() {
           </div>
         </section>
 
-        {/* Secondary */}
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          <WorkoutCard />
-          <FastingCard />
-        </div>
+        {/* Secondary daily context — compact, unfolds on demand (M2-3) */}
+        <DailyContextRow onOpenWeight={() => setWeighOpen(true)} />
 
         <RuntimeModeNotice />
       </div>
@@ -97,7 +92,6 @@ function Home() {
       <MealEditor slot={openSlot} onClose={closeSlot} />
       <CalendarView open={calendarOpen} onClose={closeCalendar} />
       <WeighInForm open={weighOpen} onClose={closeWeigh} />
-      <WeightBanner onOpen={() => setWeighOpen(true)} />
       <BottomNav
         active="home"
         onCalendar={() => setCalendarOpen(true)}

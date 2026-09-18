@@ -40,8 +40,12 @@ test("a fresh device is asked who uses it; the answer is the default after reloa
 });
 
 test("the device default can be changed from the switcher", async ({ page }) => {
-  await page.addInitScript((k) => window.localStorage.setItem(k, "elena"), DEVICE_KEY);
+  // Seed the device preference once (NOT via addInitScript, which would re-apply
+  // "elena" on the reload at the end and hide the change we are testing).
   await page.goto("/");
+  await waitForHydration(page);
+  await page.evaluate((k) => window.localStorage.setItem(k, "elena"), DEVICE_KEY);
+  await page.reload();
   await waitForHydration(page);
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await page.getByTestId("device-profile-default").click();

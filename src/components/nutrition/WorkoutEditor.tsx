@@ -1,5 +1,3 @@
-import { useState } from "react";
-import { Dumbbell, Pencil, X } from "lucide-react";
 import type { WorkoutFeeling, WorkoutLog, WorkoutType } from "@/lib/domain";
 import { useStore } from "@/lib/store";
 import { toISODate } from "@/lib/format";
@@ -18,11 +16,15 @@ const TYPES: WorkoutType[] = [
 ];
 const FEELINGS: WorkoutFeeling[] = ["קל", "טוב", "מאתגר", "קשה", "אחר"];
 
-export function WorkoutCard() {
+/**
+ * Inline editor for today's workout (M2-3): lives inside the daily context row,
+ * opened only on demand. Same data and rules as the former WorkoutCard —
+ * performed? → type + feeling; "לא" and "עוד לא תועד" are one tap.
+ */
+export function WorkoutEditor() {
   const store = useStore();
   const day = store.getDay(store.activeProfile, toISODate(store.selectedDate));
   const workout = day.workout;
-  const [editing, setEditing] = useState(false);
 
   function setPerformed(v: boolean) {
     if (v) {
@@ -32,13 +34,10 @@ export function WorkoutCard() {
         feeling: workout?.feeling ?? "טוב",
       };
       store.setWorkout(next);
-      setEditing(true);
     } else {
       store.setWorkout({ performed: false });
-      setEditing(false);
     }
   }
-
   function updateType(t: WorkoutType) {
     store.setWorkout({ performed: true, type: t, feeling: workout?.feeling ?? "טוב" });
   }
@@ -51,48 +50,22 @@ export function WorkoutCard() {
   const isEmpty = !workout || workout.performed === null;
 
   return (
-    <section
-      aria-labelledby="workout-title"
-      className="rounded-3xl bg-white border border-[#E9EEF3] p-6 shadow-soft"
-    >
-      <div className="flex items-center gap-3">
-        <div
-          className="grid h-12 w-12 place-items-center rounded-full bg-[#EDF8F2] text-[#17A668]"
-          aria-hidden
-        >
-          <Dumbbell className="h-5 w-5" strokeWidth={1.75} />
-        </div>
-        <h2 id="workout-title" className="text-[15px] font-semibold flex-1">
-          אימון
-        </h2>
-        {isPerformed && !editing && (
-          <button
-            onClick={() => setEditing(true)}
-            aria-label="עריכת אימון"
-            className="grid h-11 w-11 place-items-center rounded-full text-[#708197] transition-colors hover:bg-[#F1F5F9]"
-          >
-            <Pencil className="h-4 w-4" strokeWidth={1.75} />
-          </button>
-        )}
-      </div>
-
-      <div className="mt-3">
-        <div className="text-sm text-muted-foreground mb-2">האם בוצע אימון?</div>
-        <div className="inline-flex rounded-full bg-secondary p-1 border border-border">
-          <ToggleBtn active={isPerformed} onClick={() => setPerformed(true)}>
-            כן
-          </ToggleBtn>
-          <ToggleBtn active={isNot} onClick={() => setPerformed(false)}>
-            לא
-          </ToggleBtn>
-          <ToggleBtn active={isEmpty} onClick={() => store.setWorkout(undefined)}>
-            עוד לא תועד
-          </ToggleBtn>
-        </div>
+    <div data-testid="workout-editor">
+      <div className="mb-2 text-sm text-muted-foreground">האם בוצע אימון?</div>
+      <div className="inline-flex rounded-full bg-secondary p-1 border border-border">
+        <ToggleBtn active={isPerformed} onClick={() => setPerformed(true)}>
+          כן
+        </ToggleBtn>
+        <ToggleBtn active={isNot} onClick={() => setPerformed(false)}>
+          לא
+        </ToggleBtn>
+        <ToggleBtn active={isEmpty} onClick={() => store.setWorkout(undefined)}>
+          עוד לא תועד
+        </ToggleBtn>
       </div>
 
       {isPerformed && (
-        <div className="mt-4 space-y-3">
+        <div className="mt-3 space-y-3">
           <ChipGroup
             label="סוג האימון"
             options={TYPES}
@@ -105,21 +78,10 @@ export function WorkoutCard() {
             value={workout?.feeling}
             onChange={updateFeeling}
           />
-          {editing && (
-            <div className="pt-1">
-              <button
-                onClick={() => setEditing(false)}
-                className="inline-flex items-center gap-1 rounded-2xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
-              >
-                <X className="h-4 w-4" /> סיום
-              </button>
-            </div>
-          )}
         </div>
       )}
-
       {isNot && <p className="mt-3 text-sm text-muted-foreground">לא בוצע אימון היום.</p>}
-    </section>
+    </div>
   );
 }
 
