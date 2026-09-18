@@ -5,13 +5,11 @@ genuinely live in production. Everything below is read-only against production; 
 writes production data except the two real-user acceptance entries in §3, made by the couple's
 own accounts through the app.
 
-**Status (updated 2026-09-18, 15:12 Israel time): owner actions A and B completed externally; C still pending.**
+**Status (updated 2026-09-18): owner actions A, B and C completed externally; live acceptance still pending.**
 Evidence: `.env.production` on `main` now contains the production Supabase publishable key in commit
 `2651c0c1e7d298ce8442e50b68343210bb97b945` (A complete). Lovable has synced that same commit and a
 new production publish was triggered (B complete; live preflight still required to prove the served bundle).
-Supabase production was verified read-only to have all 10 expected public tables with RLS enabled and
-`authenticated` already holding SELECT/INSERT/UPDATE/DELETE on them, but the migration ledger still lacks
-`20260725190000` and `20260916120000`; therefore action C remains pending until the reviewed SQL is run and verified.
+Supabase production now has the reviewed M1 grants/default privileges applied and verified. All 10 expected public tables have RLS enabled; `authenticated` and `service_role` have the required table privileges; the migration ledger now contains both `20260725190000` and `20260916120000`; the two existing SECURITY DEFINER functions remain pinned to `search_path=public`. Action C is complete. Live preflight and the ten live checks are still required before M1 can close.
 When §1–§3 pass, record the evidence in a `RUN_<date>_M1_ACCEPTANCE.md`, `M1_STATUS.md` §4 and close
 M1 in `docs/todo.md`.
 
@@ -27,7 +25,7 @@ Direct links for the owner actions (all three are inside Ariel's own accounts):
 | --- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
 | A   | GitHub web editor or Lovable code mode                   | In `.env.production`, replace the commented last line with `VITE_SUPABASE_ANON_KEY=<anon/publishable key>` (Supabase → Project Settings → API Keys; never `service_role`). Commit to `main`.          | ☑     |
 | B   | Lovable → project → **Publish / Update**                 | Publish `main`. Until A is done the published app shows the block page (by design, DEC-025).                                                                                                          | ☑     |
-| C   | Supabase Dashboard → `rqgoiuztphkcvbwtbxbj` → SQL Editor | Run `supabase/verify_privileges.sql` (keep output), then `supabase/apply_m1_grants_production.sql`, then `verify_privileges.sql` again. Paste the second output into the next Claude run (or a Gist). | ☐     |
+| C   | Supabase Dashboard → `rqgoiuztphkcvbwtbxbj` → SQL Editor | Run `supabase/verify_privileges.sql` (keep output), then `supabase/apply_m1_grants_production.sql`, then `verify_privileges.sql` again. Paste the second output into the next Claude run (or a Gist). | ☑     |
 
 ## 2. Automated verification (Claude, ~2 minutes, read-only)
 
@@ -79,3 +77,20 @@ apple / weigh-in / favourite do not appear), pushes nothing derived from it, lea
 byte-for-byte intact, sets the `elenas-plate:migrated:*` markers so the retired importer can never
 auto-fire, and new logging writes to the cloud only. Live check §3 item 7 confirms the same on a real
 phone; M1-R5 (import or discard) stays a separate decision.
+
+
+### Production DB evidence — 2026-09-18
+
+Applied through the connected Supabase production project `rqgoiuztphkcvbwtbxbj` using the already-reviewed M1 statements from `supabase/apply_m1_grants_production.sql`.
+
+Verified afterwards:
+
+- 10/10 public tables have RLS enabled.
+- `authenticated` has SELECT/INSERT/UPDATE/DELETE on all 10 tables (plus existing Supabase default privileges).
+- `service_role` has the corresponding table privileges.
+- postgres default table privileges include authenticated + service_role.
+- migration ledger now lists `20260725190000 cleanup_mock_data_and_seed_food_catalog` and `20260916120000 grant_table_privileges`.
+- `bootstrap_household` and `is_household_member` remain SECURITY DEFINER with `search_path=public`.
+- Supabase advisors were run after the change. Existing warnings were recorded for later hardening; no new M1-blocking issue was introduced by the grants/ledger change.
+
+This closes owner action C only. M1 still requires §2 live preflight and §3 live acceptance before being marked CLOSED.
