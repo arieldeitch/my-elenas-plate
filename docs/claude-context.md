@@ -1,15 +1,31 @@
 # Claude Context
 
 Fast-start context for Claude Code. The latest user instruction always overrides older docs.
-Updated 2026-08-01.
+Updated 2026-09-18.
 
 ## Start state
 
 - **Project:** shared Nutrition Tracker for **אריאל (Ariel)** and **אלנה (Elena)** — Hebrew, RTL,
   mobile-first daily logging.
-- **Branch:** `chore/t-034-smoke-verification` (from `main` @ `8667b3c`).
-- **Supabase project:** `rqgoiuztphkcvbwtbxbj`.
-- **Production status:** bootstrap complete, catalog seeded, **ready for real use**.
+- **Branch:** `main` (M1 `recovery/m1-shared-truth` merged 2026-09-18). M1 status:
+  `docs/claude-tasks/M1_STATUS.md`; latest run record: `docs/claude-tasks/RUN_2026-09-18_M1_PROMOTION.md`.
+- **Supabase project:** `rqgoiuztphkcvbwtbxbj` (production). Isolated test branch
+  `m1-shared-truth-test` (`uyroeumwmjhrcbkesmgb`).
+- **Production DB status:** bootstrap complete, catalog seeded. **Pending:** the reviewed grants
+  migration `20260916120000_grant_table_privileges.sql` is **not yet applied to production** — see
+  `supabase/DEPLOY.md` §"M1 release" (needs the production owner's Supabase access; not reachable from a
+  Claude session, DEC-024).
+- **LIVE APP IS IN DEMO MODE (found 2026-09-18, DEC-024).** The published site
+  `https://my-elenas-plate.lovable.app` (Lovable project `ca9aedab-a0ca-4889-a545-9d673febf3a0`,
+  `x-deployment-id 0c0eb717…`) was built **without** `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY`: its
+  bundle compiles `isSupabaseConfigured()` to `false`. Every entry Ariel and Elena log there stays in that
+  phone's localStorage; **nothing reaches Supabase and nothing is shared**. M1 cannot be live until the
+  two public env values are set in the Lovable project and a publish is made. Do not describe production
+  as "shared" or "verified" until `docs/RUNTIME_CONFIG.md §4` passes on the published URL.
+- **Toolchain (2026-09-18):** install with `bun install --frozen-lockfile` (npm resolves newer
+  TanStack packages and breaks `tsc`); on Windows set `git config core.autocrlf false` in this repo
+  (CRLF checkouts fail `catalog-seed.test.ts` and prettier). Docker is never required
+  (`docs/NO_LOCAL_DOCKER_POLICY.md`; `.claude/settings.json` denies Docker-launching commands).
 - **T-034 (2026-08-01): closed as Backend Verified** (DEC-023). Production RLS confirmed enforced
   (11/11 anonymous probes rejected, read-only). Data layer confirmed by **12/12 gated live tests**
   against a local stack with identical migrations. One flaky realtime _test_ was fixed (DEC-022); no
@@ -20,11 +36,13 @@ Updated 2026-08-01.
 - **Do not build a production self-test** (DEC-023) — no diagnostics tables, feature flags, background
   self-tests, temporary migrations, diagnostic entities, production writes, or deployment-only
   verification code. This was considered and rejected.
-- **Deployment: there is no automated pipeline.** Verified 2026-08-01 — no `.github/workflows`, zero
-  GitHub Actions runs, zero GitHub deployments, no `deploy` script, no committed wrangler config, and
-  `wrangler` is unauthenticated. **Pushing to `main` deploys nothing.** This is a Lovable project;
-  publishing is a manual action in the Lovable editor, outside this environment. No production URL is
-  recorded anywhere in the repo, so the live site cannot be inspected from here.
+- **Deployment: there is no automated pipeline.** Re-verified 2026-09-18 — no `.github/workflows`,
+  zero GitHub Actions runs, zero GitHub deployments, no `deploy` script. **Pushing to `main` deploys
+  nothing.** This is a Lovable project (Lovable's `gpt-engineer-app[bot]` commits land on `main`, so
+  `main` is the connected branch); publishing is a manual action in the Lovable editor, in Ariel's
+  Lovable account (not the account connected to Claude's MCP). Production URL:
+  `https://my-elenas-plate.lovable.app` — read-only checks are possible with `curl`
+  (`docs/RUNTIME_CONFIG.md §4`), authenticated UI checks need a browser session.
 
 ## Verified production baseline (2026-07-25)
 
@@ -63,18 +81,23 @@ seeded. Nothing was ever broken in the migration.
 Not a repository audit, and not a migration:
 
 1. Read `docs/claude-context.md`.
-2. Read `docs/project-status.md`.
-3. Read `docs/todo.md`.
+2. Read `docs/claude-tasks/RUN_2026-09-18_M1_PROMOTION.md` (latest run record + blockers).
+3. Read `docs/project-status.md` and `docs/todo.md`.
 4. Check the current branch, HEAD and `git status` (read-only).
-5. **Do not reopen T-034** — it is closed as Backend Verified (DEC-023). The only remaining verification
-   is **T-034-UI**, and it is Blocked by capability, not by effort. Run it only if browser automation is
-   available; otherwise leave it open and say so plainly.
-6. Continue from the existing production baseline.
+5. **M1 release is blocked on two actions only Ariel can do** (see the run record §"YOU"): set the
+   public Supabase env values in the Lovable project + publish, and apply the grants migration to
+   production. Verify each with the read-only checks in `docs/RUNTIME_CONFIG.md §4` and
+   `supabase/verify_privileges.sql`; then run the live M1 acceptance (T-034-UI + run record §"LIVE
+   ACCEPTANCE") if a browser session is available. Otherwise leave them open and say so plainly.
+6. **Do not reopen T-034** — closed as Backend Verified (DEC-023). Do not propose a production self-test
+   or diagnostics table (DEC-023).
 7. Never rerun the bootstrap as a troubleshooting shortcut — use `supabase/verify_catalog.sql`.
 8. Do not re-run the gated live suites against production — they sign up accounts and would create
-   extra households. Run them against a local stack (`npx supabase start`) as on 2026-08-01.
-9. Do not propose a production self-test, diagnostics table or background verification engine — the
-   design was reviewed and rejected (DEC-023).
+   extra households. Run them **only** against the isolated hosted branch (`SUPABASE_TEST_URL` /
+   `SUPABASE_TEST_ANON_KEY`, `.env.e2e`). **Never `supabase start` / local Docker**
+   (`docs/NO_LOCAL_DOCKER_POLICY.md`).
+9. Never run a plain `supabase db push` against production: its ledger lacks `20260725190000`, so push
+   would re-run the cleanup/seed migration (DEC-021). Use `supabase/DEPLOY.md` §"M1 release".
 
 ## Known limitation
 

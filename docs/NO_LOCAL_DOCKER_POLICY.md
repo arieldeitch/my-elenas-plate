@@ -112,3 +112,58 @@ Docker may be used only if **all** of the following are true:
 ## M1 implication
 
 For `recovery/m1-shared-truth`, Claude must not start local Supabase/Docker. It should implement and run all hermetic/browser tests first. Real Auth/RLS/Realtime/concurrency tests are run against a hosted isolated Supabase branch once that branch is provisioned. If the branch is not yet available, Claude should report the live-integration gate as pending rather than fall back to local Docker.
+
+## Enforcement and workstation checklist (added 2026-09-18)
+
+Docker Desktop started on Ariel's primary workstation during the 2026-09-16 Claude run even though
+the run itself used no container. The 2026-09-18 run executed on a second computer where Docker is not
+installed, so the trigger could not be reproduced there; the audit below is what was verified in the
+repository and what remains to be checked on the primary workstation.
+
+### What the repository does and does not do (verified)
+
+- No `package.json` script, Playwright config, Vitest config, or test file starts Docker or
+  `supabase start`. The Playwright configs start only `vite dev`.
+- `supabase/config.toml` is the Supabase CLI project config. Its presence is harmless; it is used by
+  `db push --db-url`, `migration new` and `migration list`, none of which start Docker.
+- The **only** repository text that told a session to start the local stack was
+  `docs/claude-context.md` ("run them against a local stack (`npx supabase start`)"), written on
+  2026-08-01 before this policy. It was rewritten on 2026-09-18 to point at the hosted branch.
+- `.claude/settings.json` (committed, 2026-09-18) now **denies** Claude Code from running the commands
+  that would start a container runtime from this repo: `docker …`, `docker-compose …`, `podman …`,
+  `supabase start`, `supabase db reset|diff|dump|lint|start`, `supabase test …`,
+  `supabase functions serve` (also via `npx`/`bunx`, in both the Bash and PowerShell tools). Deny rules
+  apply in every permission mode. Remove an entry deliberately, with a documented exception, if a
+  container is ever genuinely required.
+
+### Supabase CLI commands that require Docker (never run them here)
+
+`supabase start`, `supabase stop`, `supabase status`, `supabase db start`, `supabase db reset`,
+`supabase db diff`, `supabase db dump`, `supabase db lint`, `supabase test db`,
+`supabase functions serve`, `supabase gen types --local`. Everything the workflow needs —
+`supabase migration new`, `supabase migration list`, `supabase migration repair`,
+`supabase db push [--db-url …] [--dry-run]`, `supabase link`, `supabase branches …` — talks to the
+hosted project directly and starts nothing locally.
+
+### Checklist for the primary workstation (Ariel; nothing here can be changed from the repo)
+
+Work through these in order and stop at the first one that explains the auto-start:
+
+1. **Docker Desktop → Settings → General:** untick **"Start Docker Desktop when you sign in to your
+   computer"** (Docker registers itself under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` as
+   `Docker Desktop`; `Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'` shows it).
+   If Claude sessions usually start right after sign-in, this alone matches the symptom.
+2. **Claude Code MCP servers:** `claude mcp list` and search `~/.claude.json` for `docker` — a
+   stdio MCP server configured as `docker run …` or `docker mcp gateway run` (Docker Desktop's "MCP
+   Toolkit" writes exactly this into Claude clients) is spawned every time Claude Code starts.
+   Remove it or switch it to a non-Docker transport.
+3. **Claude Code hooks:** `~/.claude/settings.json` → `hooks.SessionStart` / `hooks.Setup` — any command
+   there runs at session start.
+4. **VS Code:** the Docker / Dev Containers extensions can start Docker Desktop when a workspace opens
+   ("Dev Containers: Reopen in Container" prompts, or `docker.startDaemon`-style settings). This repo
+   has no `.devcontainer/`, so only a user-level setting could do it.
+5. **WSL:** `wsl -l -v`; Docker Desktop's WSL integration starts the `docker-desktop` distro when WSL
+   is used by another tool. Disabling "Start Docker Desktop when you sign in" (1) also stops this.
+
+Do **not** uninstall Docker Desktop for this project's sake; it is not needed by the Nutrition App
+workflow and is left available for explicit manual use elsewhere.

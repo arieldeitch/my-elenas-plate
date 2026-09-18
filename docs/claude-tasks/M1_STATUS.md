@@ -2,7 +2,7 @@
 
 **Branch:** `recovery/m1-shared-truth`
 **Spec:** `M1_SHARED_TRUTH_RECOVERY.md` (authoritative)
-**Last updated:** 2026-09-16 (real-backend verification run on the isolated hosted branch)
+**Last updated:** 2026-09-18 (promotion run; see §4 and `RUN_2026-09-18_M1_PROMOTION.md`)
 **Isolated test environment:** Supabase development branch `m1-shared-truth-test` (`uyroeumwmjhrcbkesmgb`), parent `rqgoiuztphkcvbwtbxbj`, no production data.
 
 **M1 status: all acceptance criteria are proven on the isolated real backend, except two that are
@@ -58,17 +58,27 @@ would broadcast entire deleted rows to every subscriber of the table — a cross
 | 11  | No production data modified                          | **True** — all writes went to `uyroeumwmjhrcbkesmgb`.                                                                                                                                                           |
 | 12  | No Docker on the workstation                         | **True**.                                                                                                                                                                                                       |
 
-## 4. Remaining work (release actions, not code)
+## 4. Remaining work (release actions, not code) — updated 2026-09-18
 
-1. **Approve + apply `20260916120000_grant_table_privileges.sql` to production** (`rqgoiuztphkcvbwtbxbj`).
-   It is idempotent and a no-op for `authenticated`/`service_role` there (they already hold the
-   privileges implicitly); it does not revoke anything. Apply via the controlled release path, not from
-   a workstation linked to production by accident (the CLI link file currently points at production —
-   always pass `--db-url` for the branch).
-2. Publish a build containing `RuntimeModeNotice` through the manual Lovable path and perform the
-   read-only production verification (`docs/RUNTIME_CONFIG.md §4`).
-3. Housekeeping on the disposable branch: the branch DB password was printed into an assistant
+Run record: `RUN_2026-09-18_M1_PROMOTION.md`. The 2026-09-18 run independently re-ran the Docker-free
+gate on `edc2d54` (typecheck, lint, vitest 254, build with SHA, hermetic Playwright 3/3) and merged
+`recovery/m1-shared-truth` into `main`. Neither release action below was reachable from that run:
+the Supabase MCP and Lovable MCP connected to Claude belong to a different account (Noris workspace)
+that cannot see `rqgoiuztphkcvbwtbxbj` or Lovable project `ca9aedab-a0ca-4889-a545-9d673febf3a0`, and
+no browser session existed.
+
+1. **Apply `20260916120000_grant_table_privileges.sql` to production** — reviewed GREEN
+   (run record §2). Path: `supabase/DEPLOY.md` §"M1 release" (`apply_m1_grants_production.sql` +
+   `verify_privileges.sql`). **Never a plain `supabase db push`** on production (ledger lacks
+   `20260725190000`).
+2. **Set the two public Supabase env values in the Lovable project and publish from `main`.**
+   Found 2026-09-18: the currently published build has **no Supabase configuration** and runs in demo
+   mode on every phone (DEC-024, `docs/RUNTIME_CONFIG.md §4`). Until this is done, acceptance
+   criterion 8 stays pending and criteria 1–4/6 cannot be observed in production at all.
+3. After 1 + 2: read-only production verification (`RUNTIME_CONFIG.md §4`, `verify_privileges.sql`)
+   and the live M1 acceptance list (run record §"LIVE ACCEPTANCE") in an authenticated browser.
+4. Housekeeping on the disposable branch: the branch DB password was printed into an assistant
    session transcript on 2026-09-16 (branch-only credential, not production). Reset it or delete the
    branch when M1 is closed.
-4. Optional: covering indexes for `household_id` FKs (performance advisor class), surfacing
+5. Optional: covering indexes for `household_id` FKs (performance advisor class), surfacing
    `lastError` of failed ops in the UI, exponential backoff for the 3 s drain retry.

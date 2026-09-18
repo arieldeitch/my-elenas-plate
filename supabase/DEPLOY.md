@@ -1,6 +1,30 @@
 # Deploying to the remote Supabase project
 
-## APPLIED (2026-07-25) — nothing is pending
+## M1 release (2026-09-18) — ONE migration pending on production
+
+`supabase/migrations/20260916120000_grant_table_privileges.sql` is reviewed (run record
+`docs/claude-tasks/RUN_2026-09-18_M1_PROMOTION.md` §2) and applied to the isolated branch
+`uyroeumwmjhrcbkesmgb`, but **not yet to production `rqgoiuztphkcvbwtbxbj`**. It only GRANTs
+SELECT/INSERT/UPDATE/DELETE to `authenticated`/`service_role` (+ default privileges); nothing is
+revoked, `anon` gets nothing, RLS is untouched. On production it is expected to be a no-op.
+
+**Do not run a plain `supabase db push` against production.** Its ledger records migrations only
+through `20260723090400`; `20260725190000` was applied by SQL-editor paste (below), so `db push` would
+re-run the cleanup/seed migration on real data (DEC-021).
+
+Apply path (Dashboard, owner account, ~2 minutes, no CLI, no DB password):
+
+1. SQL Editor → run `supabase/verify_privileges.sql` (read-only) and keep the output as BEFORE.
+2. SQL Editor → run `supabase/apply_m1_grants_production.sql` (idempotent; also records both
+   `20260725190000` and `20260916120000` in `supabase_migrations.schema_migrations`).
+3. SQL Editor → run `supabase/verify_privileges.sql` again: §2 returns **zero rows**, §7 lists both
+   versions, §5 shows RLS enabled on all 10 tables.
+
+CLI alternative from a workstation linked to production (never needs Docker):
+`supabase migration repair --status applied 20260725190000` → `supabase db push --dry-run` (must list
+only `20260916120000`) → `supabase db push` → `verify_privileges.sql`.
+
+## APPLIED (2026-07-25) — nothing else is pending
 
 The production bootstrap is **complete**. Applied once, manually, in the SQL Editor of project
 `rqgoiuztphkcvbwtbxbj`:

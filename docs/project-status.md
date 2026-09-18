@@ -1,13 +1,26 @@
 # Project Status
 
-**Date:** 2026-08-01
-**Branch:** `main` @ `d5d2ce3` — merged (fast-forward) and synchronized with `origin/main`
-**Supabase project:** `rqgoiuztphkcvbwtbxbj`
-**Stage:** **Production bootstrap complete — T-034 closed as Backend Verified; T-034-UI blocked**
-**Deployment:** none required, none performed (no runtime code changed since `8667b3c`)
+**Date:** 2026-09-18
+**Branch:** `main` — `recovery/m1-shared-truth` merged (see `docs/claude-tasks/RUN_2026-09-18_M1_PROMOTION.md`)
+**Supabase project:** `rqgoiuztphkcvbwtbxbj` (production) · isolated branch `uyroeumwmjhrcbkesmgb`
+**Stage:** **M1 code complete and merged; M1 release BLOCKED on two owner actions (DEC-024)**
+**Deployment:** none performed. The published site is a **pre-M1, demo-mode build** (no Supabase env).
 **Pilot-ready code checkpoint:** tag `pilot-ready-2026-07-24` → `29ac1d5`.
 
 > Rule: nothing is listed as "working" unless it was actually run/verified.
+
+## 2026-09-18 — M1 promotion run: merged to `main`, release blocked, live site found in demo mode
+
+Full record: `docs/claude-tasks/RUN_2026-09-18_M1_PROMOTION.md`. Summary:
+
+| Item                                          | Result                                                                                                                                                                                                                                                                                       |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Quality gate on `edc2d54` (second machine)    | typecheck 0 errors · eslint 0 errors / 8 warnings (after a 3-file prettier fix) · vitest **254 passed**, 15 skipped (gated live suites) · `vite build` OK, SHA `edc2d54` embedded · hermetic Playwright **3/3**. Live/branch suites not re-run here (no branch credentials on this machine). |
+| Grants migration `20260916120000`             | **Reviewed GREEN, not applied** — no access path to production from this session. Apply via `supabase/DEPLOY.md` §"M1 release".                                                                                                                                                              |
+| Published build `my-elenas-plate.lovable.app` | **Demo mode** — bundle has empty `VITE_SUPABASE_*`, `isSupabaseConfigured()` ⇒ `false`; no Supabase host in HTML/JS. Client code ≈ `main` ≥ `6768c99`, no build SHA. `x-deployment-id 0c0eb717…`. Nothing users log there reaches Supabase.                                                  |
+| Live M1 acceptance                            | 3 × FAIL by construction (shared visibility, cross-device propagation, local-state-as-truth), 7 × NOT TESTABLE (no authenticated browser). No production data touched.                                                                                                                       |
+| Docker                                        | Not installed on this machine. Repo audit: no script starts Docker; stale `npx supabase start` hint removed from `claude-context.md`; `.claude/settings.json` deny rules added; workstation checklist in `NO_LOCAL_DOCKER_POLICY.md`.                                                        |
+| Git                                           | `recovery/m1-shared-truth` merged into `main` with `--no-ff`; both pushed.                                                                                                                                                                                                                   |
 
 ## 2026-08-01 — Deployment assessment: none required, none performed
 

@@ -65,10 +65,34 @@ Verified locally: `npm run build` on commit `2624a52` embeds `2624a52` in
 4. Optionally confirm the Supabase host in the network tab is
    `rqgoiuztphkcvbwtbxbj.supabase.co` (production project). Do not write test data.
 
-**Status as of 2026-09-16:** not yet verified — the M1 branch has not been
-published (publishing is manual through Lovable and out of scope for the
-autonomous run). Until a build containing `RuntimeModeNotice` is published, the
-production runtime configuration remains **unverified**.
+**Status as of 2026-09-18 — VERIFIED FAILING (blocker, DEC-024).** The published
+build at `https://my-elenas-plate.lovable.app` (Lovable project
+`ca9aedab-a0ca-4889-a545-9d673febf3a0`, response header
+`x-deployment-id: 0c0eb717b3ba11d94402ff682bf086c610054b78a1e9c14f04b324cfcaf7e375`,
+assets `index-DDV3cWq7.js` / `routes-CwWPWhBt.js`) is a **pre-M1 build with no
+Supabase configuration**: the compiled client module reads
+`var Lg=``,Rg=``;function zg(){return!1}` — i.e. `VITE_SUPABASE_URL=""`,
+`VITE_SUPABASE_ANON_KEY=""`, `isSupabaseConfigured()` ⇒ `false`. No
+`*.supabase.co` project host appears anywhere in the served HTML or JS. The app
+therefore runs in **demo mode on every phone** (localStorage only, nothing
+shared). Its code corresponds to `main` client code ≥ `6768c99` (390-item
+catalog present; no later `main` commit changed shipped client code); it has no
+build SHA because it predates M1.
+
+Read-only reproduction without a browser (no sign-in needed):
+
+```sh
+curl -sD - -o page.html https://my-elenas-plate.lovable.app/ | grep -i x-deployment-id
+grep -o 'assets/[A-Za-z0-9_-]*\.js' page.html | sort -u        # asset names = build fingerprint
+curl -s https://my-elenas-plate.lovable.app/assets/<index chunk>.js \
+  | grep -o '[a-z]\{20\}\.supabase\.co'                         # must print the project host
+```
+
+To fix: in the Lovable project settings add `VITE_SUPABASE_URL=https://rqgoiuztphkcvbwtbxbj.supabase.co`
+and `VITE_SUPABASE_ANON_KEY=<anon/publishable key>` (public values, never
+`service_role`), then **publish** from `main` and re-run §4 — the footer must
+read `build <sha> · cloud` and the index chunk must contain
+`rqgoiuztphkcvbwtbxbj.supabase.co`.
 
 ## 5. Local / test modes
 
