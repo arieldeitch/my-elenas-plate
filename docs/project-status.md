@@ -1,14 +1,22 @@
 # Project Status
 
-**Date:** 2026-09-18 (fourth run)
-**Branch:** `main` — M2-3 compact daily context row (weight · workout · fasting), home on one phone
-screen — see `docs/claude-tasks/RUN_2026-09-18_M2_3_CONTEXT_ROW.md`
+**Date:** 2026-09-18 (fifth run)
+**Branch:** `main` — M2-4 Day Review (one tap → the whole day for me and my partner) — see
+`docs/claude-tasks/RUN_2026-09-18_M2_4_DAY_REVIEW.md`
 **Supabase project:** `rqgoiuztphkcvbwtbxbj` (production) · isolated branch `uyroeumwmjhrcbkesmgb`
-**Stage:** **M1 code complete; release blocked on owner actions (`M1_RELEASE_ACCEPTANCE.md`); M2-3 done (DEC-027)**
+**Stage:** **M1 code complete; release blocked on owner actions (`M1_RELEASE_ACCEPTANCE.md`); M2-4 done (DEC-028)**
 **Deployment:** none performed. The published site is a **pre-M1, demo-mode build** (no Supabase env).
 **Pilot-ready code checkpoint:** tag `pilot-ready-2026-07-24` → `29ac1d5`.
 
 > Rule: nothing is listed as "working" unless it was actually run/verified.
+
+## 2026-09-18 (fifth run) — M2-4 Day Review
+
+Full record: `docs/claude-tasks/RUN_2026-09-18_M2_4_DAY_REVIEW.md`, DEC-028. `DayReview` sheet: one tap on the
+today card (or the partner card) shows the whole day for me / my partner — six slots in order, entries as
+name · quantity · time, skipped vs empty distinct, edit shortcut only for the active person, explicit
+switch to edit the partner. Store-only rendering, no new reads. Gate: typecheck 0 · lint 0/8 · vitest 286
+· hermetic Playwright 7/7 · build. Owner actions unchanged.
 
 ## 2026-09-18 (fourth run) — M2-3 compact daily context row
 

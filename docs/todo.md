@@ -43,10 +43,13 @@ Spec `docs/claude-tasks/M1_SHARED_TRUTH_RECOVERY.md`, status `M1_STATUS.md`, run
       `FoodEntry.loggedAt`. Hermetic browser loop `e2e/hermetic/couple-home.spec.ts`.
 - [x] M2-3 — compact daily context row (DEC-027, `4d50765`): weight · workout · fasting under the tiles,
       inline editors on demand; fixed banner and cards removed; home 1373px → 981px on Pixel 7.
-- [ ] **M2-4 (selected next) — day review:** tapping the today card's count (or a tile's status pill)
-      opens a read-only list of everything logged that day per slot — mine and my partner's — with an
-      edit shortcut per row. Observed friction: today the only way to see what is in a slot is to open
-      it, six tiles = six taps; the home shows only the latest item; "היסטוריה" opens the calendar only.
+- [x] M2-4 — Day Review (DEC-028, `cd76caa`): one tap on the today card (or the partner card) shows
+      the whole day per slot for me / my partner; edit shortcut for my slots; partner read-only with an
+      explicit switch. Store-only, no new reads. Hermetic loop `e2e/hermetic/day-review.spec.ts`.
+- [ ] **M2-5 (selected next) — quantity in one tap:** an inline −/+ stepper on entry rows in the meal
+      editor (and in the quick-add toast) so a quick-added "1 יחידה" becomes "2 יחידות" without the
+      quantity screen (today: pencil → quantity → confirm = 3 taps). Observed: quick add is now the main
+      path and quantities ≠ 1 (2 eggs, 2 slices) are the most common correction.
 - [ ] M2-6 — "repeat yesterday's meal" / frequently-used foods per slot (needs a few weeks of real
       cloud data first to be worth it).
 - [ ] M2-5 — run the ported hosted-branch e2e (`npm run e2e` against `uyroeumwmjhrcbkesmgb`) on a
