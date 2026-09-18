@@ -1,11 +1,10 @@
 # Project Status
 
-**Date:** 2026-09-18 (eighth run)
-**Branch:** `main` — M1 closure attempted: owner actions verifiably not done; pilot protocol ready — see
-`docs/claude-tasks/RUN_2026-09-18_M1_CLOSE_ATTEMPT.md`
+**Date:** 2026-09-18 (owner actions A/B/C completed; live acceptance pending)
+**Branch:** `main` — production runtime config, Lovable publish, grants/default privileges and migration-ledger repair completed; live M1 acceptance remains — see `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md`
 **Supabase project:** `rqgoiuztphkcvbwtbxbj` (production) · isolated branch `uyroeumwmjhrcbkesmgb`
-**Stage:** **Feature work paused. M1 = YELLOW (owner actions A/B verifiably not done, C unverifiable); M2-7 pilot protocol ready (`M2_7_PILOT.md`), starts when M1 closes**
-**Deployment:** none performed. The published site is a **pre-M1, demo-mode build** (no Supabase env).
+**Stage:** **Feature work paused. M1 = YELLOW only because live preflight + ten live acceptance checks are pending; M2-7 pilot protocol ready (`M2_7_PILOT.md`), starts when M1 closes**
+**Deployment:** production Supabase publishable config is committed; Lovable synced current main and a new production publish was triggered. Served build still requires live preflight verification before M1 can close.
 **Pilot-ready code checkpoint:** tag `pilot-ready-2026-07-24` → `29ac1d5`.
 
 > Rule: nothing is listed as "working" unless it was actually run/verified.
