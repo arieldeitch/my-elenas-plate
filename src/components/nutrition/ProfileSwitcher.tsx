@@ -26,7 +26,7 @@ export function ProfileSwitcher() {
         />
         {PROFILES.map((p, i) => {
           const active = p.id === activeProfile;
-          const color = i === 0 ? "#17A668" : "#2B84D6";
+          const color = p.color;
           return (
             <button
               key={p.id}

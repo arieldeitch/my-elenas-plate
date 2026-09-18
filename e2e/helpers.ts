@@ -61,16 +61,18 @@ export async function waitLive(page: Page): Promise<void> {
   await expect(page.locator("[data-realtime='subscribed']")).toBeVisible({ timeout: 30_000 });
 }
 
-/** Opens a meal and adds a catalog food by name via search. Leaves the dialog open. */
+/**
+ * Opens a meal and adds a catalog food by name via search (M2 one-screen loop:
+ * the search box is already open; after "הוספת המאכל" the entry row is right
+ * there). Leaves the dialog open.
+ */
 export async function addSearchedFood(page: Page, mealLabel: string, food: string): Promise<void> {
   await openMeal(page, mealLabel);
-  await page.getByRole("button", { name: "הוספת מאכל" }).first().click();
   await page.getByLabel("חיפוש מאכל").fill(food);
   await page
     .getByRole("button", { name: new RegExp(food) })
     .first()
     .click();
   await page.getByRole("button", { name: "הוספת המאכל" }).click();
-  await page.getByRole("button", { name: "חזרה לארוחה" }).click();
-  await expect(page.getByText(food).first()).toBeVisible();
+  await expect(page.getByTestId("meal-entries").getByText(food).first()).toBeVisible();
 }

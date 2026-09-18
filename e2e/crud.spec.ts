@@ -20,10 +20,8 @@ test("meal + coffee CRUD persist across refresh", async ({ page }) => {
 
   // Coffee via the fast path
   await openMeal(page, "נשנוש אחר הצהריים");
-  await page.getByRole("button", { name: "הוספת מאכל" }).first().click();
   await page.getByRole("button", { name: /הוספת קפה מהירה/ }).click();
   await page.getByRole("button", { name: "הוספת הקפה" }).click();
-  await page.getByRole("button", { name: "חזרה לארוחה" }).click();
   await expect(page.getByText(/אמריקנו · ללא חלב/)).toBeVisible();
   await closeDialog(page);
   await waitSaved(page);
@@ -36,19 +34,17 @@ test("meal + coffee CRUD persist across refresh", async ({ page }) => {
   await openMeal(page, "ארוחת ערב");
   await expect(page.getByText("תפוח")).toBeVisible({ timeout: 30_000 });
   await page.getByRole("button", { name: "מחיקה" }).click();
-  await expect(page.getByText("עוד לא תועדו מאכלים בארוחה הזו.")).toBeVisible();
+  await expect(page.getByTestId("meal-entries")).toHaveCount(0);
 });
 
 test("custom food, favorites and recents", async ({ page }) => {
   await signIn(page, uniqueEmail());
 
   await openMeal(page, "ארוחה מרכזית");
-  await page.getByRole("button", { name: "הוספת מאכל" }).first().click();
   await page.getByLabel("חיפוש מאכל").fill("מאכל בדיקה");
   await page.getByRole("button", { name: /כמאכל חדש/ }).click(); // create custom food
   await page.getByRole("button", { name: "הוספת המאכל" }).click();
-  await page.getByRole("button", { name: "חזרה לארוחה" }).click();
-  await expect(page.getByText("מאכל בדיקה")).toBeVisible();
+  await expect(page.getByTestId("meal-entries").getByText("מאכל בדיקה")).toBeVisible();
 
   // Favorite it
   await page.getByRole("button", { name: "הוספה למועדפים" }).first().click();
@@ -59,8 +55,7 @@ test("custom food, favorites and recents", async ({ page }) => {
   await page.reload();
   await waitForApp(page);
   await openMeal(page, "ארוחה מרכזית");
-  await page.getByRole("button", { name: "הוספת מאכל" }).first().click();
-  // appears under favorites/recents in the search view
+  // appears under favorites/recents in the search view (entries hydrate too)
   await expect(page.getByText("מאכל בדיקה").first()).toBeVisible();
 });
 
@@ -77,7 +72,6 @@ test("built-in food favorite + recent sync (text food_id) per profile", async ({
   await page.reload();
   await waitForApp(page);
   await openMeal(page, "נשנוש ראשון");
-  await page.getByRole("button", { name: "הוספת מאכל" }).first().click();
   // The built-in food is listed (favorites section) for אריאל after hydrate.
   await expect(page.getByRole("button", { name: /תפוח/ }).first()).toBeVisible({ timeout: 30_000 });
   await closeDialog(page);
@@ -85,7 +79,6 @@ test("built-in food favorite + recent sync (text food_id) per profile", async ({
   // אלנה must NOT inherit אריאל's favorite/recent (per-profile separation).
   await page.getByRole("tab", { name: /אלנה/ }).click();
   await openMeal(page, "נשנוש ראשון");
-  await page.getByRole("button", { name: "הוספת מאכל" }).first().click();
   await expect(page.getByRole("button", { name: /תפוח/ })).toHaveCount(0);
 });
 

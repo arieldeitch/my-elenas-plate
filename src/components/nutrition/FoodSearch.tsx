@@ -10,21 +10,30 @@ import { cn } from "@/lib/utils";
 const RESULT_LIMIT = 20;
 
 interface Props {
+  /** A search result was chosen — the caller asks for quantity. */
   onPick: (food: Food) => void;
+  /**
+   * A favourite / recent chip was tapped — the caller may add immediately with
+   * the usual quantity (M2 quick add). Falls back to `onPick` when absent.
+   */
+  onQuickAdd?: (food: Food) => void;
   onCreate: (name: string) => void;
   /** Fast path straight into the coffee editor. */
   onAddCoffee?: () => void;
+  /** Focus the search box on mount (default true). Off when the meal already has entries. */
+  autoFocus?: boolean;
 }
 
-export function FoodSearch({ onPick, onCreate, onAddCoffee }: Props) {
+export function FoodSearch({ onPick, onQuickAdd, onCreate, onAddCoffee, autoFocus = true }: Props) {
+  const pickChip = onQuickAdd ?? onPick;
   const { foods, favorites, recents } = useStore();
   const [raw, setRaw] = useState("");
   const [q, setQ] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+    if (autoFocus) inputRef.current?.focus();
+  }, [autoFocus]);
 
   useEffect(() => {
     const t = setTimeout(() => setQ(raw), 180);
@@ -96,7 +105,7 @@ export function FoodSearch({ onPick, onCreate, onAddCoffee }: Props) {
                     food={f}
                     isFav
                     recent={recents.includes(f.id)}
-                    onPick={onPick}
+                    onPick={pickChip}
                   />
                 ))}
               </Grid>
@@ -106,10 +115,15 @@ export function FoodSearch({ onPick, onCreate, onAddCoffee }: Props) {
             <Section title="אחרונים" icon={<Clock className="h-4 w-4" />}>
               <Grid>
                 {recentList.map((f) => (
-                  <FoodChip key={f.id} food={f} onPick={onPick} />
+                  <FoodChip key={f.id} food={f} onPick={pickChip} />
                 ))}
               </Grid>
             </Section>
+          )}
+          {onQuickAdd && (favList.length > 0 || recentList.length > 0) && (
+            <p className="text-[11px] text-muted-foreground" data-testid="quick-add-hint">
+              הקשה על מאכל מוסיפה אותו בכמות הרגילה — אפשר לתקן אחר כך.
+            </p>
           )}
         </div>
       )}

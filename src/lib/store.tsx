@@ -57,8 +57,8 @@ import {
 } from "./sync/operations";
 
 export const PROFILES: Profile[] = [
-  { id: "me", name: "אריאל", initials: "א" },
-  { id: "elena", name: "אלנה", initials: "א" },
+  { id: "me", name: "אריאל", initials: "א", color: "#17A668", tint: "#EDF8F2" },
+  { id: "elena", name: "אלנה", initials: "א", color: "#2B84D6", tint: "#EDF6FD" },
 ];
 
 type PerProfile<T> = Record<ProfileId, T>;
@@ -90,7 +90,7 @@ interface StoreValue {
   recents: string[];
   toggleFavorite: (foodId: string) => void;
 
-  addEntry: (slot: MealSlotId, entry: Omit<FoodEntry, "id">) => void;
+  addEntry: (slot: MealSlotId, entry: Omit<FoodEntry, "id">) => FoodEntry;
   updateEntry: (slot: MealSlotId, entry: FoodEntry) => void;
   removeEntry: (slot: MealSlotId, entryId: string) => FoodEntry | undefined;
   restoreEntry: (slot: MealSlotId, entry: FoodEntry) => void;
@@ -284,7 +284,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const dayCtx = { profile: activeProfile, iso };
 
   const addEntry: StoreValue["addEntry"] = (slot, entry) => {
-    const withId: FoodEntry = { ...entry, id: genId("e") };
+    const withId: FoodEntry = { ...entry, id: genId("e"), loggedAt: new Date().toISOString() };
     mutateDay(activeProfile, iso, (d) => {
       const meal = d.meals[slot];
       meal.entries.push(withId);
@@ -293,6 +293,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
     sync.enqueue(opsForAddEntry(dayCtx, slot, withId));
     pushRecent(withId.foodId);
+    return withId;
   };
 
   const updateEntry: StoreValue["updateEntry"] = (slot, entry) => {

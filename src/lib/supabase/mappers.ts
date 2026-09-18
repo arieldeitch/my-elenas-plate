@@ -143,6 +143,7 @@ export function entryFromRow(row: FoodEntryRow): FoodEntry {
   }
   const coffee = coffeeFromJson(row.coffee);
   if (coffee) entry.coffee = coffee;
+  if (row.created_at) entry.loggedAt = row.created_at;
   return entry;
 }
 

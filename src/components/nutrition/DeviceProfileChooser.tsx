@@ -32,7 +32,7 @@ export function DeviceProfileChooser() {
         </p>
         <div className="mt-5 grid grid-cols-2 gap-3">
           {PROFILES.map((p, i) => {
-            const color = i === 0 ? "#17A668" : "#2B84D6";
+            const color = p.color;
             const current = p.id === deviceProfile;
             return (
               <button

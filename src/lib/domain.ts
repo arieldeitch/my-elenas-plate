@@ -9,6 +9,10 @@ export interface Profile {
   id: ProfileId;
   name: string;
   initials: string;
+  /** Personal accent colour — the one visual cue of ownership everywhere (avatar, editor header). */
+  color: string;
+  /** Soft tint of `color` for backgrounds. */
+  tint: string;
 }
 
 export type MealSlotId =
@@ -159,6 +163,12 @@ export interface FoodEntry {
   subjective?: SubjectiveAmount;
   /** Present only for coffee entries. */
   coffee?: CoffeeMeta;
+  /**
+   * When the entry was logged (ISO). Set locally at creation and read back from
+   * the row's `created_at`; never sent on writes (the database owns it). Used
+   * for "latest activity" only — not part of any equality / sync decision.
+   */
+  loggedAt?: string;
 }
 
 export interface DailyMeal {
