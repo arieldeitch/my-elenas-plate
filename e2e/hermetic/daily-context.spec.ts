@@ -47,8 +47,8 @@ test("weight, workout and fasting live in one row; editors unfold; the partner s
   await page.getByTestId("context-workout").click();
   await expect(page.getByTestId("daily-context-panel")).toHaveCount(0);
 
-  // Ariel's view: his own row is empty, and her fasting + workout show on her card.
-  await page.getByTestId("partner-glance").click();
+  // Ariel's view (switch via the header): his own row is empty, her fasting + workout show on her card.
+  await page.getByRole("tab", { name: /אריאל/ }).click();
   await expect(page.getByTestId("context-fasting")).toHaveAttribute("data-value", "לא תועד");
   await expect(page.getByTestId("context-workout")).toHaveAttribute("data-value", "לא תועד");
   await expect(page.getByTestId("partner-fasting")).toContainText("20:00–12:00");

@@ -74,3 +74,25 @@ describe("TodayCard (M2 home — ME)", () => {
     expect(screen.getByTestId("today-latest")).toHaveTextContent("עוד לא תועד היום");
   });
 });
+
+describe("TodayCard — M2-4 review entry point", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    window.localStorage.setItem(DEVICE_PROFILE_KEY, "me");
+  });
+
+  it("the progress area is one accessible tap that opens the Day Review", async () => {
+    const onOpenReview = vi.fn();
+    render(<TodayCard onOpenCalendar={vi.fn()} onOpenReview={onOpenReview} />, { wrapper });
+    const btn = screen.getByRole("button", { name: /מה אכל אריאל היום: 0 מתוך 6 ארוחות תועדו/ });
+    expect(btn).toHaveTextContent("כל היום");
+    await userEvent.click(btn);
+    expect(onOpenReview).toHaveBeenCalledTimes(1);
+  });
+
+  it("without a handler the area is inert (no dead affordance)", () => {
+    render(<TodayCard onOpenCalendar={vi.fn()} />, { wrapper });
+    expect(screen.getByTestId("today-review")).toBeDisabled();
+    expect(screen.queryByText("כל היום")).toBeNull();
+  });
+});

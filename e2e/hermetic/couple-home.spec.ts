@@ -46,8 +46,12 @@ test("log as Elena in a few taps, see it on Ariel's partner card, never mixed up
   await expect(page.getByTestId("today-count")).toContainText("1/6");
   await expect(page.getByTestId("today-latest")).toContainText("לאחרונה: סלט ירקות · ארוחה מרכזית");
 
-  // Switch to Ariel via the partner card: his day is empty, her card shows her food.
+  // The partner card opens his Day Review (read-only); switching to Ariel is the
+  // explicit step at its bottom. His day is empty, her card shows her food.
   await page.getByTestId("partner-glance").click();
+  await expect(page.getByTestId("day-review")).toHaveAttribute("data-person", "me");
+  await page.getByTestId("day-review-switch").click();
+  await expect(page.getByTestId("day-review")).toHaveCount(0);
   await expect(today).toHaveAttribute("data-owner", "me");
   await expect(page.getByTestId("today-count")).toContainText("0/6");
   const partner = page.getByTestId("partner-glance");

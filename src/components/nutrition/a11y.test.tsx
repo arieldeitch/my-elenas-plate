@@ -9,6 +9,7 @@ import { ProfileSwitcher } from "./ProfileSwitcher";
 import { TodayCard } from "./TodayCard";
 import { PartnerGlance } from "./PartnerGlance";
 import { DailyContextRow } from "./DailyContextRow";
+import { DayReview } from "./DayReview";
 import type { DailyMeal } from "@/lib/domain";
 
 const wrapper = ({ children }: { children: ReactNode }) => (
@@ -45,6 +46,13 @@ describe("accessibility (axe)", () => {
       </>,
       { wrapper },
     );
+    expect(await axe(container, opts)).toHaveNoViolations();
+  });
+
+  it("DayReview (M2-4) has no violations", async () => {
+    const { container } = render(<DayReview person="me" onClose={vi.fn()} onEditSlot={vi.fn()} />, {
+      wrapper,
+    });
     expect(await axe(container, opts)).toHaveNoViolations();
   });
 

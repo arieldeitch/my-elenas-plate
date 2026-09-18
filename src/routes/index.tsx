@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
-import { MEAL_SLOTS, type MealSlotId } from "@/lib/domain";
+import { MEAL_SLOTS, type MealSlotId, type ProfileId } from "@/lib/domain";
 import { useStore } from "@/lib/store";
 import { toISODate } from "@/lib/format";
 import { ProfileSwitcher } from "@/components/nutrition/ProfileSwitcher";
@@ -10,6 +10,7 @@ import { PartnerGlance } from "@/components/nutrition/PartnerGlance";
 import { MealCard } from "@/components/nutrition/MealCard";
 import { MealEditor } from "@/components/nutrition/MealEditor";
 import { DailyContextRow } from "@/components/nutrition/DailyContextRow";
+import { DayReview } from "@/components/nutrition/DayReview";
 import { WeighInForm } from "@/components/nutrition/WeighInForm";
 import { CalendarView } from "@/components/nutrition/CalendarView";
 import { BottomNav } from "@/components/nutrition/BottomNav";
@@ -43,11 +44,20 @@ function Home() {
   const [openSlot, setOpenSlot] = useState<MealSlotId | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [weighOpen, setWeighOpen] = useState(false);
+  // M2-4 Day Review: which person's day is being reviewed (null = closed).
+  const [reviewPerson, setReviewPerson] = useState<ProfileId | null>(null);
 
   // Stable handlers so background sync re-renders don't reset open modals.
   const closeSlot = useCallback(() => setOpenSlot(null), []);
   const closeCalendar = useCallback(() => setCalendarOpen(false), []);
   const closeWeigh = useCallback(() => setWeighOpen(false), []);
+  const closeReview = useCallback(() => setReviewPerson(null), []);
+  // Review → editor: the review only offers edits for the ACTIVE person, so the
+  // editor opens on the same person and date; the review closes underneath.
+  const editFromReview = useCallback((slot: MealSlotId) => {
+    setReviewPerson(null);
+    setOpenSlot(slot);
+  }, []);
 
   const iso = toISODate(store.selectedDate);
   const day = store.getDay(store.activeProfile, iso);
@@ -67,8 +77,11 @@ function Home() {
         </header>
 
         {/* M2 hierarchy: ME (today card) → PARTNER (glance) → ACTION (the six slots) → context row. */}
-        <TodayCard onOpenCalendar={() => setCalendarOpen(true)} />
-        <PartnerGlance />
+        <TodayCard
+          onOpenCalendar={() => setCalendarOpen(true)}
+          onOpenReview={() => setReviewPerson(store.activeProfile)}
+        />
+        <PartnerGlance onOpen={setReviewPerson} />
 
         {/* Meals — the action: tap a slot to log into it */}
         <section className="mt-4" data-testid="meal-tiles">
@@ -92,6 +105,7 @@ function Home() {
       <MealEditor slot={openSlot} onClose={closeSlot} />
       <CalendarView open={calendarOpen} onClose={closeCalendar} />
       <WeighInForm open={weighOpen} onClose={closeWeigh} />
+      <DayReview person={reviewPerson} onClose={closeReview} onEditSlot={editFromReview} />
       <BottomNav
         active="home"
         onCalendar={() => setCalendarOpen(true)}

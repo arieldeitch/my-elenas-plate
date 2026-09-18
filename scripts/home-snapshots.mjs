@@ -78,6 +78,7 @@ for (const [name, opts] of Object.entries(VIEWPORTS)) {
   await page.screenshot({ path: `${OUT}/${name}-1-empty.png` });
   await page.screenshot({ path: `${OUT}/${name}-1-empty-full.png`, fullPage: true });
   await measure(page, `${name} empty`);
+  await review(page, `${OUT}/${name}-1-review-empty.png`);
 
   await addFood(page, "ארוחה מרכזית", "סלט ירקות");
   await addFood(page, "ארוחת ערב", "שקשוקה");
@@ -102,19 +103,50 @@ for (const [name, opts] of Object.entries(VIEWPORTS)) {
   await page.screenshot({ path: `${OUT}/${name}-2-partial.png` });
   await page.screenshot({ path: `${OUT}/${name}-2-partial-full.png`, fullPage: true });
   await measure(page, `${name} partial`);
+  // Day Review (M2-4): many items in one slot, a skipped slot, a long custom name.
+  await addFood(page, "ארוחה מרכזית", "תפוח");
+  await addFood(page, "ארוחה מרכזית", "ביצה");
+  await page.getByRole("button", { name: /^נשנוש ראשון:/ }).click();
+  await page.getByRole("button", { name: "לא נאכלה ארוחה" }).click();
+  await page.getByRole("button", { name: "סגירה" }).click();
+  await page.getByRole("button", { name: /^ארוחה נוספת:/ }).click();
+  await page.getByLabel("חיפוש מאכל").fill("שקשוקה עם ביצים ועגבניות ופלפלים קלויים בתנור");
+  await page.getByRole("button", { name: /כמאכל חדש/ }).click();
+  await page.getByRole("button", { name: "הוספת המאכל" }).click();
+  await page.getByRole("button", { name: "סיום" }).click();
+  await review(page, `${OUT}/${name}-2-review-partial.png`);
+  await page.getByRole("button", { name: "יום קודם" }).click();
+  await review(page, `${OUT}/${name}-2-review-yesterday.png`);
+  await page.getByRole("button", { name: "יום הבא" }).click();
 
-  for (const slot of ["פתיחת חלון אכילה", "נשנוש ראשון", "נשנוש אחר הצהריים", "ארוחה נוספת"]) {
+  for (const slot of ["פתיחת חלון אכילה", "נשנוש אחר הצהריים"]) {
     await addFood(page, slot, "תפוח");
   }
   await page.waitForTimeout(300);
   await page.screenshot({ path: `${OUT}/${name}-3-full.png` });
   await measure(page, `${name} full`);
 
+  // Partner card → the partner's review (read-only), then switch to him.
   await page.getByTestId("partner-glance").click();
   await page.waitForTimeout(300);
+  await page.screenshot({ path: `${OUT}/${name}-4-review-partner-from-elena.png` });
+  await page.getByTestId("day-review-switch").click();
+  await page.waitForTimeout(300);
   await page.screenshot({ path: `${OUT}/${name}-4-partner-view.png` });
+  await page.getByTestId("partner-glance").click();
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: `${OUT}/${name}-4-review-elena-from-ariel.png` });
+  await page.getByRole("button", { name: "סגירה" }).click();
   await measure(page, `${name} partner view (Ariel, empty day)`);
   await ctx.close();
 }
 await browser.close();
 console.log(`screenshots in ${OUT}`);
+
+async function review(page, path) {
+  await page.getByTestId("today-review").click();
+  await page.waitForTimeout(300);
+  await page.screenshot({ path });
+  await page.getByRole("button", { name: "סגירה" }).click();
+  await page.waitForTimeout(200);
+}

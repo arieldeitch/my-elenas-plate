@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
@@ -117,5 +117,28 @@ describe("PartnerGlance — fasting / workout only when the data exists", () => 
     // My own card is untouched by her fasting/workout.
     act(() => store!.setActiveProfile("elena"));
     expect(screen.queryByTestId("partner-fasting")).toBeNull();
+  });
+});
+
+describe("PartnerGlance — M2-4 entry point", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    window.localStorage.setItem(DEVICE_PROFILE_KEY, "me");
+  });
+
+  it("with onOpen, a tap opens the partner's Day Review instead of switching profiles", async () => {
+    const onOpen = vi.fn();
+    render(
+      <>
+        <ProfileSwitcher />
+        <PartnerGlance onOpen={onOpen} />
+      </>,
+      { wrapper },
+    );
+    const card = screen.getByRole("button", { name: /סקירת היום של אלנה/ });
+    await userEvent.click(card);
+    expect(onOpen).toHaveBeenCalledWith("elena");
+    // Looking is not switching.
+    expect(screen.getByRole("tab", { name: /אריאל/ })).toHaveAttribute("aria-selected", "true");
   });
 });

@@ -1,6 +1,6 @@
 import { Check, ChevronLeft, Dumbbell, Minus, Timer } from "lucide-react";
 import { useMemo } from "react";
-import { MEAL_SLOTS, partnerOf } from "@/lib/domain";
+import { MEAL_SLOTS, partnerOf, type ProfileId } from "@/lib/domain";
 import { MEAL_LABELS } from "@/lib/meal-slots";
 import { calcCompletion } from "@/lib/completion";
 import { latestActivity } from "@/lib/activity";
@@ -13,9 +13,15 @@ import { cn } from "@/lib/utils";
  * switching profiles: name, documented count, six slot-status dots, the last
  * thing they logged, and — only when the data exists — a fasting window and a
  * workout mark. No calories / macros: the product deliberately has none
- * (DEC-004) and the model stores none. Tapping switches to the partner.
+ * (DEC-004) and the model stores none. Tapping opens the partner's Day Review
+ * (M2-4) when the home provides `onOpen`; otherwise it switches profiles.
  */
-export function PartnerGlance() {
+interface Props {
+  /** M2-4: open the partner's Day Review (read-only). Without it the tap switches profiles. */
+  onOpen?: (partner: ProfileId) => void;
+}
+
+export function PartnerGlance({ onOpen }: Props = {}) {
   const { activeProfile, setActiveProfile, selectedDate, getDay } = useStore();
   const partnerId = partnerOf(activeProfile);
   const partner = PROFILES.find((p) => p.id === partnerId)!;
@@ -44,10 +50,12 @@ export function PartnerGlance() {
   return (
     <button
       type="button"
-      onClick={() => setActiveProfile(partnerId)}
+      onClick={() => (onOpen ? onOpen(partnerId) : setActiveProfile(partnerId))}
       data-testid="partner-glance"
       data-partner={partnerId}
-      aria-label={`${partner.name}: ${summary}${latestText ? `. ${latestText}` : ""}. מעבר לפרופיל של ${partner.name}`}
+      aria-label={`${partner.name}: ${summary}${latestText ? `. ${latestText}` : ""}. ${
+        onOpen ? `סקירת היום של ${partner.name}` : `מעבר לפרופיל של ${partner.name}`
+      }`}
       className="mt-3 flex w-full items-center gap-3 rounded-2xl border border-[#E9EEF3] bg-white px-4 py-3 text-right shadow-soft transition-all duration-200 hover:shadow-[0_4px_14px_rgba(20,40,70,0.06)] active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <span
