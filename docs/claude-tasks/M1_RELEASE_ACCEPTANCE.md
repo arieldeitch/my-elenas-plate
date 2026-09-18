@@ -5,20 +5,15 @@ genuinely live in production. Everything below is read-only against production; 
 writes production data except the two real-user acceptance entries in §3, made by the couple's
 own accounts through the app.
 
-**Status (updated 2026-09-18, ninth run): §1 done · §2 PASS · §3 pending on the phones (§3a).**
-Evidence (`RUN_2026-09-18_M1_ACCEPTANCE.md`): `npm run preflight -- --live` → **PREFLIGHT PASS — 14
-checks** on the served build of `main` `0cd3673` (deployment `psr2.4acecc14…`, `mode=cloud`,
-`target=shared`, `misconfigured=false`, host `rqgoiuztphkcvbwtbxbj.supabase.co`, no secret material);
-the sign-in screen is served with no block page and no console errors. Database: the owner applied and
-verified the reviewed grants/default privileges and ledger rows directly (10 tables, RLS on all,
-`authenticated`/`service_role` privileges, ledger `20260725190000` + `20260916120000`, SECURITY DEFINER
-functions pinned); from a session, anonymous REST reads return `[]` on all 10 tables and an anonymous
-insert is rejected by RLS. Of §3, **item 9 PASSES**; items 1–8 and 10 need the shared account signed in
-on a real device — no Claude session has that (no Chrome extension, MCP accounts belong to another
-workspace, production sign-up flows are off-limits) — so they are executed by Ariel and Elena via
-**§3a** and M1 is marked CLOSED by the next run from their reply. Security-advisor items (mutable
-`search_path` on `set_updated_at`, SECURITY DEFINER exposure, leaked-password protection) are recorded
-in `docs/todo.md` for a hardening pass; none blocks M1.
+**Status (updated 2026-09-18, tenth run — access simplification, DEC-031): the login is gone;
+production needs ONE migration + ONE Auth setting + a republish, then the two-minute path §3b.**
+Evidence so far (`RUN_2026-09-18_M1_ACCEPTANCE.md`, `RUN_2026-09-18_ACCESS_SIMPLIFICATION.md`): §2
+`PREFLIGHT PASS` on the served `0cd3673`; database grants/ledger/RLS verified; §3 item 9 PASS. The phone
+walk-through §3a was **not** executed and is superseded: the served build still shows the email /
+magic-link screen, which is a product regression. `main` now carries the silent device-session flow;
+production must receive `supabase/apply_anonymous_join_production.sql` and "Allow anonymous sign-ins"
+(`supabase/DEPLOY.md` top section — applied by the controlling GPT, not by Ariel), then a Lovable
+publish, then `npm run preflight -- --live` and **§3b** on two phones. M1 closes on the §3b reply.
 
 Direct links for the owner actions (all three are inside Ariel's own accounts):
 
@@ -50,9 +45,10 @@ Database (from the pasted `verify_privileges.sql` output — or `execute_sql` if
 access): §2 returns **zero rows**, §5 shows `rls_enabled=true` for all 10 tables, §7 lists
 `20260725190000` and `20260916120000`. Anything else → grants not applied → stop, report.
 
-## 3. Live acceptance (needs an authenticated browser session — Chrome extension or Playwright with a real login; never the automated e2e sign-up flows)
+## 3. Live acceptance (reference list; since DEC-031 there is no login — a Claude session with the Chrome extension can run it on the deployed site, otherwise §3b on the phones)
 
-Use the shared household account. The UI test ids below exist on `main` since M2.
+Since DEC-031 every device connects silently (anonymous session → joins the one household). "Sign in"
+below means "open the URL". The UI test ids exist on `main` since M2.
 
 | #   | Check                             | How                                                                           | Pass when                                                                                  |
 | --- | --------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
@@ -70,33 +66,32 @@ Use the shared household account. The UI test ids below exist on `main` since M2
 Delete the two acceptance entries afterwards if they are not real meals, from the app (so the
 deletes propagate), and note it.
 
-### 3a. The same checks on your own phones (Ariel + Elena, ≈10 minutes, once) — closes M1
+### 3b. Two-minute path per device (Ariel + Elena, once, after the republish) — closes M1
 
-No Supabase, GitHub or Lovable. Both of you open <https://my-elenas-plate.lovable.app> and sign in
-with the shared account. Then, in order:
+No account, no email, no password, nothing in Supabase/GitHub/Lovable. Ariel sends Elena the URL.
 
-| #   | Do                                                                                       | OK when                                                                                     |
-| --- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| 1   | On Elena's phone, first open: choose **אלנה** in the device chooser; reload the page     | The today card is Elena's after the reload; the switcher shows אלנה                         |
-| 2   | On Ariel's phone (as **אריאל**): log one real food in an empty meal                      | The editor title says the meal · אריאל; the row shows **מסונכרן** afterwards                |
-| 3   | On Elena's phone (as **אלנה**): log one real food                                        | Same, with · אלנה; Ariel's day did not change                                               |
-| 4   | Look at the partner card on both phones                                                  | Each phone shows the other person's entry for today                                         |
-| 5   | Ariel adds one more food; Elena watches her phone **without reloading**                  | Elena's partner card updates within a few seconds                                           |
-| 6   | Reload both phones                                                                       | Nothing changed; the footer reads `build 0cd3673 · cloud` (or a newer sha, still `· cloud`) |
-| 7   | On a phone that used the old (demo) app: after signing in                                | None of the old demo entries appear; today shows only what you logged now                   |
-| 8   | On Ariel's phone, switch to **אלנה** and change the quantity of Elena's entry with − / + | Only Elena's row changed, on both phones                                                    |
-| 10  | Normal use: tile → result → סיום; a chip; skip a meal; log fasting; log a workout        | Each shows **מסונכרן** afterwards, never stuck on ממתין לסנכרון / הסנכרון נכשל              |
+| #   | Do (each phone, fresh — or after clearing the site data)           | OK when                                                                       |
+| --- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| 1   | Open <https://my-elenas-plate.lovable.app>                         | **No form** of any kind — just a short loading, then "מי משתמש/ת במכשיר הזה?" |
+| 2   | Choose your name (**אריאל** on Ariel's phone, **אלנה** on Elena's) | Home opens with your today card first; footer reads `build <sha> · cloud`     |
+| 3   | Log one real food                                                  | The row shows **מסונכרן** within seconds                                      |
+| 4   | Look at the other phone (no reload)                                | Your entry appears on the partner card there within seconds, under your name  |
+| 5   | Reload your phone                                                  | Straight back to Home as you — no chooser, no form; your entry still there    |
+| 6   | (Old demo phone only) look at today                                | Only what was logged now; old demo data neither shown nor gone from the phone |
 
-(Item 9, authorization, is already PASS from the session — nothing to do.) Then reply, in the next
-run's prompt or a note: **"§3a all OK"**, or the numbers that were not OK and what you saw. That reply
-is the evidence that closes M1; the entries you logged are real meals, keep them.
+Reply: **"§3b all OK"** or the item numbers that failed and what you saw (a screenshot helps).
+That reply closes M1 and starts the pilot; the entries are real meals, keep them.
+
+(Historical §3a — the ten-minute list for the login-based build — was superseded on 2026-09-18 and
+never executed; the ten checks of §3 are still the reference.)
 
 ## 4. Verdict
 
-M1 is **live** only when §2 is `PREFLIGHT PASS`, the DB check passes, and §3 has ten `PASS` (§3a
-replies count as the `PASS` for items 1–8 and 10). §2 + DB + item 9: done 2026-09-18
-(`RUN_2026-09-18_M1_ACCEPTANCE.md`). The next run records the §3a reply there, then marks M1 CLOSED in
-`M1_STATUS.md`, `docs/todo.md`, `docs/project-status.md`, `docs/claude-context.md`.
+M1 is **live** only when §2 is `PREFLIGHT PASS` on the republished build (sha ≥ the DEC-031 commit),
+the DB check passes (`verify_privileges.sql` + `verify_anonymous_join.sql`), and §3b is "all OK" on
+both phones (its six steps cover §3 items 1–8 and 10; item 9 is PASS from 2026-09-18). The next run
+records the §3b reply in a run record, then marks M1 CLOSED in `M1_STATUS.md`, `docs/todo.md`,
+`docs/project-status.md`, `docs/claude-context.md` and starts the pilot in `M2_7_PILOT.md`.
 
 ## 5. Legacy phone data — verified behaviour (2026-09-18, hermetic proof)
 

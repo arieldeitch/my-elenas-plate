@@ -1,13 +1,25 @@
 # Project Status
 
-**Date:** 2026-09-18 (ninth run — production release verified; M1 closes on the phones)
-**Branch:** `main` — served production build = `0cd3673`, `PREFLIGHT PASS`, DB verified; M1 acceptance §3a (phones) remains — see `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md`
+**Date:** 2026-09-18 (tenth run — access simplification DEC-031: login removed; republish pending)
+**Branch:** `main` — silent device sessions (no login) ahead of production; served build still `0cd3673` (login build). Release path: `supabase/DEPLOY.md` top section → publish → preflight → §3b — see `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md`
 **Supabase project:** `rqgoiuztphkcvbwtbxbj` (production) · isolated branch `uyroeumwmjhrcbkesmgb`
-**Stage:** **Feature work paused. M1 = YELLOW only because §3 items 1–8/10 need the signed-in account on real phones (§3a); M2-7 pilot may start now on `0cd3673` (`M2_7_PILOT.md`)**
+**Stage:** **Feature work paused. M1 = YELLOW: the served build shows a login (regression, DEC-031); `main` fixes it; production needs one migration + one Auth setting + a republish, then §3b on two phones; M2-7 starts right after (`M2_7_PILOT.md`)**
 **Deployment:** <https://my-elenas-plate.lovable.app> serves `main` `0cd3673` (deployment `psr2.4acecc14…`): `mode=cloud`, `target=shared`, `misconfigured=false`, host `rqgoiuztphkcvbwtbxbj`, no secrets — `PREFLIGHT PASS — 14 checks` (2026-09-18).
 **Pilot-ready code checkpoint:** tag `pilot-ready-2026-07-24` → `29ac1d5`.
 
 > Rule: nothing is listed as "working" unless it was actually run/verified.
+
+## 2026-09-18 (tenth run) — access simplification (DEC-031): no login, silent device sessions
+
+Full record: `docs/claude-tasks/RUN_2026-09-18_ACCESS_SIMPLIFICATION.md`. Real-device finding: the M1
+email/magic-link screen is a product regression for a private couple app. Now: `AuthGate` reuses a
+session or creates a silent Supabase **anonymous** one (no form ever; one retry state on genuine
+failure); `SignIn` removed; `bootstrap_household()` (migration `20260918160000`) joins every session to
+the ONE existing household (oldest; creates only if none; advisory lock; idempotent); queue ops from a
+previous device identity are adopted; person choice stays per device. RLS/Realtime/M1-R5 unchanged;
+`anon` role gets nothing. Proof: PGlite test on the real SQL (8), AuthGate (5), cloud-path (16), full
+gate green; live suites and e2e ported. **Production pending (GPT):** apply script + "Allow anonymous
+sign-ins" (verified OFF today) + republish; then §3b (two minutes per phone) closes M1.
 
 ## 2026-09-18 (ninth run) — M1 live acceptance: release verified, closes on the phones
 

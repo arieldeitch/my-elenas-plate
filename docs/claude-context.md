@@ -1,7 +1,7 @@
 # Claude Context
 
 Fast-start context for Claude Code. The latest user instruction always overrides older docs.
-Updated 2026-09-18 (ninth run: production release verified — preflight PASS on `0cd3673`; M1 closes on the phones).
+Updated 2026-09-18 (tenth run: DEC-031 access simplification — no login; production republish pending).
 
 ## Start state
 
@@ -10,14 +10,17 @@ Updated 2026-09-18 (ninth run: production release verified — preflight PASS on
 - **Branch:** `main` (M1 merged; fail-safe runtime + preflight; M2 steps 1–6 — all 2026-09-18).
   M1 status: `docs/claude-tasks/M1_STATUS.md`; **M1 release entrypoint:**
   `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md`; latest run record:
-  `docs/claude-tasks/RUN_2026-09-18_M1_ACCEPTANCE.md` (previous: `RUN_2026-09-18_M1_CLOSE_ATTEMPT.md`).
+  `docs/claude-tasks/RUN_2026-09-18_ACCESS_SIMPLIFICATION.md` (previous: `RUN_2026-09-18_M1_ACCEPTANCE.md`).
 - **Feature work is paused (2026-09-18).** The daily loop is considered ready for first real use. Do
   not build M2-8; it will be selected from the pilot's friction log (`docs/claude-tasks/M2_7_PILOT.md`).
-  **Owner actions A/B/C are complete; §2 (`npm run preflight -- --live`) PASSES on the served
-  `0cd3673`; §3 item 9 PASSES.** Items 1–8 and 10 cannot be executed from a session (no signed-in
-  browser; never use production sign-up flows) — they are done by the couple via §3a. Next run: read
-  the §3a reply; if all OK, mark M1 CLOSED (`M1_STATUS.md`, `todo.md`, `project-status.md`, here) and
-  record the pilot start in `M2_7_PILOT.md`; if not, fix only the reported defect. No M2-8.
+  **Owner actions A/B/C are complete; §2 PASSED on the served `0cd3673`; §3 item 9 PASSES — but that
+  build shows a login screen, which DEC-031 (2026-09-18) removed as a product regression.** Access
+  now: silent anonymous device session (`AuthGate` → `ensureSession()`), `bootstrap_household()`
+  joins the ONE household, person = device profile. **Production still needs** (controlling GPT, not
+  Ariel): `supabase/apply_anonymous_join_production.sql` + Auth "Allow anonymous sign-ins" ON +
+  Lovable publish (`supabase/DEPLOY.md` top). Next run: `npm run preflight -- --live` (sha ≥ DEC-031
+  commit), `verify_anonymous_join.sql` evidence, then §3b reply → mark M1 CLOSED and start the pilot;
+  if a §3b item fails, fix only that. No M2-8. Never ask Ariel for Supabase/GitHub/Lovable actions.
 - **Home (M2, DEC-026/027):** `TodayCard` (me) → `PartnerGlance` (partner) → six compact `MealCard`s →
   `DailyContextRow` (weight · workout · fasting, inline editors). `DayReview` sheet (DEC-028) opens from
   the today card / partner card: read-only day per slot for either person; edit only for the active
@@ -43,7 +46,9 @@ Updated 2026-09-18 (ninth run: production release verified — preflight PASS on
   serves `main` `0cd3673` (deployment `psr2.4acecc14…`) — `mode=cloud`, `target=shared`,
   `misconfigured=false`, host `rqgoiuztphkcvbwtbxbj`, no secrets: `PREFLIGHT PASS — 14 checks`.
   Anonymous REST reads `[]` on all 10 tables, anonymous insert rejected by RLS. The old `0c0eb717…`
-  demo deployment is history. Do not mark M1 CLOSED until the §3a reply (items 1–8, 10) is in.
+  demo deployment is history. Since DEC-031 that served build is **behind `main`** (it still shows
+  the login); anonymous sign-ins were OFF on production at 15:50 (`422 anonymous_provider_disabled`).
+  Do not mark M1 CLOSED until the republished build passes preflight and the §3b reply is in.
 - **Toolchain (2026-09-18):** install with `bun install --frozen-lockfile` (npm resolves newer
   TanStack packages and breaks `tsc`); on Windows set `git config core.autocrlf false` in this repo
   (CRLF checkouts fail `catalog-seed.test.ts` and prettier). Docker is never required
@@ -103,7 +108,7 @@ seeded. Nothing was ever broken in the migration.
 Not a repository audit, and not a migration:
 
 1. Read `docs/claude-context.md`.
-2. Read `docs/claude-tasks/RUN_2026-09-18_M1_ACCEPTANCE.md` (latest run record) and
+2. Read `docs/claude-tasks/RUN_2026-09-18_ACCESS_SIMPLIFICATION.md` (latest run record) and
    `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md` (release state).
 3. Read `docs/project-status.md` and `docs/todo.md`.
 4. Check the current branch, HEAD and `git status` (read-only).
@@ -187,8 +192,10 @@ recommendations, or gamification.
 
 ## Backend reality
 
-**Supabase implemented, opt-in via env (2026-07-23).** Model: one shared Auth account, two internal
-profiles (אריאל `ariel` / אלנה `alena`), data separated by `profile_id`; the shared account edits both.
+**Supabase implemented, opt-in via env (2026-07-23; access model changed 2026-09-18, DEC-031).** Model:
+one household; every device holds its own anonymous Auth session and is a member (the historical
+shared account remains one); two internal profiles (אריאל `ariel` / אלנה `alena`), data separated by
+`profile_id`; any member device edits both.
 Migrations under `supabase/` (schema + RLS + bootstrap + realtime) were live-verified against a local
 Supabase stack (RLS isolation + bootstrap: 5/5 integration tests). App layer: `src/lib/supabase/*`,
 `src/lib/sync/*`, `src/components/auth/*`, wired into the store behind `isSupabaseConfigured()`.
