@@ -51,5 +51,6 @@ test("the device default can be changed from the switcher", async ({ page }) => 
   await expect(chooser).toBeHidden();
   expect(await page.evaluate((k) => window.localStorage.getItem(k), DEVICE_KEY)).toBe("me");
   await page.reload();
+  await waitForHydration(page);
   await expect(page.getByRole("tab", { name: /אריאל/ })).toHaveAttribute("aria-selected", "true");
 });
