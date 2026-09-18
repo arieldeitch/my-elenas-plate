@@ -1,21 +1,27 @@
-import { Check, Loader2, CloudOff, RefreshCw, AlertTriangle } from "lucide-react";
+import { Check, Loader2, CloudOff, RefreshCw, AlertTriangle, CloudCheck } from "lucide-react";
 import { useStore } from "@/lib/store";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
+// M2 trust signal: plain words, no backend terms. "מסונכרן" is only ever shown
+// when the durable queue is empty AND Supabase confirmed every operation; in a
+// deliberate demo build the same slot says the truth ("נשמר במכשיר").
+const cloud = () => isSupabaseConfigured();
 const LABEL = {
-  saved: "נשמר",
-  saving: "שומר...",
-  offline: "לא מקוון",
-  pending: "ממתין לסנכרון",
-  error: "הסנכרון נכשל",
+  saved: () => (cloud() ? "מסונכרן" : "נשמר במכשיר"),
+  saving: () => "מסנכרן…",
+  offline: () => "לא מקוון — יסתנכרן אחר כך",
+  pending: () => "ממתין לסנכרון",
+  error: () => "הסנכרון נכשל",
 } as const;
 
+// Quiet when all is well (no pill, muted text); a pill only when attention is due.
 const STYLE: Record<string, string> = {
-  saved: "text-success bg-success-soft",
-  saving: "text-info bg-info-soft",
-  offline: "text-info bg-info-soft",
-  pending: "text-info bg-info-soft",
-  error: "text-destructive bg-destructive-soft",
+  saved: "text-[#94A3B4]",
+  saving: "text-info bg-info-soft px-2.5",
+  offline: "text-info bg-info-soft px-2.5",
+  pending: "text-info bg-info-soft px-2.5",
+  error: "text-destructive bg-destructive-soft px-2.5",
 };
 
 /**
@@ -27,7 +33,9 @@ export function SyncStatus() {
   const { syncState, syncDetail, retryFailedSync, discardFailedSync } = useStore();
   const Icon =
     syncState === "saved"
-      ? Check
+      ? cloud()
+        ? CloudCheck
+        : Check
       : syncState === "saving"
         ? Loader2
         : syncState === "offline"
@@ -52,12 +60,12 @@ export function SyncStatus() {
         data-sync-failed={syncDetail.failed}
         data-realtime={syncDetail.realtime}
         className={cn(
-          "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
+          "inline-flex items-center gap-1.5 rounded-full py-1 text-xs font-medium",
           STYLE[syncState],
         )}
       >
         <Icon className={cn("h-3.5 w-3.5", syncState === "saving" && "animate-spin")} />
-        <span>{LABEL[syncState]}</span>
+        <span>{LABEL[syncState]()}</span>
         {count > 0 && (
           <span className="rounded-full bg-white/60 px-1.5 text-[10px] tabular-nums" dir="ltr">
             {count}

@@ -62,12 +62,14 @@ describe("PartnerGlance (M2 — partner's day at a glance)", () => {
 
     const card = screen.getByTestId("partner-glance");
     expect(card).toHaveAttribute("data-partner", "elena");
-    expect(card).toHaveTextContent("2 מתוך 6 ארוחות תועדו");
+    expect(card).toHaveAccessibleName(/2 מתוך 6 ארוחות תועדו/);
+    // The visible line answers "what did she eat last?" (name + slot, no quantity).
+    expect(card).toHaveTextContent(/לאחרונה: תפוח · ארוחה מרכזית/);
     expect(card.querySelector("[data-slot='lunch']")).toHaveAttribute("data-status", "logged");
     expect(card.querySelector("[data-slot='late']")).toHaveAttribute("data-status", "skipped");
     expect(card.querySelectorAll("[data-status='empty']")).toHaveLength(4);
-    // Never the food name on the home screen.
-    expect(card).not.toHaveTextContent("תפוח");
+    // No quantities or lists on the home screen — one line, no details.
+    expect(card).not.toHaveTextContent(/יחידה/);
   });
 
   it("tapping the card switches to the partner, and the card then shows the other side", async () => {
@@ -84,5 +86,36 @@ describe("PartnerGlance (M2 — partner's day at a glance)", () => {
     expect(card).toHaveAttribute("data-partner", "me");
     expect(card).toHaveTextContent("אריאל");
     expect(card).toHaveTextContent("עוד לא תיעד היום");
+  });
+});
+
+describe("PartnerGlance — fasting / workout only when the data exists", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    window.localStorage.setItem(DEVICE_PROFILE_KEY, "me");
+    store = null;
+  });
+
+  it("shows nothing extra for an empty day, then the partner's fasting window and workout", () => {
+    render(
+      <>
+        <PartnerGlance />
+        <Probe />
+      </>,
+      { wrapper },
+    );
+    expect(screen.queryByTestId("partner-fasting")).toBeNull();
+    expect(screen.queryByTestId("partner-workout")).toBeNull();
+
+    act(() => store!.setActiveProfile("elena"));
+    act(() => store!.setFasting({ start: "20:00", end: "12:00" }));
+    act(() => store!.setWorkout({ performed: true, type: "ריצה" }));
+    act(() => store!.setActiveProfile("me"));
+
+    expect(screen.getByTestId("partner-fasting")).toHaveTextContent("20:00–12:00");
+    expect(screen.getByTestId("partner-workout")).toBeInTheDocument();
+    // My own card is untouched by her fasting/workout.
+    act(() => store!.setActiveProfile("elena"));
+    expect(screen.queryByTestId("partner-fasting")).toBeNull();
   });
 });

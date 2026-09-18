@@ -6,7 +6,8 @@ import { StoreProvider } from "@/lib/store";
 import { MealCard } from "./MealCard";
 import { CoffeeSelector } from "./CoffeeSelector";
 import { ProfileSwitcher } from "./ProfileSwitcher";
-import { DailyCompletionIndicator } from "./DailyCompletionIndicator";
+import { TodayCard } from "./TodayCard";
+import { PartnerGlance } from "./PartnerGlance";
 import { WeightBanner } from "./WeightBanner";
 import type { DailyMeal } from "@/lib/domain";
 
@@ -36,11 +37,13 @@ describe("accessibility (axe)", () => {
     expect(await axe(container, opts)).toHaveNoViolations();
   });
 
-  it("DailyCompletionIndicator has no violations", async () => {
+  it("TodayCard + PartnerGlance (M2 home) have no violations", async () => {
     const { container } = render(
-      <DailyCompletionIndicator
-        info={{ state: "partial", documented: 2, total: 6, label: "תיעוד חלקי" }}
-      />,
+      <>
+        <TodayCard onOpenCalendar={vi.fn()} />
+        <PartnerGlance />
+      </>,
+      { wrapper },
     );
     expect(await axe(container, opts)).toHaveNoViolations();
   });

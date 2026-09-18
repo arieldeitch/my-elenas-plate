@@ -1,13 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { MEAL_SLOTS, type MealSlotId } from "@/lib/domain";
 import { useStore } from "@/lib/store";
 import { toISODate } from "@/lib/format";
-import { calcCompletion } from "@/lib/completion";
 import { ProfileSwitcher } from "@/components/nutrition/ProfileSwitcher";
-import { DateNavigator } from "@/components/nutrition/DateNavigator";
 import { SyncStatus } from "@/components/nutrition/SyncStatus";
-import { DailyCompletionIndicator } from "@/components/nutrition/DailyCompletionIndicator";
+import { TodayCard } from "@/components/nutrition/TodayCard";
 import { PartnerGlance } from "@/components/nutrition/PartnerGlance";
 import { MealCard } from "@/components/nutrition/MealCard";
 import { MealEditor } from "@/components/nutrition/MealEditor";
@@ -55,34 +53,28 @@ function Home() {
 
   const iso = toISODate(store.selectedDate);
   const day = store.getDay(store.activeProfile, iso);
-  const completion = useMemo(() => calcCompletion(day.meals), [day.meals]);
+  // The FAB logs into the first slot that still needs attention, never a fixed one.
+  const nextSlot: MealSlotId = MEAL_SLOTS.find((s) => day.meals[s].status === "empty") ?? "lunch";
 
   return (
     <div className="min-h-screen bg-background pb-40">
       <div className="mx-auto max-w-[820px] px-5 pt-5 sm:pt-6">
         {/* Header: profile switcher + brand */}
-        <header className="mb-4 flex items-center justify-between gap-3">
+        <header className="mb-3 flex items-center justify-between gap-3">
           <ProfileSwitcher />
           <BrandMark />
         </header>
 
-        <div className="mb-3 flex justify-end">
+        {/* M2 hierarchy: ME (today card) → PARTNER (glance) → ACTION (the six slots). */}
+        <div className="mb-2 flex justify-end">
           <SyncStatus />
         </div>
+        <TodayCard onOpenCalendar={() => setCalendarOpen(true)} />
+        <PartnerGlance />
 
-        {/* Date */}
-        <DateNavigator onOpenCalendar={() => setCalendarOpen(true)} />
-
-        {/* Completion */}
-        <div className="mt-4">
-          <DailyCompletionIndicator info={completion} />
-          {/* M2: the partner's day for the same date, one tap away. */}
-          <PartnerGlance />
-        </div>
-
-        {/* Meals */}
-        <section className="mt-5">
-          <h2 className="mb-3 px-1 text-[15px] font-semibold text-foreground text-right">
+        {/* Meals — the action: tap a slot to log into it */}
+        <section className="mt-4">
+          <h2 className="mb-2 px-1 text-[14px] font-semibold text-foreground text-right">
             ארוחות היום
           </h2>
           <div className="grid grid-cols-3 gap-2.5">
@@ -109,7 +101,7 @@ function Home() {
       <BottomNav
         active="home"
         onCalendar={() => setCalendarOpen(true)}
-        onAdd={() => setOpenSlot("lunch")}
+        onAdd={() => setOpenSlot(nextSlot)}
         onHistory={() => setCalendarOpen(true)}
       />
     </div>
