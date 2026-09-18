@@ -5,11 +5,13 @@ genuinely live in production. Everything below is read-only against production; 
 writes production data except the two real-user acceptance entries in §3, made by the couple's
 own accounts through the app.
 
-**Status (checked 2026-09-18, seventh/eighth runs): NOT executed — none of the owner actions has
-happened.** Evidence: `.env.production` on `origin/main` still has no `VITE_SUPABASE_ANON_KEY` line and
-no commit landed on `main` other than Claude's (A not done); the live site still serves deployment
-`0c0eb717…` with the pre-M1 demo bundle and no `/build-info.json` — `npm run preflight -- --live` = FAIL
-(B not done); the database state is unverifiable from a Claude session (C unknown; no output pasted).
+**Status (updated 2026-09-18, 15:12 Israel time): owner actions A and B completed externally; C still pending.**
+Evidence: `.env.production` on `main` now contains the production Supabase publishable key in commit
+`2651c0c1e7d298ce8442e50b68343210bb97b945` (A complete). Lovable has synced that same commit and a
+new production publish was triggered (B complete; live preflight still required to prove the served bundle).
+Supabase production was verified read-only to have all 10 expected public tables with RLS enabled and
+`authenticated` already holding SELECT/INSERT/UPDATE/DELETE on them, but the migration ledger still lacks
+`20260725190000` and `20260916120000`; therefore action C remains pending until the reviewed SQL is run and verified.
 When §1–§3 pass, record the evidence in a `RUN_<date>_M1_ACCEPTANCE.md`, `M1_STATUS.md` §4 and close
 M1 in `docs/todo.md`.
 
@@ -23,8 +25,8 @@ Direct links for the owner actions (all three are inside Ariel's own accounts):
 
 | #   | Where                                                    | Action                                                                                                                                                                                                | Done? |
 | --- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
-| A   | GitHub web editor or Lovable code mode                   | In `.env.production`, replace the commented last line with `VITE_SUPABASE_ANON_KEY=<anon/publishable key>` (Supabase → Project Settings → API Keys; never `service_role`). Commit to `main`.          | ☐     |
-| B   | Lovable → project → **Publish / Update**                 | Publish `main`. Until A is done the published app shows the block page (by design, DEC-025).                                                                                                          | ☐     |
+| A   | GitHub web editor or Lovable code mode                   | In `.env.production`, replace the commented last line with `VITE_SUPABASE_ANON_KEY=<anon/publishable key>` (Supabase → Project Settings → API Keys; never `service_role`). Commit to `main`.          | ☑     |
+| B   | Lovable → project → **Publish / Update**                 | Publish `main`. Until A is done the published app shows the block page (by design, DEC-025).                                                                                                          | ☑     |
 | C   | Supabase Dashboard → `rqgoiuztphkcvbwtbxbj` → SQL Editor | Run `supabase/verify_privileges.sql` (keep output), then `supabase/apply_m1_grants_production.sql`, then `verify_privileges.sql` again. Paste the second output into the next Claude run (or a Gist). | ☐     |
 
 ## 2. Automated verification (Claude, ~2 minutes, read-only)
