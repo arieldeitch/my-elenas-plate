@@ -9,7 +9,12 @@ import type { Database, Json } from "./database.generated";
 export type { Database, Json };
 
 export type MealSlotSlug =
-  "opening_window" | "first_snack" | "main_meal" | "afternoon_snack" | "dinner" | "extra_meal";
+  | "opening_window"
+  | "first_snack"
+  | "main_meal"
+  | "afternoon_snack"
+  | "dinner"
+  | "extra_meal";
 
 export type MealStatusValue = "unmarked" | "logged" | "skipped";
 export type QuantityModeValue = "measured" | "subjective";
