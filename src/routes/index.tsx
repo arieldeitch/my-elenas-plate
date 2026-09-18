@@ -66,11 +66,13 @@ function Home() {
 
   return (
     <div className="min-h-screen bg-background pb-28">
-      <div className="mx-auto max-w-[820px] px-5 pt-5 sm:pt-6">
-        {/* Header: who is logging (switcher + device default) · brand + sync, one block */}
-        <header className="mb-3 flex items-start justify-between gap-3">
+      <main className="mx-auto max-w-[820px] px-5 pt-5 sm:pt-6">
+        <h1 className="sr-only">בריאותי — מעקב תזונה משותף</h1>
+        {/* Header: who is logging (switcher + device default) · brand + sync, one block.
+            min-w-0 + shrink-0 keep the brand column inside a 360px viewport. */}
+        <header className="mb-3 flex min-w-0 items-start justify-between gap-2">
           <ProfileSwitcher />
-          <div className="flex flex-col items-end gap-1">
+          <div className="flex shrink-0 flex-col items-end gap-1">
             <BrandMark />
             <SyncStatus />
           </div>
@@ -99,7 +101,7 @@ function Home() {
         <DailyContextRow onOpenWeight={() => setWeighOpen(true)} />
 
         <RuntimeModeNotice />
-      </div>
+      </main>
 
       <DeviceProfileChooser />
       <MealEditor slot={openSlot} onClose={closeSlot} />

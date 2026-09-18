@@ -100,12 +100,12 @@ export function DayReview({ person, onClose, onEditSlot }: Props) {
               <div className="text-[15px] font-bold text-foreground">
                 {isToday ? "היום" : formatShortDate(store.selectedDate)}
                 {!isToday && (
-                  <span className="mr-1 text-[12px] font-medium text-[#708197]">
+                  <span className="mr-1 text-[12px] font-medium text-muted-foreground">
                     · {dayName(store.selectedDate)}
                   </span>
                 )}
               </div>
-              <div className="text-[12px] text-[#708197]" data-testid="day-review-summary">
+              <div className="text-[12px] text-muted-foreground" data-testid="day-review-summary">
                 {completion.documented}/{completion.total} ארוחות תועדו
                 {items > 0 ? ` · ${items} ${items === 1 ? "פריט" : "פריטים"}` : ""}
                 {isToday ? ` · ${formatShortDate(store.selectedDate)}` : ""}
@@ -137,7 +137,7 @@ export function DayReview({ person, onClose, onEditSlot }: Props) {
                   data-testid={`day-review-person-${p.id}`}
                   className={cn(
                     "flex min-w-[104px] items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors",
-                    active ? "bg-white text-foreground shadow-soft" : "text-[#708197]",
+                    active ? "bg-white text-foreground shadow-soft" : "text-muted-foreground",
                   )}
                 >
                   <span
@@ -157,7 +157,7 @@ export function DayReview({ person, onClose, onEditSlot }: Props) {
         {/* Body: the six slots, in order, always all present */}
         <div className="flex-1 overflow-y-auto px-4 py-3" data-testid="day-review-list">
           {items === 0 && completion.documented === 0 && (
-            <p className="mb-2 text-[13px] text-[#708197]">
+            <p className="mb-2 text-[13px] text-muted-foreground">
               {canEdit
                 ? "עוד לא תועד כלום ליום הזה — הקשה על ארוחה במסך הבית מתעדת אותה."
                 : feminine
@@ -230,7 +230,7 @@ function SlotRow({
         <span
           className={cn(
             "grid h-7 w-7 shrink-0 place-items-center rounded-full",
-            status === "logged" ? MEAL_TILE_TINT[slot] : "bg-[#EEF2F6] text-[#94A3B4]",
+            status === "logged" ? MEAL_TILE_TINT[slot] : "bg-[#EEF2F6] text-muted-foreground",
           )}
           aria-hidden
         >
@@ -238,7 +238,7 @@ function SlotRow({
         </span>
         <span className="min-w-0 flex-1 text-[13px] font-semibold text-foreground">{label}</span>
         {status !== "logged" && (
-          <span className="flex items-center gap-1 text-[12px] text-[#94A3B4]">
+          <span className="flex items-center gap-1 text-[12px] text-muted-foreground">
             {status === "skipped" && <Minus className="h-3 w-3" aria-hidden />}
             {stateText}
           </span>
@@ -248,7 +248,7 @@ function SlotRow({
             type="button"
             onClick={onEdit}
             aria-label={`עריכת ${label}`}
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-[#708197] hover:bg-[#F1F5F9]"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted-foreground hover:bg-[#F1F5F9]"
           >
             <Pencil className="h-4 w-4" />
           </button>
@@ -260,9 +260,9 @@ function SlotRow({
             <li key={e.id} className="flex items-baseline gap-2 text-[13px] leading-snug">
               <Check className="mt-0.5 h-3 w-3 shrink-0 text-primary" aria-hidden />
               <span className="min-w-0 flex-1 truncate text-foreground">{e.foodName}</span>
-              <span className="shrink-0 text-[12px] text-[#708197]">{entryDetail(e)}</span>
+              <span className="shrink-0 text-[12px] text-muted-foreground">{entryDetail(e)}</span>
               {timeOf(e) && (
-                <span className="shrink-0 text-[11px] text-[#94A3B4] tabular-nums" dir="ltr">
+                <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums" dir="ltr">
                   {timeOf(e)}
                 </span>
               )}

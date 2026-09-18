@@ -424,6 +424,25 @@ describe("legacy phone data (M1-R5 safety)", () => {
     expect(fake.rows("food_entries")).toHaveLength(1);
     expect(window.localStorage.getItem("elenas-plate:v1")).toBe(raw);
     hook.unmount();
+
+    // DEC-031 recovery path: the auth session is gone (fresh anonymous identity)
+    // but the phone still holds the legacy snapshot AND has cloud rows now.
+    // Result must stay cloud-only: the cloud entry appears, the legacy one never.
+    window.localStorage.removeItem("elenas-plate:migrated:v1");
+    window.localStorage.removeItem("elenas-plate:migrated:foods:v1");
+    auth.userId = "99999999-9999-4999-8999-999999999999";
+    const writesBefore = fake.log.filter((l) => l.action !== "select").length;
+    const fresh = await mountActive();
+    await waitFor(() =>
+      expect(fresh.result.current.getDay("me", today()).meals.dinner.entries).toHaveLength(1),
+    );
+    expect(fresh.result.current.getDay("me", today()).meals.lunch.entries).toHaveLength(0);
+    expect(fresh.result.current.weighIns).toHaveLength(0);
+    expect(fake.rows("food_entries")).toHaveLength(1);
+    expect(fake.log.filter((l) => l.action !== "select")).toHaveLength(writesBefore);
+    expect(window.localStorage.getItem("elenas-plate:v1")).toBe(raw);
+    expect(window.localStorage.getItem("elenas-plate:migrated:v1")).not.toBeNull();
+    fresh.unmount();
   });
 });
 

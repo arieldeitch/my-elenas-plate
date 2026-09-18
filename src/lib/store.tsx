@@ -57,8 +57,8 @@ import {
 } from "./sync/operations";
 
 export const PROFILES: Profile[] = [
-  { id: "me", name: "אריאל", initials: "א", color: "#17A668", tint: "#EDF8F2" },
-  { id: "elena", name: "אלנה", initials: "א", color: "#2B84D6", tint: "#EDF6FD" },
+  { id: "me", name: "אריאל", initials: "א", color: "#117d52", tint: "#EDF8F2" },
+  { id: "elena", name: "אלנה", initials: "א", color: "#1F6FBD", tint: "#EDF6FD" },
 ];
 
 type PerProfile<T> = Record<ProfileId, T>;

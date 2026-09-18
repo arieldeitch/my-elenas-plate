@@ -29,7 +29,7 @@ export function MealCard({ meal, onOpen }: Props) {
         <div
           className={cn(
             "grid h-[60px] w-[60px] place-items-center rounded-full transition-colors",
-            status === "skipped" ? "bg-[#F1F5F9] text-[#708197]" : tint,
+            status === "skipped" ? "bg-[#F1F5F9] text-muted-foreground" : tint,
           )}
           aria-hidden
         >
@@ -73,10 +73,10 @@ function StatusPill({ status }: { status: DailyMeal["status"] }) {
   const base =
     "inline-flex h-[20px] items-center rounded-full px-2 text-[11px] font-medium leading-none";
   if (status === "logged") {
-    return <span className={cn(base, "bg-[#EDF8F2] text-[#17A668]")}>תועד</span>;
+    return <span className={cn(base, "bg-[#EDF8F2] text-primary")}>תועד</span>;
   }
   if (status === "skipped") {
-    return <span className={cn(base, "bg-[#F1F5F9] text-[#708197]")}>לא נאכלה</span>;
+    return <span className={cn(base, "bg-[#F1F5F9] text-muted-foreground")}>לא נאכלה</span>;
   }
-  return <span className={cn(base, "bg-transparent text-[#94A3B4]")}>לא תועד</span>;
+  return <span className={cn(base, "bg-transparent text-muted-foreground")}>לא תועד</span>;
 }

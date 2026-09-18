@@ -30,7 +30,7 @@ export function RuntimeModeNotice() {
           חסרה הגדרת Supabase (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY). הנתונים נשמרים בדפדפן
           הזה בלבד ולא יסונכרנו בין המכשירים.
         </p>
-        <p className="mt-1 text-xs opacity-80" dir="ltr">
+        <p className="mt-1 text-xs" dir="ltr">
           {buildLabel(info)}
         </p>
       </div>
@@ -50,7 +50,7 @@ export function RuntimeModeNotice() {
           <span>מצב הדגמה — ללא סנכרון ענן</span>
         </div>
         <p className="mt-1">הנתונים נשמרים באופן זמני בדפדפן הזה בלבד ואינם משותפים.</p>
-        <p className="mt-1 opacity-80" dir="ltr">
+        <p className="mt-1" dir="ltr">
           {buildLabel(info)}
         </p>
       </div>
@@ -61,13 +61,11 @@ export function RuntimeModeNotice() {
     <p
       data-runtime-mode="cloud"
       data-build-sha={info.sha}
-      className="mt-8 flex items-center justify-center gap-1.5 text-center text-xs text-[#94A3B4]"
+      className="mt-8 flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground"
     >
       <Cloud className="h-3.5 w-3.5 shrink-0" aria-hidden />
       <span>הנתונים נשמרים בענן המשותף ומסונכרנים בין המכשירים.</span>
-      <span dir="ltr" className="opacity-80">
-        · {buildLabel(info)}
-      </span>
+      <span dir="ltr">· {buildLabel(info)}</span>
     </p>
   );
 }

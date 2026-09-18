@@ -59,9 +59,12 @@ export function TodayCard({ onOpenCalendar, onOpenReview }: Props) {
         <div className="min-w-0 flex-1 text-right">
           <div className="text-[15px] font-bold text-foreground leading-tight">
             {profile.name}
-            <span className="font-medium text-[#708197]"> · {isToday ? "היום" : "תאריך"}</span>
+            <span className="font-medium text-muted-foreground">
+              {" "}
+              · {isToday ? "היום" : "תאריך"}
+            </span>
           </div>
-          <div className="text-[12px] text-[#708197] leading-tight tabular-nums">
+          <div className="text-[12px] text-muted-foreground leading-tight tabular-nums">
             {formatShortDate(selectedDate)}
           </div>
         </div>
@@ -69,21 +72,21 @@ export function TodayCard({ onOpenCalendar, onOpenReview }: Props) {
           <button
             onClick={() => setSelectedDate(addDays(selectedDate, -1))}
             aria-label="יום קודם"
-            className="grid h-10 w-10 place-items-center rounded-xl text-[#708197] hover:bg-[#F1F5F9] transition-colors"
+            className="grid h-10 w-10 place-items-center rounded-xl text-muted-foreground hover:bg-[#F1F5F9] transition-colors"
           >
             <ChevronRight className="h-5 w-5" strokeWidth={1.75} />
           </button>
           <button
             onClick={onOpenCalendar}
             aria-label="פתיחת לוח שנה"
-            className="grid h-10 w-10 place-items-center rounded-xl text-[#2B84D6] hover:bg-[#EDF6FD] transition-colors"
+            className="grid h-10 w-10 place-items-center rounded-xl text-info hover:bg-[#EDF6FD] transition-colors"
           >
             <Calendar className="h-5 w-5" strokeWidth={1.75} />
           </button>
           <button
             onClick={() => setSelectedDate(addDays(selectedDate, 1))}
             aria-label="יום הבא"
-            className="grid h-10 w-10 place-items-center rounded-xl text-[#708197] hover:bg-[#F1F5F9] transition-colors"
+            className="grid h-10 w-10 place-items-center rounded-xl text-muted-foreground hover:bg-[#F1F5F9] transition-colors"
           >
             <ChevronLeft className="h-5 w-5" strokeWidth={1.75} />
           </button>
@@ -114,7 +117,7 @@ export function TodayCard({ onOpenCalendar, onOpenReview }: Props) {
             />
           </div>
           <div
-            className="shrink-0 text-[13px] text-[#708197] tabular-nums"
+            className="shrink-0 text-[13px] text-muted-foreground tabular-nums"
             data-testid="today-count"
           >
             <span className="text-[17px] font-extrabold text-foreground">
@@ -124,7 +127,7 @@ export function TodayCard({ onOpenCalendar, onOpenReview }: Props) {
           </div>
         </div>
 
-        <p className="mt-1.5 flex items-center gap-2 text-[12px] text-[#708197]">
+        <p className="mt-1.5 flex items-center gap-2 text-[12px] text-muted-foreground">
           <span className="min-w-0 flex-1 truncate" data-testid="today-latest">
             {latest ? (
               <>
@@ -140,7 +143,7 @@ export function TodayCard({ onOpenCalendar, onOpenReview }: Props) {
           </span>
           {onOpenReview && (
             <span
-              className="inline-flex shrink-0 items-center gap-0.5 font-medium text-[#2B84D6]"
+              className="inline-flex shrink-0 items-center gap-0.5 font-medium text-info"
               aria-hidden
             >
               <ListChecks className="h-3.5 w-3.5" />

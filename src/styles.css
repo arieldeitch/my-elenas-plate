@@ -62,15 +62,15 @@
 :root {
   --background: #f7f9fb;
   --foreground: #182a42;
-  --muted-fg: #708197;
+  --muted-fg: #5f6f86; /* ≥ 4.5:1 on white and on the soft surfaces (AA) */
 
   --card: #ffffff;
   --surface-2: #f1f5f9;
 
-  --primary: #17a668;
+  --primary: #117d52; /* white text on it: 5.1:1, on the soft tints ≥ 4.7:1 (AA) */
   --primary-soft: #edf8f2;
 
-  --info: #2b84d6;
+  --info: #1f6fbd; /* 5.2:1 on white (AA) */
   --info-soft: #edf6fd;
 
   --warn: #f6b54b;

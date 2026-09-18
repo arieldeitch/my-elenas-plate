@@ -17,7 +17,7 @@ const LABEL = {
 
 // Quiet when all is well (no pill, muted text); a pill only when attention is due.
 const STYLE: Record<string, string> = {
-  saved: "text-[#94A3B4]",
+  saved: "text-muted-foreground",
   saving: "text-info bg-info-soft px-2.5",
   offline: "text-info bg-info-soft px-2.5",
   pending: "text-info bg-info-soft px-2.5",

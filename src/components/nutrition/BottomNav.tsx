@@ -81,7 +81,7 @@ function NavItem({
       onClick={onClick}
       className={cn(
         "flex min-w-[64px] flex-col items-center gap-0.5 rounded-xl px-2 py-1.5 transition-colors",
-        active ? "text-info" : "text-[#708197] hover:text-foreground",
+        active ? "text-info" : "text-muted-foreground hover:text-foreground",
       )}
       aria-current={active ? "page" : undefined}
     >

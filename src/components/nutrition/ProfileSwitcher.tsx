@@ -34,8 +34,8 @@ export function ProfileSwitcher() {
               aria-selected={active}
               onClick={() => setActiveProfile(p.id)}
               className={cn(
-                "relative z-10 flex items-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition-colors duration-200 min-w-[112px] justify-center",
-                active ? "text-foreground" : "text-[#708197]",
+                "relative z-10 flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors duration-200 min-w-[96px] justify-center sm:min-w-[112px] sm:px-5",
+                active ? "text-foreground" : "text-muted-foreground",
               )}
             >
               <span
@@ -54,7 +54,7 @@ export function ProfileSwitcher() {
       <button
         type="button"
         onClick={openDeviceChooser}
-        className="inline-flex items-center gap-1 px-2 text-[11px] text-[#708197] hover:text-foreground"
+        className="inline-flex min-h-9 items-center gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
         data-testid="device-profile-default"
       >
         <Smartphone className="h-3 w-3" aria-hidden />

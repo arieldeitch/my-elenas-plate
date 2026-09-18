@@ -79,7 +79,7 @@ export function FoodSearch({ onChoose, onCreate, onAddCoffee, autoFocus = true }
           <button
             onClick={() => setRaw("")}
             aria-label="ניקוי חיפוש"
-            className="absolute top-1/2 left-2 -translate-y-1/2 grid h-8 w-8 place-items-center rounded-full hover:bg-muted"
+            className="absolute top-1/2 left-1 -translate-y-1/2 grid h-10 w-10 place-items-center rounded-full hover:bg-muted"
           >
             <X className="h-4 w-4" />
           </button>

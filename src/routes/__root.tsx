@@ -154,7 +154,7 @@ function RootComponent() {
           <StoreProvider>
             {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
             <Outlet />
-            <Toaster position="top-center" dir="rtl" richColors closeButton />
+            <Toaster position="top-center" dir="rtl" richColors visibleToasts={2} />
           </StoreProvider>
         </AuthGate>
       </RuntimeGate>

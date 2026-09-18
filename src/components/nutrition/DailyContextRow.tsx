@@ -117,7 +117,7 @@ export function DailyContextRow({ onOpenWeight }: Props) {
               type="button"
               onClick={() => setPanel(null)}
               aria-label="סגירה"
-              className="grid h-10 w-10 place-items-center rounded-xl text-[#708197] hover:bg-[#F1F5F9]"
+              className="grid h-10 w-10 place-items-center rounded-xl text-muted-foreground hover:bg-[#F1F5F9]"
             >
               <ChevronUp className="h-4 w-4" />
             </button>
@@ -166,21 +166,21 @@ function Cell({
         expanded && "bg-[#F8FAFC]",
       )}
     >
-      <span className="flex items-center gap-1 text-[11px] text-[#708197]">
+      <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
         <span aria-hidden>{icon}</span>
         {label}
       </span>
       <span
         className={cn(
           "text-[14px] leading-tight tabular-nums",
-          documented ? "font-bold text-foreground" : "font-medium text-[#94A3B4]",
+          documented ? "font-bold text-foreground" : "font-medium text-muted-foreground",
         )}
         dir="auto"
       >
         {value}
       </span>
       <span
-        className="min-h-[14px] text-[11px] leading-tight text-[#708197] tabular-nums"
+        className="min-h-[14px] text-[11px] leading-tight text-muted-foreground tabular-nums"
         dir="auto"
       >
         {sub}

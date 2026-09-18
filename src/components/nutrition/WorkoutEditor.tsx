@@ -98,7 +98,7 @@ function ToggleBtn({
     <button
       onClick={onClick}
       className={cn(
-        "rounded-full px-3 py-1.5 text-sm font-medium",
+        "min-h-10 rounded-full px-4 py-1.5 text-sm font-medium",
         active ? "bg-card text-foreground shadow-soft" : "text-muted-foreground",
       )}
       aria-pressed={active}
@@ -128,7 +128,7 @@ function ChipGroup<T extends string>({
             key={o}
             onClick={() => onChange(o)}
             className={cn(
-              "rounded-full border px-3 py-1.5 text-sm",
+              "min-h-10 rounded-full border px-3 py-1.5 text-sm",
               value === o
                 ? "border-primary bg-primary-soft text-primary font-medium"
                 : "border-border bg-card hover:border-primary/40",

@@ -93,7 +93,10 @@ export function PartnerGlance({ onOpen }: Props = {}) {
             })}
           </span>
           {(workout || fasting) && (
-            <span className="flex items-center gap-1.5 text-[11px] text-[#708197]" aria-hidden>
+            <span
+              className="flex items-center gap-1.5 text-[11px] text-muted-foreground"
+              aria-hidden
+            >
               {workout && (
                 <span className="inline-flex items-center gap-0.5" data-testid="partner-workout">
                   <Dumbbell className="h-3 w-3" />
@@ -112,11 +115,11 @@ export function PartnerGlance({ onOpen }: Props = {}) {
             </span>
           )}
         </span>
-        <span className="block truncate text-[12px] leading-snug text-[#708197]">
+        <span className="block truncate text-[12px] leading-snug text-muted-foreground">
           {latestText ?? summary}
         </span>
       </span>
-      <ChevronLeft className="h-4 w-4 shrink-0 text-[#94A3B4]" aria-hidden />
+      <ChevronLeft className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
     </button>
   );
 }
