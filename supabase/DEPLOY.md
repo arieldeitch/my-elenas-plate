@@ -23,6 +23,15 @@ Apply path (Dashboard SQL Editor or Management API, ~2 minutes, no CLI, no DB pa
 
 **Still never a plain `supabase db push` against production** (ledger reasons below).
 
+### Post-pilot hardening (2026-09-18) — ONE more migration, NOT a blocker
+
+`supabase/migrations/20260918180000_harden_function_search_path.sql` pins `set_updated_at()` to
+`search_path = ''` and revokes EXECUTE on `is_household_member(uuid)` from `public`/`anon`
+(advisor findings; behaviour unchanged, proven in PGlite). Apply after the M2-7 pilot with
+`supabase/apply_hardening_post_pilot.sql` (records `20260918180000` in the ledger; prints a
+post-check). Leaked-password protection (Auth setting) may be switched on at the same time — the
+product has no passwords, so it changes nothing for users.
+
 ## M1 release (2026-09-18) — applied to production on 2026-09-18 (kept for history)
 
 > Single entrypoint for the whole release (config, publish, this migration, live acceptance):

@@ -371,3 +371,40 @@ describe("bootstrap_household — historical household wins, catalog stays attac
     expect(memberships.rows.some((m) => m.user_id === PERMANENT)).toBe(true);
   });
 });
+
+describe("hardening migration 20260918180000 (search_path + execute grants)", () => {
+  it("set_updated_at is pinned, still bumps updated_at; anon lost execute on the membership helper, authenticated kept it", async () => {
+    const def = await db.query<{ def: string }>(
+      "select pg_get_functiondef('public.set_updated_at()'::regprocedure) as def",
+    );
+    expect(def.rows[0].def).toMatch(/SET search_path TO ''/);
+    // Trigger behaviour unchanged: an UPDATE moves updated_at forward.
+    const before = await db.query<{ id: string; updated_at: string }>(
+      "select id, updated_at from public.food_entries order by food_name limit 1",
+    );
+    await db.exec("select pg_sleep(0.01)");
+    await asUser(DEVICE_A, () =>
+      db.exec(
+        `update public.food_entries set amount = amount + 1 where id = '${before.rows[0].id}'`,
+      ),
+    );
+    const after = await db.query<{ updated_at: string }>(
+      `select updated_at from public.food_entries where id = '${before.rows[0].id}'`,
+    );
+    expect(new Date(after.rows[0].updated_at).getTime()).toBeGreaterThan(
+      new Date(before.rows[0].updated_at).getTime(),
+    );
+    const grants = await db.query<{ r: string; ok: boolean }>(
+      `select r, has_function_privilege(r, 'public.is_household_member(uuid)', 'execute') as ok
+       from unnest(array['anon','authenticated','service_role']) as r`,
+    );
+    expect(Object.fromEntries(grants.rows.map((g) => [g.r, g.ok]))).toEqual({
+      anon: false,
+      authenticated: true,
+      service_role: true,
+    });
+    // Policies still work for members after the revoke.
+    const rows = await asUser(DEVICE_B, () => db.query("select id from public.food_entries"));
+    expect(rows.rows.length).toBeGreaterThan(0);
+  });
+});
