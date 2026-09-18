@@ -199,7 +199,7 @@ async function checkSupabaseReachable(host: string) {
 async function runEnv() {
   const env = loadEnv("production", process.cwd(), "VITE_");
   const url = (env.VITE_SUPABASE_URL ?? "").trim();
-  const key = (env.VITE_SUPABASE_ANON_KEY ?? "").trim();
+  const key = (env.VITE_SUPABASE_ANON_KEY || env.VITE_SUPABASE_PUBLISHABLE_KEY || "").trim();
   const target = (env.VITE_RUNTIME_TARGET ?? "").trim();
   let host = "";
   try {
@@ -210,7 +210,12 @@ async function runEnv() {
   if (!url) add("env:url", allowDemo ? "WARN" : "FAIL", "VITE_SUPABASE_URL is empty");
   else if (host === expectHost) add("env:url", "PASS", `VITE_SUPABASE_URL → ${host}`);
   else add("env:url", "FAIL", `VITE_SUPABASE_URL → "${host}", expected ${expectHost}`);
-  if (!key) add("env:key", allowDemo ? "WARN" : "FAIL", "VITE_SUPABASE_ANON_KEY is empty");
+  if (!key)
+    add(
+      "env:key",
+      allowDemo ? "WARN" : "FAIL",
+      "VITE_SUPABASE_ANON_KEY / VITE_SUPABASE_PUBLISHABLE_KEY is empty",
+    );
   else {
     const role = key.startsWith("eyJ")
       ? decodeJwtRole(key)

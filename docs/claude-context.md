@@ -15,6 +15,10 @@ Updated 2026-09-18.
   migration `20260916120000_grant_table_privileges.sql` is **not yet applied to production** — see
   `supabase/DEPLOY.md` §"M1 release" (needs the production owner's Supabase access; not reachable from a
   Claude session, DEC-024).
+- **Fail-safe since 2026-09-18 (DEC-025):** a production build without Supabase config is now
+  **blocked** (`RuntimeGate`), `.env.production` is committed with the public URL/target and one
+  line for the key, every build emits `/build-info.json`, and `npm run preflight -- --env|--local|--live`
+  is the executable release gate (`docs/RUNTIME_CONFIG.md` §1a, §2a, §2b, §3).
 - **LIVE APP IS IN DEMO MODE (found 2026-09-18, DEC-024).** The published site
   `https://my-elenas-plate.lovable.app` (Lovable project `ca9aedab-a0ca-4889-a545-9d673febf3a0`,
   `x-deployment-id 0c0eb717…`) was built **without** `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY`: its
@@ -84,9 +88,10 @@ Not a repository audit, and not a migration:
 2. Read `docs/claude-tasks/RUN_2026-09-18_M1_PROMOTION.md` (latest run record + blockers).
 3. Read `docs/project-status.md` and `docs/todo.md`.
 4. Check the current branch, HEAD and `git status` (read-only).
-5. **M1 release is blocked on two actions only Ariel can do** (see the run record §"YOU"): set the
-   public Supabase env values in the Lovable project + publish, and apply the grants migration to
-   production. Verify each with the read-only checks in `docs/RUNTIME_CONFIG.md §4` and
+5. **M1 release is blocked on two actions only Ariel can do** (see the latest run record §"YOU"):
+   add the anon/publishable key line to the committed `.env.production` + publish from Lovable
+   (DEC-025; the published build is BLOCKED by `RuntimeGate` until then), and apply the grants
+   migration to production. `npm run preflight -- --live` is the pass/fail check for the publish. Verify each with the read-only checks in `docs/RUNTIME_CONFIG.md §4` and
    `supabase/verify_privileges.sql`; then run the live M1 acceptance (T-034-UI + run record §"LIVE
    ACCEPTANCE") if a browser session is available. Otherwise leave them open and say so plainly.
 6. **Do not reopen T-034** — closed as Backend Verified (DEC-023). Do not propose a production self-test

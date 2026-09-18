@@ -12,6 +12,12 @@ revoked, `anon` gets nothing, RLS is untouched. On production it is expected to 
 through `20260723090400`; `20260725190000` was applied by SQL-editor paste (below), so `db push` would
 re-run the cleanup/seed migration on real data (DEC-021).
 
+**Runtime configuration (the other half of the release, DEC-025):** the published build
+reads the committed `.env.production`. Add `VITE_SUPABASE_ANON_KEY=<anon/publishable key>`
+there (GitHub web editor or Lovable code mode), commit to `main`, publish from Lovable, then
+`npm run preflight -- --live` must print `PREFLIGHT PASS`. Without the key the published app is
+**blocked** (RuntimeGate), not silently demo.
+
 Apply path (Dashboard, owner account, ~2 minutes, no CLI, no DB password):
 
 1. SQL Editor → run `supabase/verify_privileges.sql` (read-only) and keep the output as BEFORE.

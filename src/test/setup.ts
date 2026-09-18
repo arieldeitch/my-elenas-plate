@@ -10,3 +10,4 @@ expect.extend(matchers);
 // test uses separate SUPABASE_TEST_* process env, so it is unaffected.
 vi.stubEnv("VITE_SUPABASE_URL", "");
 vi.stubEnv("VITE_SUPABASE_ANON_KEY", "");
+vi.stubEnv("VITE_SUPABASE_PUBLISHABLE_KEY", "");

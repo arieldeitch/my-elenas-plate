@@ -9,7 +9,13 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./database.types";
 
 const url = import.meta.env.VITE_SUPABASE_URL?.trim() || "";
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() || "";
+// The public key may arrive under either name: `VITE_SUPABASE_ANON_KEY` (this
+// project) or `VITE_SUPABASE_PUBLISHABLE_KEY` (what Lovable's Supabase integration
+// writes into `.env`). Both are the publishable key — never service_role.
+const anonKey =
+  import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() ||
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim() ||
+  "";
 
 /** True when both public env vars are present (source of truth = Supabase). */
 export function isSupabaseConfigured(): boolean {
@@ -20,7 +26,11 @@ export function isSupabaseConfigured(): boolean {
 export function validateSupabaseEnv(): { ok: boolean; reason?: string } {
   if (!url && !anonKey) return { ok: true }; // demo mode is valid
   if (!url) return { ok: false, reason: "VITE_SUPABASE_URL is missing" };
-  if (!anonKey) return { ok: false, reason: "VITE_SUPABASE_ANON_KEY is missing" };
+  if (!anonKey)
+    return {
+      ok: false,
+      reason: "VITE_SUPABASE_ANON_KEY (or VITE_SUPABASE_PUBLISHABLE_KEY) is missing",
+    };
   if (!/^https?:\/\//.test(url)) {
     return { ok: false, reason: "VITE_SUPABASE_URL must be a URL" };
   }

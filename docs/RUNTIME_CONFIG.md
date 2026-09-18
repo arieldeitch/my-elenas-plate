@@ -113,17 +113,36 @@ publish), `--json`. The grants/ledger state of the database is listed as `MANUAL
 Run on 2026-09-18 against the live site: **FAIL** (`html:live` demo title,
 `manifest` missing) — i.e. it detects the current defect.
 
-## 3. How Lovable production receives the variables (no secrets in Git)
+## 3. How Lovable production receives the variables — corrected 2026-09-18 (DEC-025)
 
-- `.env`, `.env.*` are git-ignored (`.gitignore`); only `.env.example` is tracked
-  with empty values. Never commit real values.
-- The anon key is a **publishable** key by design (RLS protects data); the
-  `service_role` key must never appear in any `VITE_*` variable or frontend code.
-- Lovable builds the project from the connected Git branch. Public runtime values
-  are provided as **project environment variables in the Lovable project
-  settings** (or, equivalently, the Lovable Supabase connector, which sets the
-  same `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` pair). Because the values
-  are read by Vite at build time, **a publish is required after changing them**.
+What was documented before ("project environment variables in the Lovable project
+settings") **does not exist for frontend `VITE_*` values**. Per Lovable's own docs,
+values reach a Lovable build through a **`.env` file in the project code**: the
+Lovable Supabase integration writes `VITE_SUPABASE_URL`,
+`VITE_SUPABASE_PUBLISHABLE_KEY` and `VITE_SUPABASE_PROJECT_ID` into `.env` and
+syncs it with GitHub. This repository git-ignored every `.env*` file and read only
+`VITE_SUPABASE_ANON_KEY`, so **no Lovable build could ever have been configured**
+— that is the structural cause of the demo-mode publish found on 2026-09-18.
+
+The delivery path is now:
+
+- **`.env.production` is committed** (un-ignored in `.gitignore`). Vite loads it
+  for every `vite build`, including Lovable's publish. It holds **public values
+  only**: `VITE_SUPABASE_URL=https://rqgoiuztphkcvbwtbxbj.supabase.co`,
+  `VITE_RUNTIME_TARGET=shared`, and — once the owner adds it —
+  `VITE_SUPABASE_ANON_KEY=<anon/publishable key>`. The anon key is designed to
+  ship in browsers (RLS is the security boundary; it is already in every served
+  bundle); the `service_role` key and DB password are never allowed here, and
+  `npm run preflight -- --env` fails on a service_role-shaped key.
+- The app accepts the key under either name: `VITE_SUPABASE_ANON_KEY` or
+  `VITE_SUPABASE_PUBLISHABLE_KEY` (`src/lib/supabase/client.ts`), so using
+  Lovable's "Connect Supabase" integration instead also produces a connected
+  build.
+- Local `.env` stays private and git-ignored (it may point at the isolated test
+  branch). Vite priority: `.env.production` > `.env` for `vite build`; `vite dev`
+  never reads `.env.production`.
+- Because the values are read by Vite at build time, **a publish is required
+  after changing them**.
 - `VITE_BUILD_SHA` is optional in Lovable. When it is not provided, the build
   falls back to `git rev-parse --short HEAD` inside the Lovable build sandbox; if
   git is unavailable there, the app shows `build unknown`, which is itself the
@@ -163,9 +182,9 @@ curl -s https://my-elenas-plate.lovable.app/assets/<index chunk>.js \
   | grep -o '[a-z]\{20\}\.supabase\.co'                         # must print the project host
 ```
 
-To fix: in the Lovable project settings add `VITE_SUPABASE_URL=https://rqgoiuztphkcvbwtbxbj.supabase.co`
-and `VITE_SUPABASE_ANON_KEY=<anon/publishable key>` (public values, never
-`service_role`; leave `VITE_RUNTIME_TARGET` unset), then **publish** from `main` and run
+To fix: add the line `VITE_SUPABASE_ANON_KEY=<anon/publishable key>` to the committed
+`.env.production` (GitHub web editor or Lovable code mode; public value, never
+`service_role`), commit to `main`, then **publish** from `main` and run
 `npm run preflight -- --live` — it must print `PREFLIGHT PASS`; the footer must read
 `build <sha> · cloud` and `<site>/build-info.json` must show `"mode": "cloud"` with the
 production host.

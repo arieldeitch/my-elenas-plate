@@ -15,10 +15,11 @@ Spec `docs/claude-tasks/M1_SHARED_TRUTH_RECOVERY.md`, status `M1_STATUS.md`, run
 
 - [x] All 12 acceptance criteria proven on the isolated hosted branch (2026-09-16), Docker-free gate
       re-run on a second machine (2026-09-18), branch merged into `main`.
-- [ ] **M1-R1 (Ariel) — Lovable runtime config + publish.** The published site is a demo-mode build
-      with no Supabase env (`docs/RUNTIME_CONFIG.md §4`). Add `VITE_SUPABASE_URL` +
-      `VITE_SUPABASE_ANON_KEY` (public values) to the Lovable project, publish from `main`, then the
-      footer must read `build <sha> · cloud`.
+- [ ] **M1-R1 (Ariel) — runtime config + publish (mechanical since 2026-09-18, DEC-025).** Add the
+      line `VITE_SUPABASE_ANON_KEY=<anon/publishable key>` to the committed `.env.production`
+      (GitHub web editor or Lovable code mode), commit to `main`, Publish from Lovable, then
+      `npm run preflight -- --live` must print `PREFLIGHT PASS` (footer `build <sha> · cloud`).
+      Until then the published build is **blocked** by RuntimeGate, not silently demo.
 - [ ] **M1-R2 (Ariel) — apply `20260916120000_grant_table_privileges.sql` to production** via
       `supabase/DEPLOY.md` §"M1 release" (`apply_m1_grants_production.sql`, verify before/after with
       `verify_privileges.sql`). Never a plain `supabase db push` on production.
@@ -26,6 +27,11 @@ Spec `docs/claude-tasks/M1_SHARED_TRUTH_RECOVERY.md`, status `M1_STATUS.md`, run
       checks in the run record §"LIVE ACCEPTANCE", plus T-034-UI.
 - [ ] M1-R4 — housekeeping: reset the leaked branch DB password or delete branch `uyroeumwmjhrcbkesmgb`
       once M1 is closed.
+- [ ] **M1-R5 (product decision, Ariel) — phone-local demo data.** Every entry logged on the live
+      demo build since July lives only in each phone's localStorage. The connected build starts
+      empty and hydrates from the cloud; the one-time local→cloud import is disabled by design
+      (`LOCAL_IMPORT_ENABLED = false`). Decide: discard (default) or re-enable a guarded one-time
+      import per device before the cloud publish.
 
 ## T-034 (P1) — Backend verification — **Done (2026-08-01)**
 

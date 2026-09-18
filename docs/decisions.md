@@ -665,3 +665,42 @@ Realtime מבצע את בדיקת ה-RLS עבור אירוע `postgres_changes` 
 - ההגנה מפני Docker: `.claude/settings.json` (מחויב ל-Git) חוסם פקודות שמפעילות container runtime;
   ההנחיה הישנה "`npx supabase start`" הוסרה מ-`claude-context.md`; רשימת בדיקה לתחנת העבודה הראשית
   ב-`docs/NO_LOCAL_DOCKER_POLICY.md`.
+
+## DEC-025 — בנייה "משותפת" ללא Supabase נחסמת; ערכי הריצה הציבוריים מחויבים ב-`.env.production`
+
+**תאריך:** 2026-09-18 · **סטטוס:** מאושר · **ריצה:** `docs/claude-tasks/RUN_2026-09-18_M2_PREP.md`
+
+### הקשר
+
+DEC-024 הראה שהאתר המפורסם רץ במצב הדגמה בלי שאיש הבחין. שני גורמים מבניים אפשרו זאת:
+
+1. האפליקציה הידרדרה בשקט למצב localStorage כשחסרו הגדרות — בנייה של פרודקשן נראתה "שמישה".
+2. התיעוד הניח ש-Lovable מקבל משתני `VITE_*` דרך "הגדרות פרויקט". לפי התיעוד של Lovable אין מנגנון
+   כזה לצד הלקוח: הערכים מגיעים דרך קובץ `.env` בקוד הפרויקט (האינטגרציה של Lovable כותבת
+   `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` / `VITE_SUPABASE_PROJECT_ID`). המאגר
+   התעלם מכל `.env*` ב-Git וקרא רק `VITE_SUPABASE_ANON_KEY` — ולכן שום בנייה של Lovable לא יכלה
+   להיות מחוברת.
+
+### ההחלטה
+
+- **יעד ריצה מפורש.** `VITE_RUNTIME_TARGET=shared` (ברירת המחדל לכל בניית פרודקשן) דורש הגדרות
+  Supabase; בלעדיהן `RuntimeGate` מציג דף חסימה במסך מלא (גם ב-SSR), ה-store וה-auth אינם נטענים,
+  ו-`persistence.saveState` מסרב לכתוב. רק `VITE_RUNTIME_TARGET=demo` מפורש (או בניית פיתוח) מתיר
+  מצב הדגמה, והוא מסומן בבירור.
+- **`.env.production` מחויב ל-Git** עם ערכים ציבוריים בלבד: כתובת הפרויקט, `VITE_RUNTIME_TARGET=shared`,
+  ומפתח ה-anon/publishable (מיועד לדפדפן לפי תכנון Supabase; RLS הוא גבול האבטחה; הוא ממילא בכל
+  bundle מוגש). מפתח `service_role` וסיסמת DB אסורים לחלוטין; `npm run preflight -- --env` נכשל על
+  מפתח בצורת service_role. `.env` מקומי נשאר פרטי.
+- **שם המפתח כפול:** `VITE_SUPABASE_ANON_KEY` או `VITE_SUPABASE_PUBLISHABLE_KEY` — כך גם חיבור דרך
+  האינטגרציה של Lovable מייצר בנייה מחוברת.
+- **זהות בנייה ברמת הארטיפקט:** כל `vite build` פולט `/build-info.json` (SHA, זמן, mode, target,
+  host של Supabase — לעולם לא מפתח).
+- **Preflight להרצה:** `npm run preflight -- --env | --local | --live` — בדיקה קריאה-בלבד שנכשלת
+  (exit 1) על כל בנייה שאינה האפליקציה המשותפת המחוברת. מול האתר החי ב-2026-09-18: FAIL, כצפוי.
+
+### השלכות
+
+- פרסום עתידי בלי המפתח ייחסם בקול במקום להעמיד פני אפליקציה עובדת.
+- מסלול השחרור של M1 הפך מכני: שורה אחת ב-`.env.production` → commit → Publish → `preflight --live`.
+- הנתונים שנרשמו בטלפונים במצב ההדגמה (מאז יולי) לא יוצגו בבנייה המחוברת (ה-store מתחיל ריק ומתמלא
+  מהענן; הייבוא החד-פעמי מבוטל בכוונה). החלטה מוצרית פתוחה — ראו `docs/todo.md` M1-R5.

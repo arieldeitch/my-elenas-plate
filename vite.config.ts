@@ -81,7 +81,9 @@ function buildInfoManifestPlugin(): Plugin {
 
       const env = resolved.env as Record<string, string | undefined>;
       const url = hermetic ? "" : (env.VITE_SUPABASE_URL ?? "").trim();
-      const key = hermetic ? "" : (env.VITE_SUPABASE_ANON_KEY ?? "").trim();
+      const key = hermetic
+        ? ""
+        : (env.VITE_SUPABASE_ANON_KEY || env.VITE_SUPABASE_PUBLISHABLE_KEY || "").trim();
       const rawTarget = (env.VITE_RUNTIME_TARGET ?? "").trim().toLowerCase();
       const target = rawTarget === "shared" || rawTarget === "demo" ? rawTarget : "shared";
       const mode = url && key ? "cloud" : "demo";
@@ -120,6 +122,7 @@ export default defineConfig({
         ? {
             "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(""),
             "import.meta.env.VITE_SUPABASE_ANON_KEY": JSON.stringify(""),
+            "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(""),
           }
         : {}),
     },
