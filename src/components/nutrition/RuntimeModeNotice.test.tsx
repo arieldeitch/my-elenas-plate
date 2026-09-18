@@ -9,6 +9,8 @@ const state = vi.hoisted(() => ({
     sha: "abc1234",
     builtAt: "2026-09-16T00:00:00Z",
     mode: "cloud",
+    target: "shared",
+    targetExplicit: false,
     productionBuild: true,
     misconfigured: false,
   } as BuildInfo,

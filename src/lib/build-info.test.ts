@@ -8,10 +8,11 @@ afterEach(() => {
   vi.doUnmock("./supabase/client");
 });
 
-async function load(configured: boolean, prod: boolean) {
+async function load(configured: boolean, prod: boolean, target?: string) {
   vi.doMock("./supabase/client", () => ({ isSupabaseConfigured: () => configured }));
   vi.stubEnv("PROD", prod);
   vi.stubEnv("VITE_BUILD_SHA", "abc1234");
+  vi.stubEnv("VITE_RUNTIME_TARGET", target ?? "");
   return import("./build-info");
 }
 
@@ -20,6 +21,7 @@ describe("build identity + runtime mode", () => {
     const { getBuildInfo, buildLabel } = await load(true, true);
     const info = getBuildInfo();
     expect(info.mode).toBe("cloud");
+    expect(info.target).toBe("shared");
     expect(info.misconfigured).toBe(false);
     expect(info.sha).toBe("abc1234");
     expect(buildLabel(info)).toBe("build abc1234 · cloud");
@@ -29,22 +31,47 @@ describe("build identity + runtime mode", () => {
     const { getBuildInfo } = await load(false, false);
     const info = getBuildInfo();
     expect(info.mode).toBe("demo");
+    expect(info.target).toBe("demo");
+    expect(info.targetExplicit).toBe(false);
     expect(info.productionBuild).toBe(false);
     expect(info.misconfigured).toBe(false);
   });
 
-  it("a production bundle without Supabase is flagged as misconfigured", async () => {
+  it("a production bundle without Supabase is misconfigured (the 2026-09-18 live defect)", async () => {
     const { getBuildInfo, logBuildInfo } = await load(false, true);
     const info = getBuildInfo();
     expect(info.mode).toBe("demo");
+    expect(info.target).toBe("shared"); // production defaults to the shared couple app
     expect(info.misconfigured).toBe(true);
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
     logBuildInfo(info);
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining("WITHOUT SUPABASE CONFIGURATION"));
+    expect(error).toHaveBeenCalledWith(expect.stringContaining("WITHOUT SUPABASE CONFIGURATION"));
     expect(
       (window as unknown as { __ELENAS_PLATE_BUILD__?: unknown }).__ELENAS_PLATE_BUILD__,
     ).toEqual(info);
-    warn.mockRestore();
+    error.mockRestore();
+  });
+
+  it("a production bundle may run in demo mode only when it says so explicitly", async () => {
+    const { getBuildInfo } = await load(false, true, "demo");
+    const info = getBuildInfo();
+    expect(info.mode).toBe("demo");
+    expect(info.target).toBe("demo");
+    expect(info.targetExplicit).toBe(true);
+    expect(info.misconfigured).toBe(false);
+  });
+
+  it("a development bundle that declares the shared target still requires Supabase", async () => {
+    const { getBuildInfo } = await load(false, false, "shared");
+    expect(getBuildInfo().misconfigured).toBe(true);
+  });
+
+  it("an unknown target value is ignored, not trusted", async () => {
+    const { getBuildInfo } = await load(false, true, "production");
+    const info = getBuildInfo();
+    expect(info.target).toBe("shared");
+    expect(info.targetExplicit).toBe(false);
+    expect(info.misconfigured).toBe(true);
   });
 
   it("falls back to unknown when no SHA was injected", async () => {

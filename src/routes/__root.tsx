@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { StoreProvider } from "@/lib/store";
 import { AuthGate } from "@/components/auth/AuthGate";
+import { RuntimeGate } from "@/components/nutrition/RuntimeGate";
 import { Toaster } from "@/components/ui/sonner";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 
@@ -147,13 +148,16 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthGate>
-        <StoreProvider>
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
-          <Toaster position="top-center" dir="rtl" richColors closeButton />
-        </StoreProvider>
-      </AuthGate>
+      {/* Fail-safe (DEC-024): a shared build without Supabase config never mounts the app. */}
+      <RuntimeGate>
+        <AuthGate>
+          <StoreProvider>
+            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+            <Outlet />
+            <Toaster position="top-center" dir="rtl" richColors closeButton />
+          </StoreProvider>
+        </AuthGate>
+      </RuntimeGate>
     </QueryClientProvider>
   );
 }
