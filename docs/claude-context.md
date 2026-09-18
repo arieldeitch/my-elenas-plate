@@ -7,8 +7,9 @@ Updated 2026-09-18.
 
 - **Project:** shared Nutrition Tracker for **אריאל (Ariel)** and **אלנה (Elena)** — Hebrew, RTL,
   mobile-first daily logging.
-- **Branch:** `main` (M1 `recovery/m1-shared-truth` merged 2026-09-18). M1 status:
-  `docs/claude-tasks/M1_STATUS.md`; latest run record: `docs/claude-tasks/RUN_2026-09-18_M1_PROMOTION.md`.
+- **Branch:** `main` (M1 merged 2026-09-18; fail-safe runtime + preflight + M2 step 1 the same day).
+  M1 status: `docs/claude-tasks/M1_STATUS.md`; latest run record:
+  `docs/claude-tasks/RUN_2026-09-18_M2_PREP.md` (previous: `RUN_2026-09-18_M1_PROMOTION.md`).
 - **Supabase project:** `rqgoiuztphkcvbwtbxbj` (production). Isolated test branch
   `m1-shared-truth-test` (`uyroeumwmjhrcbkesmgb`).
 - **Production DB status:** bootstrap complete, catalog seeded. **Pending:** the reviewed grants
@@ -85,7 +86,7 @@ seeded. Nothing was ever broken in the migration.
 Not a repository audit, and not a migration:
 
 1. Read `docs/claude-context.md`.
-2. Read `docs/claude-tasks/RUN_2026-09-18_M1_PROMOTION.md` (latest run record + blockers).
+2. Read `docs/claude-tasks/RUN_2026-09-18_M2_PREP.md` (latest run record + blockers).
 3. Read `docs/project-status.md` and `docs/todo.md`.
 4. Check the current branch, HEAD and `git status` (read-only).
 5. **M1 release is blocked on two actions only Ariel can do** (see the latest run record §"YOU"):

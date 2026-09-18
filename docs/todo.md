@@ -33,6 +33,13 @@ Spec `docs/claude-tasks/M1_SHARED_TRUTH_RECOVERY.md`, status `M1_STATUS.md`, run
       (`LOCAL_IMPORT_ENABLED = false`). Decide: discard (default) or re-enable a guarded one-time
       import per device before the cloud publish.
 
+## M2 — Couple-first home (P1) — **In Progress (2026-09-18)**
+
+- [x] M2-1 — partner's day at a glance on the home screen (`PartnerGlance`, partner day hydrated for
+      the viewed date; `e2471e6`).
+- [ ] M2-2 — partner fasting / workout on the glance card; lower-friction logging from the home screen
+      (design first: `docs/02-ux-ui-guidelines.md`, keep the home compact, no food details on tiles).
+
 ## T-034 (P1) — Backend verification — **Done (2026-08-01)**
 
 Closed as **Backend Verified**. Every acceptance criterion that does not require a rendered browser has

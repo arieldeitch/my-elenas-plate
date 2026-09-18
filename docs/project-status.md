@@ -1,13 +1,23 @@
 # Project Status
 
-**Date:** 2026-09-18
-**Branch:** `main` — `recovery/m1-shared-truth` merged (see `docs/claude-tasks/RUN_2026-09-18_M1_PROMOTION.md`)
+**Date:** 2026-09-18 (second run)
+**Branch:** `main` — M1 merged; fail-safe runtime + release preflight + first M2 step (see
+`docs/claude-tasks/RUN_2026-09-18_M2_PREP.md`)
 **Supabase project:** `rqgoiuztphkcvbwtbxbj` (production) · isolated branch `uyroeumwmjhrcbkesmgb`
 **Stage:** **M1 code complete and merged; M1 release BLOCKED on two owner actions (DEC-024)**
 **Deployment:** none performed. The published site is a **pre-M1, demo-mode build** (no Supabase env).
 **Pilot-ready code checkpoint:** tag `pilot-ready-2026-07-24` → `29ac1d5`.
 
 > Rule: nothing is listed as "working" unless it was actually run/verified.
+
+## 2026-09-18 (second run) — fail-safe runtime, release preflight, `.env.production`, M2 partner glance
+
+Full record: `docs/claude-tasks/RUN_2026-09-18_M2_PREP.md`. A production build without Supabase config is
+now **blocked** by `RuntimeGate` (DEC-025); `/build-info.json` + `npm run preflight -- --env|--local|--live`
+are the executable release gate; `.env.production` is committed with the public URL/target and one
+line for the owner's anon key (Lovable delivers frontend env only via a `.env` file in the code);
+the home screen shows the partner's day at a glance (M2 step 1). Gate: typecheck 0 · lint 0/8 ·
+vitest 270 · hermetic Playwright 4/4 · build. Owner actions unchanged (key line + Publish; grants SQL).
 
 ## 2026-09-18 — M1 promotion run: merged to `main`, release blocked, live site found in demo mode
 
