@@ -2,7 +2,7 @@
 
 **Branch:** `recovery/m1-shared-truth`
 **Spec:** `M1_SHARED_TRUTH_RECOVERY.md` (authoritative)
-**Last updated:** 2026-09-18 (promotion run; see §4 and `RUN_2026-09-18_M1_PROMOTION.md`)
+**Last updated:** 2026-09-18 (live acceptance run; see §4 and `RUN_2026-09-18_M1_ACCEPTANCE.md`)
 **Isolated test environment:** Supabase development branch `m1-shared-truth-test` (`uyroeumwmjhrcbkesmgb`), parent `rqgoiuztphkcvbwtbxbj`, no production data.
 
 **M1 status: all acceptance criteria are proven on the isolated real backend, except two that are
@@ -59,6 +59,12 @@ would broadcast entire deleted rows to every subscriber of the table — a cross
 | 12  | No Docker on the workstation                         | **True**.                                                                                                                                                                                                       |
 
 ## 4. Remaining work (release actions, not code) — updated 2026-09-18
+
+**2026-09-18, ninth run (`RUN_2026-09-18_M1_ACCEPTANCE.md`):** items 1–2 below are done by the owner
+(grants/ledger applied and verified; key committed in `2651c0c`; Lovable published `0cd3673`);
+`npm run preflight -- --live` = **PREFLIGHT PASS — 14 checks**; anonymous RLS probes pass. Item 3's
+authenticated checks (§3 items 1–8, 10) are executed by the couple on their phones via
+`M1_RELEASE_ACCEPTANCE.md` §3a; their reply closes M1. Historical text follows.
 
 Run record: `RUN_2026-09-18_M1_PROMOTION.md`. The 2026-09-18 run independently re-ran the Docker-free
 gate on `edc2d54` (typecheck, lint, vitest 254, build with SHA, hermetic Playwright 3/3) and merged

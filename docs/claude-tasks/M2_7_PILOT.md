@@ -1,6 +1,8 @@
 # M2-7 — three-day real-device pilot
 
-**Status:** ready, **not started** — starts the day `M1_RELEASE_ACCEPTANCE.md` passes (M1 closed).
+**Status (2026-09-18, ninth run):** **may start now** — production serves the cloud build `0cd3673`
+(`PREFLIGHT PASS`, database verified). **Day 0** = `M1_RELEASE_ACCEPTANCE.md` §3a on both phones (≈10
+minutes; its reply closes M1), then days 1–3 below.
 **Who:** Ariel and Elena, each on their own phone, using the app normally. No artificial QA.
 **Length:** three ordinary days (start date recorded below when it begins).
 
@@ -46,10 +48,10 @@ Read the log, count the lines by severity and by step of the loop (home → meal
 quantity → finish → review), and select **M2-8 from that evidence only**. Record the pilot's start
 date, deployed SHA and deployment id here when it starts.
 
-| Field            | Value                  |
-| ---------------- | ---------------------- |
-| Pilot start      | _not started_          |
-| Deployed SHA     | _—_                    |
-| Deployment id    | _—_                    |
-| Supabase project | `rqgoiuztphkcvbwtbxbj` |
-| M1 acceptance    | _pending_              |
+| Field            | Value                                                                                              |
+| ---------------- | -------------------------------------------------------------------------------------------------- |
+| Pilot start      | _day 0 = the §3a walk-through; days 1–3 = the first three ordinary days after it_                  |
+| Deployed SHA     | `0cd3673` (built 2026-09-18T12:18Z)                                                                |
+| Deployment id    | `psr2.4acecc14-952f-41f4-aec6-94b6a541e8d9.1790339021.pQYI2WgswgAdhO-NblQztghHe2aS6FoOf7juczbjFq4` |
+| Supabase project | `rqgoiuztphkcvbwtbxbj`                                                                             |
+| M1 acceptance    | §2 PASS · DB verified · §3 item 9 PASS · items 1–8, 10 via §3a on the phones                       |

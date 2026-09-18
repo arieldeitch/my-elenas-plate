@@ -5,13 +5,20 @@ genuinely live in production. Everything below is read-only against production; 
 writes production data except the two real-user acceptance entries in §3, made by the couple's
 own accounts through the app.
 
-**Status (updated 2026-09-18): owner actions A, B and C completed externally; live acceptance still pending.**
-Evidence: `.env.production` on `main` now contains the production Supabase publishable key in commit
-`2651c0c1e7d298ce8442e50b68343210bb97b945` (A complete). Lovable has synced that same commit and a
-new production publish was triggered (B complete; live preflight still required to prove the served bundle).
-Supabase production now has the reviewed M1 grants/default privileges applied and verified. All 10 expected public tables have RLS enabled; `authenticated` and `service_role` have the required table privileges; the migration ledger now contains both `20260725190000` and `20260916120000`; the two existing SECURITY DEFINER functions remain pinned to `search_path=public`. Action C is complete. Live preflight and the ten live checks are still required before M1 can close.
-When §1–§3 pass, record the evidence in a `RUN_<date>_M1_ACCEPTANCE.md`, `M1_STATUS.md` §4 and close
-M1 in `docs/todo.md`.
+**Status (updated 2026-09-18, ninth run): §1 done · §2 PASS · §3 pending on the phones (§3a).**
+Evidence (`RUN_2026-09-18_M1_ACCEPTANCE.md`): `npm run preflight -- --live` → **PREFLIGHT PASS — 14
+checks** on the served build of `main` `0cd3673` (deployment `psr2.4acecc14…`, `mode=cloud`,
+`target=shared`, `misconfigured=false`, host `rqgoiuztphkcvbwtbxbj.supabase.co`, no secret material);
+the sign-in screen is served with no block page and no console errors. Database: the owner applied and
+verified the reviewed grants/default privileges and ledger rows directly (10 tables, RLS on all,
+`authenticated`/`service_role` privileges, ledger `20260725190000` + `20260916120000`, SECURITY DEFINER
+functions pinned); from a session, anonymous REST reads return `[]` on all 10 tables and an anonymous
+insert is rejected by RLS. Of §3, **item 9 PASSES**; items 1–8 and 10 need the shared account signed in
+on a real device — no Claude session has that (no Chrome extension, MCP accounts belong to another
+workspace, production sign-up flows are off-limits) — so they are executed by Ariel and Elena via
+**§3a** and M1 is marked CLOSED by the next run from their reply. Security-advisor items (mutable
+`search_path` on `set_updated_at`, SECURITY DEFINER exposure, leaked-password protection) are recorded
+in `docs/todo.md` for a hardening pass; none blocks M1.
 
 Direct links for the owner actions (all three are inside Ariel's own accounts):
 
@@ -63,11 +70,33 @@ Use the shared household account. The UI test ids below exist on `main` since M2
 Delete the two acceptance entries afterwards if they are not real meals, from the app (so the
 deletes propagate), and note it.
 
+### 3a. The same checks on your own phones (Ariel + Elena, ≈10 minutes, once) — closes M1
+
+No Supabase, GitHub or Lovable. Both of you open <https://my-elenas-plate.lovable.app> and sign in
+with the shared account. Then, in order:
+
+| #   | Do                                                                                       | OK when                                                                                     |
+| --- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| 1   | On Elena's phone, first open: choose **אלנה** in the device chooser; reload the page     | The today card is Elena's after the reload; the switcher shows אלנה                         |
+| 2   | On Ariel's phone (as **אריאל**): log one real food in an empty meal                      | The editor title says the meal · אריאל; the row shows **מסונכרן** afterwards                |
+| 3   | On Elena's phone (as **אלנה**): log one real food                                        | Same, with · אלנה; Ariel's day did not change                                               |
+| 4   | Look at the partner card on both phones                                                  | Each phone shows the other person's entry for today                                         |
+| 5   | Ariel adds one more food; Elena watches her phone **without reloading**                  | Elena's partner card updates within a few seconds                                           |
+| 6   | Reload both phones                                                                       | Nothing changed; the footer reads `build 0cd3673 · cloud` (or a newer sha, still `· cloud`) |
+| 7   | On a phone that used the old (demo) app: after signing in                                | None of the old demo entries appear; today shows only what you logged now                   |
+| 8   | On Ariel's phone, switch to **אלנה** and change the quantity of Elena's entry with − / + | Only Elena's row changed, on both phones                                                    |
+| 10  | Normal use: tile → result → סיום; a chip; skip a meal; log fasting; log a workout        | Each shows **מסונכרן** afterwards, never stuck on ממתין לסנכרון / הסנכרון נכשל              |
+
+(Item 9, authorization, is already PASS from the session — nothing to do.) Then reply, in the next
+run's prompt or a note: **"§3a all OK"**, or the numbers that were not OK and what you saw. That reply
+is the evidence that closes M1; the entries you logged are real meals, keep them.
+
 ## 4. Verdict
 
-M1 is **live** only when §2 is `PREFLIGHT PASS`, the DB check passes, and §3 has ten `PASS`.
-Record the run in a `RUN_<date>_M1_ACCEPTANCE.md` next to this file with the preflight output, the
-SQL output and the ten results; update `M1_STATUS.md`, `docs/todo.md`, `docs/claude-context.md`.
+M1 is **live** only when §2 is `PREFLIGHT PASS`, the DB check passes, and §3 has ten `PASS` (§3a
+replies count as the `PASS` for items 1–8 and 10). §2 + DB + item 9: done 2026-09-18
+(`RUN_2026-09-18_M1_ACCEPTANCE.md`). The next run records the §3a reply there, then marks M1 CLOSED in
+`M1_STATUS.md`, `docs/todo.md`, `docs/project-status.md`, `docs/claude-context.md`.
 
 ## 5. Legacy phone data — verified behaviour (2026-09-18, hermetic proof)
 
@@ -77,7 +106,6 @@ apple / weigh-in / favourite do not appear), pushes nothing derived from it, lea
 byte-for-byte intact, sets the `elenas-plate:migrated:*` markers so the retired importer can never
 auto-fire, and new logging writes to the cloud only. Live check §3 item 7 confirms the same on a real
 phone; M1-R5 (import or discard) stays a separate decision.
-
 
 ### Production DB evidence — 2026-09-18
 

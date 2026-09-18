@@ -4,7 +4,7 @@ Status legend: Done / In Progress / Blocked / Deferred / Not Started.
 Updated 2026-09-18. **Production bootstrap is complete** — Supabase project `rqgoiuztphkcvbwtbxbj`
 holds 1 household, 2 profiles (אריאל/אלנה), 6 meal slots, RLS on 10 tables and 390 active foods
 (status `READY`). Rollback code checkpoint: tag `pilot-ready-2026-07-24` (`29ac1d5`).
-**M1 code is Done and merged to `main`; owner release actions A/B/C are complete. M1 now waits only on live preflight + ten live acceptance checks.**
+**M1 code is Done and merged to `main`; owner release actions A/B/C are complete; live preflight PASS on the served `0cd3673` (2026-09-18). M1 now waits only on the couple's §3a walk-through on their phones (`M1_RELEASE_ACCEPTANCE.md`).**
 **T-034 was split on 2026-08-01** (DEC-023): the backend half is **Done**, the browser-dependent half
 (**T-034-UI**) is **Blocked** until a browser automation capability exists.
 
@@ -20,10 +20,19 @@ Spec `docs/claude-tasks/M1_SHARED_TRUTH_RECOVERY.md`, status `M1_STATUS.md`, run
 - [x] **M1-R2 — production grants/default privileges + ledger repair.** Applied and verified directly
       against `rqgoiuztphkcvbwtbxbj`: all 10 public tables RLS-enabled; authenticated/service_role have
       required privileges; ledger contains `20260725190000` + `20260916120000`.
-- [ ] **M1-R3 — live acceptance** (after R1 + R2, needs an authenticated browser session): the ten
-      checks in the run record §"LIVE ACCEPTANCE", plus T-034-UI.
+- [ ] **M1-R3 — live acceptance.** 2026-09-18 (`RUN_2026-09-18_M1_ACCEPTANCE.md`): §2 `PREFLIGHT PASS`
+      (14 checks) on the served `0cd3673`; DB verified; §3 item 9 PASS (anonymous RLS probes). Items
+      1–8 and 10 need the signed-in household account on real devices → Ariel + Elena run
+      `M1_RELEASE_ACCEPTANCE.md` §3a (≈10 min) and reply; the next run records it and closes M1.
+      T-034-UI closes with it.
 - [ ] M1-R4 — housekeeping: reset the leaked branch DB password or delete branch `uyroeumwmjhrcbkesmgb`
       once M1 is closed.
+- [ ] **M1-R6 — hardening pass (after M1, not a blocker; from the Supabase security advisors,
+      2026-09-18):** `set_updated_at` has a mutable `search_path` (pin `search_path = public`);
+      SECURITY DEFINER functions (`bootstrap_household`, `is_household_member`) are executable by
+      broader roles than needed (revoke from `anon`/`public` where safe); leaked-password protection is
+      disabled in Auth. Also observed: Lovable's "Edit with Lovable" badge is visible on production
+      (project setting). One dedicated run, reviewed migration, never a plain `db push`.
 - [ ] **M1-R5 (product decision, Ariel) — phone-local demo data.** Every entry logged on the live
       demo build since July lives only in each phone's localStorage. The connected build starts
       empty and hydrates from the cloud; the one-time local→cloud import is disabled by design
@@ -48,7 +57,7 @@ Spec `docs/claude-tasks/M1_SHARED_TRUTH_RECOVERY.md`, status `M1_STATUS.md`, run
 - [x] M2-6 — direct add from search results (DEC-030, `7da1a3d`): one choose path for chips and
       results; trusted usual quantity = 1 × count unit; weight-first foods keep the quantity screen;
       results show what a tap does; search clears after an add. Typed count-unit food: 3 → 2 taps.
-- [ ] **M2-7 — real-device pilot (protocol ready: `M2_7_PILOT.md`; starts when M1 closes).** The measured daily loop
+- [ ] **M2-7 — real-device pilot (`M2_7_PILOT.md`; may start now on `0cd3673`; day 0 = §3a).** The measured daily loop
       is now tile → chip/result → optional + → סיום → review, each one tap; the only remaining
       non-one-tap step is typing an amount for weight-first foods, and default amounts would be guesses.
       Once the M1 owner actions land: 3 days of real use by both on their phones, with a short

@@ -1,13 +1,23 @@
 # Project Status
 
-**Date:** 2026-09-18 (owner actions A/B/C completed; live acceptance pending)
-**Branch:** `main` — production runtime config, Lovable publish, grants/default privileges and migration-ledger repair completed; live M1 acceptance remains — see `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md`
+**Date:** 2026-09-18 (ninth run — production release verified; M1 closes on the phones)
+**Branch:** `main` — served production build = `0cd3673`, `PREFLIGHT PASS`, DB verified; M1 acceptance §3a (phones) remains — see `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md`
 **Supabase project:** `rqgoiuztphkcvbwtbxbj` (production) · isolated branch `uyroeumwmjhrcbkesmgb`
-**Stage:** **Feature work paused. M1 = YELLOW only because live preflight + ten live acceptance checks are pending; M2-7 pilot protocol ready (`M2_7_PILOT.md`), starts when M1 closes**
-**Deployment:** production Supabase publishable config is committed; Lovable synced current main and a new production publish was triggered. Served build still requires live preflight verification before M1 can close.
+**Stage:** **Feature work paused. M1 = YELLOW only because §3 items 1–8/10 need the signed-in account on real phones (§3a); M2-7 pilot may start now on `0cd3673` (`M2_7_PILOT.md`)**
+**Deployment:** <https://my-elenas-plate.lovable.app> serves `main` `0cd3673` (deployment `psr2.4acecc14…`): `mode=cloud`, `target=shared`, `misconfigured=false`, host `rqgoiuztphkcvbwtbxbj`, no secrets — `PREFLIGHT PASS — 14 checks` (2026-09-18).
 **Pilot-ready code checkpoint:** tag `pilot-ready-2026-07-24` → `29ac1d5`.
 
 > Rule: nothing is listed as "working" unless it was actually run/verified.
+
+## 2026-09-18 (ninth run) — M1 live acceptance: release verified, closes on the phones
+
+Full record: `docs/claude-tasks/RUN_2026-09-18_M1_ACCEPTANCE.md`. After the owner's A/B/C: `npm run preflight
+-- --live` **PASS (14 checks)** on the served build of `0cd3673` (cloud · shared · correct project · no
+secrets); sign-in screen served, no block page, no console errors, legacy `elenas-plate:v1` snapshot left
+intact; anonymous REST reads `[]` on all 10 tables, anonymous insert rejected by RLS (§3 item 9 PASS). Items
+1–8 and 10 need the signed-in household account on real devices → NOT TESTABLE from a session → new §3a in
+`M1_RELEASE_ACCEPTANCE.md` (10-minute walk-through on both phones; the reply closes M1). Pilot may start
+now. Security-advisor items recorded in `docs/todo.md` for a hardening pass. Docs only; no code.
 
 ## 2026-09-18 (eighth run) — M1 closure attempt, pilot prepared
 
