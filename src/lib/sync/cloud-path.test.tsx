@@ -458,6 +458,42 @@ describe("account boundaries", () => {
 });
 
 describe("device sessions (DEC-031)", () => {
+  it("a session replaced mid-activation never installs a stale context; the new session activates once", async () => {
+    // Make the FIRST bootstrap slow so the sign-out lands while it is in flight.
+    const tokens: string[] = [];
+    fake.realtime = { setAuth: (t: string) => void tokens.push(t) };
+    const originalRpc = fake.rpc.bind(fake);
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    let calls = 0;
+    fake.rpc = async (name: string) => {
+      calls += 1;
+      if (calls === 1) await gate;
+      return originalRpc(name);
+    };
+    try {
+      auth.token = "old-jwt";
+      const hook = renderHook(() => useStore(), { wrapper });
+      await waitFor(() => expect(calls).toBe(1));
+      // Old session gone, new identity signed in — while bootstrap #1 still hangs.
+      auth.userId = "77777777-7777-4777-8777-777777777777";
+      auth.token = "new-jwt";
+      act(() => auth.callback!(null));
+      act(() => auth.callback!({ user: { id: auth.userId }, access_token: "new-jwt" }));
+      release();
+      await waitFor(() => expect(hook.result.current.syncState).toBe("saved"));
+      await waitFor(() => expect(fake.handlers.size).toBeGreaterThan(0));
+      // Exactly one channel, authenticated with the NEW token; the stale
+      // activation installed nothing.
+      expect(fake.channelCount).toBe(1);
+      expect(tokens).toEqual(["new-jwt"]);
+      expect(queue.getQueueOwner()).toBe(auth.userId);
+      hook.unmount();
+    } finally {
+      fake.rpc = originalRpc;
+    }
+  });
+
   it("the realtime channel is authenticated with the device session's access token", async () => {
     const tokens: string[] = [];
     fake.realtime = { setAuth: (t: string) => void tokens.push(t) };

@@ -290,6 +290,10 @@ export function useSupabaseSync(args: Args): SyncControls {
     // Single-flight: the auth SIGNED_IN event and the initial call can race;
     // without this both bootstrap and both subscribe (duplicate channels).
     let activating = false;
+    // Session generation: a sign-out (or session replacement, DEC-031) that
+    // lands while an activation is still awaiting the network must not let
+    // that activation install a context/channel for a session that is gone.
+    let generation = 0;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
     let retryAttempt = 0;
 
@@ -311,19 +315,30 @@ export function useSupabaseSync(args: Args): SyncControls {
       }, delay);
     }
 
+    // A request that arrives mid-activation (e.g. the SIGNED_IN of a replacement
+    // session, DEC-031) is remembered and served right after — never dropped.
+    let activateAgain = false;
     async function activate() {
-      if (activating) return;
+      if (activating) {
+        activateAgain = true;
+        return;
+      }
       activating = true;
       try {
         await activateOnce();
       } finally {
         activating = false;
       }
+      if (activateAgain && !disposed) {
+        activateAgain = false;
+        void activate();
+      }
     }
 
     async function activateOnce() {
+      const gen = generation;
       const session = await getSession();
-      if (!session || disposed || ctxRef.current) return;
+      if (!session || disposed || ctxRef.current || gen !== generation) return;
       try {
         userIdRef.current = session.user.id;
         queue.setQueueOwner(session.user.id);
@@ -337,7 +352,7 @@ export function useSupabaseSync(args: Args): SyncControls {
           );
         setSyncState("saving");
         const ctx = await bootstrapHousehold();
-        if (disposed) return;
+        if (disposed || gen !== generation) return; // session replaced meanwhile
         ctxRef.current = ctx;
 
         // The one-time localStorage -> cloud import (T-023) is retired; markers
@@ -349,6 +364,7 @@ export function useSupabaseSync(args: Args): SyncControls {
         retryAttempt = 0;
         await hydrateFoodsList();
         await hydrate(viewRef.current.profile, viewRef.current.iso);
+        if (disposed || gen !== generation) return;
         publishState();
 
         unsubRealtime = subscribeHousehold(ctx, onRealtime, session.access_token, setRealtime);
@@ -398,6 +414,7 @@ export function useSupabaseSync(args: Args): SyncControls {
       if (!s) {
         // Sign-out: drop the household context AND the realtime channel, so a
         // later sign-in subscribes exactly once instead of stacking channels.
+        generation += 1;
         setActive(false);
         ctxRef.current = null;
         userIdRef.current = undefined;

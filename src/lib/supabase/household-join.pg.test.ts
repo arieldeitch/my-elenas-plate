@@ -14,7 +14,7 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { join, join as join_ } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
 
@@ -219,5 +219,155 @@ describe("bootstrap_household — one shared household for every device (DEC-031
       ),
     );
     expect(rows.rows.map((r) => r.food_name)).toEqual(["בננה", "תפוח"]);
+  });
+});
+
+/**
+ * Production-shaped history: the July 2026 household (seeded catalog, two
+ * profiles, the permanent shared account as owner) already exists, and a
+ * stray newer household exists too (e.g. created by a sign-in under the old
+ * per-user bootstrap). Every new device must land in the historical one.
+ */
+describe("bootstrap_household — historical household wins, catalog stays attached, 20 joins", () => {
+  let db2: PGlite;
+  const OLD = "10000000-0000-4000-8000-000000000001";
+  const NEWER = "20000000-0000-4000-8000-000000000002";
+  const PERMANENT = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+
+  async function asUser2<T>(sub: string | null, fn: () => Promise<T>): Promise<T> {
+    if (sub) await db2.exec(`insert into auth.users (id) values ('${sub}') on conflict do nothing`);
+    const claims = sub ? JSON.stringify({ sub, role: "authenticated", is_anonymous: true }) : "";
+    await db2.exec(
+      `select set_config('request.jwt.claims', '${claims}', false); set role authenticated;`,
+    );
+    try {
+      return await fn();
+    } finally {
+      await db2.exec(`reset role; select set_config('request.jwt.claims', '', false);`);
+    }
+  }
+  const join = (sub: string | null) =>
+    asUser2(sub, async () => {
+      const r = await db2.query<{ hid: string }>("select public.bootstrap_household() as hid");
+      return r.rows[0].hid;
+    });
+  const n = async (sql: string) => Number((await db2.query<{ n: string | number }>(sql)).rows[0].n);
+
+  beforeAll(async () => {
+    db2 = new PGlite({ extensions: { pgcrypto } });
+    await db2.exec(`
+      create schema auth;
+      create table auth.users (id uuid primary key);
+      create function auth.uid() returns uuid language sql stable as $$
+        select nullif(nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub', '')::uuid
+      $$;
+      create role anon nologin;
+      create role authenticated nologin;
+      create role service_role nologin bypassrls;
+      grant usage on schema public to anon, authenticated, service_role;
+    `);
+    for (const file of readdirSync(MIGRATIONS).sort()) {
+      if (SKIP.has(file)) continue;
+      await db2.exec(readFileSync(join_(MIGRATIONS, file), "utf8"));
+    }
+    // History: the July household (older) with the permanent account, two
+    // profiles and a catalog; then a stray newer household.
+    await db2.exec(`
+      insert into auth.users (id) values ('${PERMANENT}');
+      insert into public.households (id, name, created_at) values ('${OLD}', 'משק בית', '2026-07-25T10:00:00Z');
+      insert into public.household_users (household_id, user_id, role) values ('${OLD}', '${PERMANENT}', 'owner');
+      insert into public.profiles (household_id, display_name, slug, sort_order)
+        values ('${OLD}', 'אריאל', 'ariel', 1), ('${OLD}', 'אלנה', 'alena', 2);
+      insert into public.foods (household_id, name, normalized_name, default_unit)
+        values ('${OLD}', 'ביצה קשה', 'ביצה קשה', 'יחידה'), ('${OLD}', 'קוטג׳', 'קוטג׳', 'גרם');
+      insert into public.households (id, name, created_at) values ('${NEWER}', 'stray', '2026-09-18T12:00:00Z');
+    `);
+  }, 60_000);
+
+  afterAll(async () => {
+    await db2?.close();
+  });
+
+  it("a caller without a JWT subject cannot bootstrap", async () => {
+    await expect(join(null)).rejects.toThrow(/not authenticated/);
+    expect(await n("select count(*) as n from public.households")).toBe(2);
+  });
+
+  it("20 first-time device identities all join the historical household; nothing new is created", async () => {
+    const slugsBefore = (
+      await db2.query<{ slug: string }>(
+        `select slug from public.profiles where household_id = '${OLD}' order by sort_order`,
+      )
+    ).rows.map((r) => r.slug);
+    const ids = Array.from(
+      { length: 20 },
+      (_, i) => `a0000000-0000-4000-8000-${String(i + 1).padStart(12, "0")}`,
+    );
+    // PGlite is one Postgres session: joins run back-to-back, which is exactly
+    // the order pg_advisory_xact_lock imposes on truly concurrent first joins.
+    const results: string[] = [];
+    for (const id of ids) results.push(await join(id));
+    expect(new Set(results)).toEqual(new Set([OLD]));
+    expect(await n("select count(*) as n from public.households")).toBe(2); // OLD + the pre-existing stray
+    expect(
+      await n(`select count(*) as n from public.household_users where household_id = '${OLD}'`),
+    ).toBe(21);
+    expect(
+      await n(`select count(*) as n from public.household_users where household_id = '${NEWER}'`),
+    ).toBe(0);
+    // Profiles: still exactly two, same slugs, same rows.
+    expect(await n(`select count(*) as n from public.profiles where household_id = '${OLD}'`)).toBe(
+      2,
+    );
+    expect(await n("select count(*) as n from public.profiles")).toBe(2);
+    const slugsAfter = (
+      await db2.query<{ slug: string }>(
+        `select slug from public.profiles where household_id = '${OLD}' order by sort_order`,
+      )
+    ).rows.map((r) => r.slug);
+    expect(slugsAfter).toEqual(slugsBefore);
+    expect(slugsAfter).toEqual(["ariel", "alena"]);
+    // Repeated bootstraps: idempotent.
+    for (const id of ids.slice(0, 5)) expect(await join(id)).toBe(OLD);
+    expect(
+      await n(`select count(*) as n from public.household_users where household_id = '${OLD}'`),
+    ).toBe(21);
+  });
+
+  it("the permanent account keeps its access and still resolves to the same household", async () => {
+    expect(await join(PERMANENT)).toBe(OLD);
+    const role = await db2.query<{ role: string }>(
+      `select role from public.household_users where user_id = '${PERMANENT}'`,
+    );
+    expect(role.rows).toEqual([{ role: "owner" }]);
+  });
+
+  it("the catalog stays attached: a device that joined later sees the household's foods", async () => {
+    const foods = await asUser2("a0000000-0000-4000-8000-000000000020", () =>
+      db2.query<{ name: string; household_id: string }>(
+        "select name, household_id from public.foods order by name",
+      ),
+    );
+    expect(foods.rows.map((f) => f.household_id)).toEqual([OLD, OLD]);
+    expect(foods.rows.map((f) => f.name)).toEqual(["ביצה קשה", "קוטג׳"]);
+  });
+
+  it("before bootstrap a session sees no household row; right after, only the joined household", async () => {
+    const fresh = "b0000000-0000-4000-8000-000000000001";
+    const before = await asUser2(fresh, () =>
+      db2.query("select id from public.households union all select id from public.profiles"),
+    );
+    expect(before.rows).toEqual([]);
+    expect(await join(fresh)).toBe(OLD);
+    const after = await asUser2(fresh, () =>
+      db2.query<{ id: string }>("select id from public.households order by created_at"),
+    );
+    expect(after.rows).toEqual([{ id: OLD }]); // the stray newer household stays invisible
+    const memberships = await asUser2(fresh, () =>
+      db2.query<{ user_id: string }>("select user_id from public.household_users"),
+    );
+    // household_users_select: own row or any member's row of the joined household.
+    expect(memberships.rows.some((m) => m.user_id === fresh)).toBe(true);
+    expect(memberships.rows.some((m) => m.user_id === PERMANENT)).toBe(true);
   });
 });
