@@ -3,7 +3,7 @@
  * Subjective amounts are always stored as entered and never converted to a
  * number — the two modes are validated independently.
  */
-import type { QuantityMode, SubjectiveAmount, Unit } from "./domain";
+import type { FoodKind, QuantityMode, SubjectiveAmount, Unit } from "./domain";
 
 export interface MeasuredInput {
   amount: number;
@@ -116,4 +116,24 @@ export function formatQuantity(entry: {
   const label = amount === 1 ? unit : (UNIT_PLURAL[unit as Unit] ?? unit);
   const num = Number.isInteger(amount) ? String(amount) : String(amount).replace(".", ",");
   return `${num} ${label}`.trim();
+}
+
+// --- M2-6: direct add ----------------------------------------------------------
+
+/**
+ * The quantity a one-tap add uses, or null when no default can be trusted.
+ * The catalog defines a unit ORDER per food but no amount, so the only usual
+ * quantity that exists is "1 × the first unit" — and that is meaningful only
+ * for count units (1 egg, 1 slice, 1 bowl). "1 גרם" of chicken is not a
+ * usual quantity, so weight/volume-first foods, foods without a unit and
+ * coffee (own editor) return null and go through the quantity screen.
+ * Shared by favourite/recent chips and typed search results.
+ */
+export function usualQuantity(food: {
+  kind?: FoodKind;
+  defaultUnit?: Unit;
+}): { mode: "measured"; amount: number; unit: Unit } | null {
+  if (food.kind === "coffee") return null;
+  if (!food.defaultUnit || !COUNT_UNITS.includes(food.defaultUnit)) return null;
+  return { mode: "measured", amount: 1, unit: food.defaultUnit };
 }

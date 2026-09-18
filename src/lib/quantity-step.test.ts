@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { canStep, stepAmount, formatQuantity, COUNT_UNITS } from "./quantity";
+import { canStep, stepAmount, formatQuantity, usualQuantity, COUNT_UNITS } from "./quantity";
 
 describe("M2-5 quantity stepping", () => {
   it("steps count units by 1 and never below 1", () => {
@@ -38,5 +38,28 @@ describe("M2-5 quantity stepping", () => {
     expect(formatQuantity({ mode: "measured", amount: 1.5, unit: "כוס" })).toBe("1,5 כוסות");
     expect(formatQuantity({ mode: "measured", amount: 150, unit: "גרם" })).toBe("150 גרם");
     expect(formatQuantity({ mode: "subjective", subjective: "הרבה" })).toBe("הרבה");
+  });
+});
+
+describe("M2-6 usualQuantity — when a one-tap add can be trusted", () => {
+  it("count-unit foods add 1 × unit", () => {
+    expect(usualQuantity({ defaultUnit: "יחידה" })).toEqual({
+      mode: "measured",
+      amount: 1,
+      unit: "יחידה",
+    });
+    expect(usualQuantity({ defaultUnit: "פרוסה" })).toEqual({
+      mode: "measured",
+      amount: 1,
+      unit: "פרוסה",
+    });
+    expect(usualQuantity({ defaultUnit: "קערה" })?.unit).toBe("קערה");
+  });
+
+  it("weight/volume-first foods, unit-less foods and coffee have no trusted default", () => {
+    expect(usualQuantity({ defaultUnit: "גרם" })).toBeNull(); // קוטג׳, חזה עוף
+    expect(usualQuantity({ defaultUnit: "מ״ל" })).toBeNull();
+    expect(usualQuantity({})).toBeNull();
+    expect(usualQuantity({ kind: "coffee", defaultUnit: "כוס" })).toBeNull();
   });
 });

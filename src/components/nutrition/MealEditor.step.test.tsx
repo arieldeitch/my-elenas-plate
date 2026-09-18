@@ -151,12 +151,11 @@ describe("MealEditor — inline quantity stepper (M2-5)", () => {
   it("the just-added row is highlighted and the toast names the usual quantity", async () => {
     const user = userEvent.setup();
     renderEditor();
-    // Make תפוח a recent so a chip exists, then quick-add it.
+    // First tap: a typed result adds directly (M2-6) and is highlighted; second: the chip.
     await user.type(screen.getByRole("textbox", { name: "חיפוש מאכל" }), "תפוח");
-    await user.click((await screen.findAllByRole("button", { name: /^תפוח / }))[0]);
-    await user.click(screen.getByRole("button", { name: "הוספת המאכל" }));
-    await user.clear(screen.getByRole("textbox", { name: "חיפוש מאכל" }));
-    await user.click(screen.getByRole("button", { name: "תפוח" }));
+    await user.click((await screen.findAllByTestId("search-result"))[0]);
+    expect(screen.getAllByTestId("meal-entry")[0].className).toMatch(/border-primary/);
+    await user.click(screen.getByRole("button", { name: "תפוח, הוספה של 1 יחידה" }));
     const rows = screen.getAllByTestId("meal-entry");
     expect(rows).toHaveLength(2);
     expect(rows[1].className).toMatch(/border-primary/);

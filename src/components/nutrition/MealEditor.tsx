@@ -6,7 +6,7 @@ import { MEAL_ICONS, MEAL_LABELS } from "@/lib/meal-slots";
 import { useStore, PROFILES } from "@/lib/store";
 import { formatShortDate } from "@/lib/format";
 import { coffeeSummary } from "@/lib/coffee";
-import { canStep, formatQuantity, stepAmount } from "@/lib/quantity";
+import { canStep, formatQuantity, stepAmount, usualQuantity } from "@/lib/quantity";
 import { cn } from "@/lib/utils";
 import { FoodSearch } from "./FoodSearch";
 import { QuantitySelector } from "./QuantitySelector";
@@ -76,30 +76,28 @@ export function MealEditor({ slot, onClose }: Props) {
   }
 
   /**
-   * One-tap add from a favourite / recent chip: the food's usual quantity
-   * (1 × its default unit) is applied immediately and can be corrected from the
-   * toast or the row — the common case is "the usual", the rare case still has
-   * the full editor. Foods without a default unit, and coffee, still ask.
+   * ONE choose path for favourite / recent chips AND typed search results
+   * (M2-2 quick add, unified in M2-6): a food with a trusted usual quantity
+   * (`usualQuantity` — 1 × a count unit) is added immediately, attributed to
+   * the active person / selected date / this slot through the same store
+   * path as any add, and can be corrected on the row with − / +. Coffee opens
+   * its editor; a food without a trusted default opens the quantity screen.
+   * Returns what happened so the search box can clear itself after an add.
    */
-  function handleQuickAdd(food: Food) {
+  function handleChoose(food: Food): "added" | "opened" {
     if (food.kind === "coffee") {
       setView({ kind: "coffee" });
-      return;
+      return "opened";
     }
-    const unit = food.defaultUnit;
-    if (!unit) {
+    const usual = usualQuantity(food);
+    if (!usual) {
       setView({ kind: "quantity", food });
-      return;
+      return "opened";
     }
-    const added = store.addEntry(slot!, {
-      foodId: food.id,
-      foodName: food.name,
-      mode: "measured",
-      amount: 1,
-      unit,
-    });
+    const added = store.addEntry(slot!, { foodId: food.id, foodName: food.name, ...usual });
     setJustAdded(added.id);
     toast(`נוסף: ${food.name} · ${formatQuantity(added)}`, { duration: 2500 });
+    return "added";
   }
 
   /** M2-5: one-tap − / + on a count-unit row; the same upsert path as any edit. */
@@ -129,11 +127,6 @@ export function MealEditor({ slot, onClose }: Props) {
   function handleCreateFood(name: string) {
     const f = store.addFood(name);
     setView({ kind: "quantity", food: f });
-  }
-
-  function handlePick(food: Food) {
-    if (food.kind === "coffee") setView({ kind: "coffee" });
-    else setView({ kind: "quantity", food });
   }
 
   return (
@@ -223,8 +216,7 @@ export function MealEditor({ slot, onClose }: Props) {
                   </div>
                 )}
                 <FoodSearch
-                  onPick={handlePick}
-                  onQuickAdd={handleQuickAdd}
+                  onChoose={handleChoose}
                   onCreate={handleCreateFood}
                   onAddCoffee={() => setView({ kind: "coffee" })}
                   autoFocus={isEmpty}

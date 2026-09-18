@@ -11,20 +11,21 @@ test("quick add, one tap on +, finish — the day review shows 2 units", async (
   await waitForHydration(page);
   await page.getByRole("dialog").getByRole("button", { name: /אלנה/ }).click();
 
-  // First time through search (this makes the egg a recent chip).
+  // First time through search: the result adds directly (M2-6) and makes the egg a recent chip.
   await page.getByRole("button", { name: /^פתיחת חלון אכילה:/ }).click();
-  const dialog = page.getByRole("dialog", { name: "פתיחת חלון אכילה · אלנה" });
   await page.getByLabel("חיפוש מאכל").fill("ביצה קשה");
-  await dialog
-    .getByRole("button", { name: /^ביצה קשה/ })
-    .first()
-    .click();
-  await page.getByRole("button", { name: "הוספת המאכל" }).click();
+  const result = page.getByTestId("search-result").filter({ hasText: "ביצה קשה" }).first();
+  await expect(result).toContainText("1 יחידה");
+  await result.click();
+  await expect(page.getByTestId("meal-entry").first()).toHaveAttribute("data-quantity", "1 יחידה");
   await page.getByRole("button", { name: "סיום" }).click();
 
   // The common case: tile → chip (quick add) → + → סיום.
   await page.getByRole("button", { name: /^ארוחה מרכזית:/ }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "ביצה קשה", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "ביצה קשה, הוספה של 1 יחידה" })
+    .click();
   const row = page.getByTestId("meal-entry").last();
   await expect(row).toHaveAttribute("data-quantity", "1 יחידה");
   await expect(row.getByRole("button", { name: "פחות ביצה קשה" })).toBeDisabled();

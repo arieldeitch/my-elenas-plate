@@ -62,17 +62,21 @@ export async function waitLive(page: Page): Promise<void> {
 }
 
 /**
- * Opens a meal and adds a catalog food by name via search (M2 one-screen loop:
- * the search box is already open; after "הוספת המאכל" the entry row is right
- * there). Leaves the dialog open.
+ * Opens a meal and adds a catalog food by name via search. Since M2-6 a result
+ * with a trusted usual quantity (count unit) adds on tap; a weight/volume-first
+ * food opens the quantity screen, which this helper confirms. Leaves the dialog open.
  */
 export async function addSearchedFood(page: Page, mealLabel: string, food: string): Promise<void> {
   await openMeal(page, mealLabel);
   await page.getByLabel("חיפוש מאכל").fill(food);
-  await page
-    .getByRole("button", { name: new RegExp(food) })
-    .first()
-    .click();
-  await page.getByRole("button", { name: "הוספת המאכל" }).click();
+  await pickSearchResult(page, food);
   await expect(page.getByTestId("meal-entries").getByText(food).first()).toBeVisible();
+}
+
+/** Taps the first matching search result; confirms the quantity screen only when it opens. */
+export async function pickSearchResult(page: Page, food: string): Promise<void> {
+  const result = page.getByTestId("search-result").filter({ hasText: food }).first();
+  const direct = (await result.getAttribute("data-direct")) === "true";
+  await result.click();
+  if (!direct) await page.getByRole("button", { name: "הוספת המאכל" }).click();
 }

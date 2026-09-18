@@ -10,12 +10,11 @@ import { waitForHydration } from "./helpers";
 async function logFood(page: import("@playwright/test").Page, slot: string, food: string) {
   await page.getByRole("button", { name: new RegExp(`^${slot}:`) }).click();
   await page.getByLabel("חיפוש מאכל").fill(food);
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: new RegExp(`^${food}`) })
-    .first()
-    .click();
-  await page.getByRole("button", { name: "הוספת המאכל" }).click();
+  // M2-6: a result with a usual quantity adds on tap; otherwise confirm the quantity screen.
+  const result = page.getByTestId("search-result").filter({ hasText: food }).first();
+  const direct = (await result.getAttribute("data-direct")) === "true";
+  await result.click();
+  if (!direct) await page.getByRole("button", { name: "הוספת המאכל" }).click();
   await page.getByRole("button", { name: "סיום" }).click();
 }
 

@@ -26,18 +26,18 @@ test("log as Elena in a few taps, see it on Ariel's partner card, never mixed up
   await expect(dialog).toHaveAttribute("data-owner", "elena");
   await expect(page.getByLabel("חיפוש מאכל")).toBeFocused();
 
-  // Tap 2+3: pick a result, confirm the usual quantity.
+  // Tap 2: the typed result adds directly with its usual quantity (M2-6) — no confirm.
   await page.getByLabel("חיפוש מאכל").fill("סלט ירקות");
-  await dialog
-    .getByRole("button", { name: /^סלט ירקות/ })
-    .first()
-    .click();
-  await page.getByRole("button", { name: "הוספת המאכל" }).click();
+  const first = dialog.getByTestId("search-result").first();
+  await expect(first).toHaveAttribute("data-direct", "true");
+  await expect(first).toContainText("1 קערה");
+  await first.click();
   await expect(page.getByTestId("meal-entries").getByText("סלט ירקות")).toBeVisible();
+  await expect(page.getByLabel("חיפוש מאכל")).toHaveValue("");
+  await expect(page.getByRole("button", { name: "הוספת המאכל" })).toHaveCount(0);
 
-  // Quick add: the recent chip adds the second one in ONE tap (no quantity step).
-  await page.getByLabel("חיפוש מאכל").fill("");
-  await dialog.getByRole("button", { name: "סלט ירקות", exact: true }).click();
+  // Quick add: the recent chip adds the second one in ONE tap (same rule as the result).
+  await dialog.getByRole("button", { name: "סלט ירקות, הוספה של 1 קערה" }).click();
   await expect(page.getByTestId("meal-entries").getByText("סלט ירקות")).toHaveCount(2);
   await expect(page.getByRole("button", { name: "הוספת המאכל" })).toHaveCount(0);
   await page.getByRole("button", { name: "סיום" }).click();
