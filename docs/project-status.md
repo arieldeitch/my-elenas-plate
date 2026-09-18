@@ -1,14 +1,23 @@
 # Project Status
 
-**Date:** 2026-09-18 (seventh run)
-**Branch:** `main` — M2-6 direct add from search results (one choose path for chips and results) — see
-`docs/claude-tasks/RUN_2026-09-18_M2_6_DIRECT_ADD.md`
+**Date:** 2026-09-18 (eighth run)
+**Branch:** `main` — M1 closure attempted: owner actions verifiably not done; pilot protocol ready — see
+`docs/claude-tasks/RUN_2026-09-18_M1_CLOSE_ATTEMPT.md`
 **Supabase project:** `rqgoiuztphkcvbwtbxbj` (production) · isolated branch `uyroeumwmjhrcbkesmgb`
-**Stage:** **M1 code complete; release blocked on owner actions (`M1_RELEASE_ACCEPTANCE.md`); M2-6 done (DEC-030) — daily loop ready for real-device validation**
+**Stage:** **Feature work paused. M1 = YELLOW (owner actions A/B verifiably not done, C unverifiable); M2-7 pilot protocol ready (`M2_7_PILOT.md`), starts when M1 closes**
 **Deployment:** none performed. The published site is a **pre-M1, demo-mode build** (no Supabase env).
 **Pilot-ready code checkpoint:** tag `pilot-ready-2026-07-24` → `29ac1d5`.
 
 > Rule: nothing is listed as "working" unless it was actually run/verified.
+
+## 2026-09-18 (eighth run) — M1 closure attempt, pilot prepared
+
+Full record: `docs/claude-tasks/RUN_2026-09-18_M1_CLOSE_ATTEMPT.md`. Evidence: no key line on `origin/main`,
+live deployment still `0c0eb717…` (demo, no manifest, preflight FAIL), no DB access → M1 stays YELLOW; the
+ten live checks are NOT TESTABLE here. Done instead: legacy-phone-data safety proven by test (cloud starts
+from Supabase, snapshot untouched, nothing imported, importer fenced); `M1_RELEASE_ACCEPTANCE.md` now
+carries the evidence and direct links for the three owner steps; `M2_7_PILOT.md` (three-day real-use
+protocol + one-line friction log) ready. No feature work.
 
 ## 2026-09-18 (seventh run) — M2-6 direct add from search
 

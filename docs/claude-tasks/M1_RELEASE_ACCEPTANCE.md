@@ -5,8 +5,19 @@ genuinely live in production. Everything below is read-only against production; 
 writes production data except the two real-user acceptance entries in §3, made by the couple's
 own accounts through the app.
 
-Status of this document: **not yet executed** (owner actions pending). When it passes, record the
-evidence in `M1_STATUS.md` §4 and close M1 in `docs/todo.md`.
+**Status (checked 2026-09-18, seventh/eighth runs): NOT executed — none of the owner actions has
+happened.** Evidence: `.env.production` on `origin/main` still has no `VITE_SUPABASE_ANON_KEY` line and
+no commit landed on `main` other than Claude's (A not done); the live site still serves deployment
+`0c0eb717…` with the pre-M1 demo bundle and no `/build-info.json` — `npm run preflight -- --live` = FAIL
+(B not done); the database state is unverifiable from a Claude session (C unknown; no output pasted).
+When §1–§3 pass, record the evidence in a `RUN_<date>_M1_ACCEPTANCE.md`, `M1_STATUS.md` §4 and close
+M1 in `docs/todo.md`.
+
+Direct links for the owner actions (all three are inside Ariel's own accounts):
+
+- A — edit the file on GitHub: <https://github.com/arieldeitch/my-elenas-plate/edit/main/.env.production>
+- B — the Lovable project: <https://lovable.dev/projects/ca9aedab-a0ca-4889-a545-9d673febf3a0> → Publish / Update
+- C — the SQL editor: <https://supabase.com/dashboard/project/rqgoiuztphkcvbwtbxbj/sql/new>
 
 ## 1. Owner actions (Ariel — the only steps a Claude session cannot do)
 
@@ -57,3 +68,12 @@ deletes propagate), and note it.
 M1 is **live** only when §2 is `PREFLIGHT PASS`, the DB check passes, and §3 has ten `PASS`.
 Record the run in a `RUN_<date>_M1_ACCEPTANCE.md` next to this file with the preflight output, the
 SQL output and the ten results; update `M1_STATUS.md`, `docs/todo.md`, `docs/claude-context.md`.
+
+## 5. Legacy phone data — verified behaviour (2026-09-18, hermetic proof)
+
+`src/lib/sync/cloud-path.test.tsx` "legacy phone data (M1-R5 safety)": with a realistic pre-cloud
+`elenas-plate:v1` snapshot in localStorage, the cloud build starts from Supabase only (the legacy
+apple / weigh-in / favourite do not appear), pushes nothing derived from it, leaves the snapshot
+byte-for-byte intact, sets the `elenas-plate:migrated:*` markers so the retired importer can never
+auto-fire, and new logging writes to the cloud only. Live check §3 item 7 confirms the same on a real
+phone; M1-R5 (import or discard) stays a separate decision.

@@ -358,6 +358,70 @@ describe("activation resilience", () => {
   });
 });
 
+describe("legacy phone data (M1-R5 safety)", () => {
+  it("a pre-cloud elenas-plate:v1 snapshot is neither shown, imported nor deleted; no writes derive from it", async () => {
+    // What a phone holds after weeks of the old demo build: Ariel logged an apple at lunch.
+    const legacy = {
+      version: 1,
+      activeProfile: "me",
+      days: {
+        me: {
+          [today()]: {
+            meals: {
+              breakfast: { slot: "breakfast", status: "empty", entries: [] },
+              morning_snack: { slot: "morning_snack", status: "empty", entries: [] },
+              lunch: {
+                slot: "lunch",
+                status: "logged",
+                entries: [
+                  {
+                    id: "legacy-1",
+                    foodId: "f_apple",
+                    foodName: "תפוח ישן",
+                    mode: "measured",
+                    amount: 1,
+                    unit: "יחידה",
+                  },
+                ],
+              },
+              afternoon_snack: { slot: "afternoon_snack", status: "empty", entries: [] },
+              dinner: { slot: "dinner", status: "empty", entries: [] },
+              late: { slot: "late", status: "empty", entries: [] },
+            },
+          },
+        },
+        elena: {},
+      },
+      weighIns: { me: [{ id: "w-legacy", dateISO: "2026-08-01", weightKg: 80 }], elena: [] },
+      favorites: { me: ["f_apple"], elena: [] },
+      recents: { me: ["f_apple"], elena: [] },
+      foods: [],
+    };
+    const raw = JSON.stringify(legacy);
+    window.localStorage.setItem("elenas-plate:v1", raw);
+
+    const hook = await mountActive();
+    // Cloud truth only: the legacy apple and weigh-in are not in the store.
+    expect(hook.result.current.getDay("me", today()).meals.lunch.entries).toHaveLength(0);
+    expect(hook.result.current.weighIns).toHaveLength(0);
+    expect(hook.result.current.favorites).toEqual([]);
+    // Nothing was pushed to Supabase from it.
+    expect(fake.rows("food_entries")).toHaveLength(0);
+    expect(fake.rows("weigh_ins")).toHaveLength(0);
+    expect(fake.log.filter((l) => l.action !== "select")).toHaveLength(0);
+    // The snapshot is untouched (preserved for a future, explicit decision) and the
+    // retired importer is fenced off by its markers.
+    expect(window.localStorage.getItem("elenas-plate:v1")).toBe(raw);
+    expect(window.localStorage.getItem("elenas-plate:migrated:v1")).not.toBeNull();
+    // Logging now writes to the cloud, not to the legacy snapshot.
+    act(() => hook.result.current.addEntry("dinner", apple));
+    await waitFor(() => expect(hook.result.current.syncState).toBe("saved"));
+    expect(fake.rows("food_entries")).toHaveLength(1);
+    expect(window.localStorage.getItem("elenas-plate:v1")).toBe(raw);
+    hook.unmount();
+  });
+});
+
 describe("account boundaries", () => {
   it("sign-out removes the realtime channel; sign-in subscribes exactly once again", async () => {
     const hook = await mountActive();

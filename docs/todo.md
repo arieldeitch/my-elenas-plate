@@ -15,7 +15,8 @@ Spec `docs/claude-tasks/M1_SHARED_TRUTH_RECOVERY.md`, status `M1_STATUS.md`, run
 
 - [x] All 12 acceptance criteria proven on the isolated hosted branch (2026-09-16), Docker-free gate
       re-run on a second machine (2026-09-18), branch merged into `main`.
-- [ ] **M1-R1 (Ariel) — runtime config + publish (mechanical since 2026-09-18, DEC-025).** Add the
+- [ ] **M1-R1 (Ariel) — runtime config + publish (mechanical since 2026-09-18, DEC-025). Checked
+      2026-09-18 13:30: NOT done (no key line on `origin/main`, live deployment unchanged).** Add the
       line `VITE_SUPABASE_ANON_KEY=<anon/publishable key>` to the committed `.env.production`
       (GitHub web editor or Lovable code mode), commit to `main`, Publish from Lovable, then
       `npm run preflight -- --live` must print `PREFLIGHT PASS` (footer `build <sha> · cloud`).
@@ -51,7 +52,7 @@ Spec `docs/claude-tasks/M1_SHARED_TRUTH_RECOVERY.md`, status `M1_STATUS.md`, run
 - [x] M2-6 — direct add from search results (DEC-030, `7da1a3d`): one choose path for chips and
       results; trusted usual quantity = 1 × count unit; weight-first foods keep the quantity screen;
       results show what a tap does; search clears after an add. Typed count-unit food: 3 → 2 taps.
-- [ ] **M2-7 (selected next) — real-device validation, not another feature.** The measured daily loop
+- [ ] **M2-7 — real-device pilot (protocol ready: `M2_7_PILOT.md`; starts when M1 closes).** The measured daily loop
       is now tile → chip/result → optional + → סיום → review, each one tap; the only remaining
       non-one-tap step is typing an amount for weight-first foods, and default amounts would be guesses.
       Once the M1 owner actions land: 3 days of real use by both on their phones, with a short

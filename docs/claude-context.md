@@ -1,7 +1,7 @@
 # Claude Context
 
 Fast-start context for Claude Code. The latest user instruction always overrides older docs.
-Updated 2026-09-18 (seventh run).
+Updated 2026-09-18 (eighth run).
 
 ## Start state
 
@@ -10,7 +10,12 @@ Updated 2026-09-18 (seventh run).
 - **Branch:** `main` (M1 merged; fail-safe runtime + preflight; M2 steps 1–6 — all 2026-09-18).
   M1 status: `docs/claude-tasks/M1_STATUS.md`; **M1 release entrypoint:**
   `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md`; latest run record:
-  `docs/claude-tasks/RUN_2026-09-18_M2_6_DIRECT_ADD.md` (previous: `RUN_2026-09-18_M2_5_QUANTITY_STEP.md`).
+  `docs/claude-tasks/RUN_2026-09-18_M1_CLOSE_ATTEMPT.md` (previous: `RUN_2026-09-18_M2_6_DIRECT_ADD.md`).
+- **Feature work is paused (2026-09-18).** The daily loop is considered ready for first real use. Do
+  not build M2-8; it will be selected from the pilot's friction log (`docs/claude-tasks/M2_7_PILOT.md`).
+  Each run: re-check the three owner actions with evidence (key line on `origin/main`,
+  `npm run preflight -- --live`, pasted SQL output); if they landed, execute
+  `M1_RELEASE_ACCEPTANCE.md` §2–§3 and start the pilot.
 - **Home (M2, DEC-026/027):** `TodayCard` (me) → `PartnerGlance` (partner) → six compact `MealCard`s →
   `DailyContextRow` (weight · workout · fasting, inline editors). `DayReview` sheet (DEC-028) opens from
   the today card / partner card: read-only day per slot for either person; edit only for the active
@@ -98,7 +103,7 @@ seeded. Nothing was ever broken in the migration.
 Not a repository audit, and not a migration:
 
 1. Read `docs/claude-context.md`.
-2. Read `docs/claude-tasks/RUN_2026-09-18_M2_6_DIRECT_ADD.md` (latest run record) and
+2. Read `docs/claude-tasks/RUN_2026-09-18_M1_CLOSE_ATTEMPT.md` (latest run record) and
    `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md` (release state).
 3. Read `docs/project-status.md` and `docs/todo.md`.
 4. Check the current branch, HEAD and `git status` (read-only).
