@@ -372,33 +372,45 @@ describe.skipIf(!run)("Supabase live data layer (remote)", () => {
     expect(active).toEqual([]);
   });
 
-  it("isolation: an unrelated account sees none of the household's foods/prefs", async () => {
+  it("isolation: a session that never joined sees none of the household's foods/prefs; a joined one does (DEC-031)", async () => {
     const foodId = uuid();
     await acc.client
       .from("foods")
       .insert({ id: foodId, household_id: acc.householdId, name: "פרטי", normalized_name: "פרטי" })
       .throwOnError();
 
-    const other = await newAccount();
-    const { data: theirView } = await other.client
+    // Never called bootstrap_household(): not a member → nothing visible.
+    const stranger = client();
+    const { error: sErr } = await stranger.auth.signInAnonymously();
+    if (sErr) throw sErr;
+    const { data: theirView } = await stranger
       .from("foods")
       .select("*")
       .eq("household_id", acc.householdId);
     expect(theirView).toEqual([]);
-    const { data: theirPrefs } = await other.client
+    const { data: theirPrefs } = await stranger
       .from("food_preferences")
       .select("*")
       .eq("household_id", acc.householdId);
     expect(theirPrefs).toEqual([]);
+
+    // Joined: the one shared household, same food visible.
+    const other = await newAccount();
+    expect(other.householdId).toBe(acc.householdId);
+    const { data: joinedView } = await other.client.from("foods").select("id").eq("id", foodId);
+    expect(joinedView?.length).toBe(1);
   });
 
   it(
     "realtime: a second context sees insert, update and delete",
     { retry: 2, timeout: 60000 },
     async () => {
-      // Second client authenticated as the SAME shared account (same household).
+      // Second context = another device: its own anonymous session, same household (DEC-031).
       const b = client();
-      await b.auth.signInWithPassword({ email: acc.email, password: acc.password });
+      const { error: bErr } = await b.auth.signInAnonymously();
+      if (bErr) throw bErr;
+      const { data: hidB } = await b.rpc("bootstrap_household");
+      expect(hidB).toBe(acc.householdId);
 
       // Ensure the subscribing socket carries the auth token so RLS lets it see
       // the household's rows.

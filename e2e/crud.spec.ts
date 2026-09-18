@@ -1,17 +1,8 @@
 import { test, expect } from "@playwright/test";
-import {
-  PASSWORD,
-  addSearchedFood,
-  closeDialog,
-  openMeal,
-  signIn,
-  uniqueEmail,
-  waitForApp,
-  waitSaved,
-} from "./helpers";
+import { addSearchedFood, closeDialog, openMeal, openApp, waitForApp, waitSaved } from "./helpers";
 
 test("meal + coffee CRUD persist across refresh", async ({ page }) => {
-  await signIn(page, uniqueEmail());
+  await openApp(page);
 
   // A fresh cloud account starts empty (no demo-seed pollution).
   await addSearchedFood(page, "ארוחת ערב", "תפוח");
@@ -38,7 +29,7 @@ test("meal + coffee CRUD persist across refresh", async ({ page }) => {
 });
 
 test("custom food, favorites and recents", async ({ page }) => {
-  await signIn(page, uniqueEmail());
+  await openApp(page);
 
   await openMeal(page, "ארוחה מרכזית");
   await page.getByLabel("חיפוש מאכל").fill("מאכל בדיקה");
@@ -60,7 +51,7 @@ test("custom food, favorites and recents", async ({ page }) => {
 });
 
 test("built-in food favorite + recent sync (text food_id) per profile", async ({ page }) => {
-  await signIn(page, uniqueEmail());
+  await openApp(page);
 
   // Add + favorite a BUILT-IN catalog food (string id like f_apple) for אריאל.
   await addSearchedFood(page, "ארוחה מרכזית", "תפוח");
@@ -83,7 +74,7 @@ test("built-in food favorite + recent sync (text food_id) per profile", async ({
 });
 
 test("fasting, workout and weigh-in persist", async ({ page }) => {
-  await signIn(page, uniqueEmail());
+  await openApp(page);
 
   // Fasting 20:00 → 12:00 = 16h (crosses midnight)
   await page.getByRole("button", { name: "הוספת שעות" }).click();
@@ -110,7 +101,7 @@ test("fasting, workout and weigh-in persist", async ({ page }) => {
 });
 
 test("profile switching keeps data separate", async ({ page }) => {
-  await signIn(page, uniqueEmail());
+  await openApp(page);
   await addSearchedFood(page, "ארוחת ערב", "תפוח");
   await closeDialog(page);
   await expect(page.getByRole("button", { name: "ארוחת ערב: תועד" })).toBeVisible();
@@ -123,27 +114,23 @@ test("profile switching keeps data separate", async ({ page }) => {
   await expect(page.getByRole("button", { name: "ארוחת ערב: תועד" })).toBeVisible();
 });
 
-test("session lifecycle: clear session then re-login restores cloud data", async ({
+test("session loss: cleared storage → fresh device identity rejoins and the cloud data returns (DEC-031)", async ({
   page,
   context,
 }) => {
-  const email = uniqueEmail();
-  await signIn(page, email);
+  await openApp(page);
   await addSearchedFood(page, "ארוחת ערב", "תפוח");
   await closeDialog(page);
   await waitSaved(page);
 
-  // "Sign out": drop the session, reload → back to the sign-in gate
+  // Storage cleared: the anonymous session is gone for good (not recoverable by design).
   await context.clearCookies();
   await page.evaluate(() => window.localStorage.clear());
   await page.reload();
-  await expect(page.getByRole("button", { name: "סיסמה" })).toBeVisible({ timeout: 30_000 });
 
-  // Re-login with the same account → cloud data returns
-  await page.getByRole("button", { name: "סיסמה" }).click();
-  await page.getByLabel("אימייל").fill(email);
-  await page.getByLabel("סיסמה").fill(PASSWORD);
-  await page.getByRole("button", { name: "כניסה" }).click();
+  // No form: a new silent session joins the same household; the device is asked
+  // who uses it once more, then the day is hydrated from the cloud.
   await waitForApp(page);
+  await expect(page.getByLabel("אימייל")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "ארוחת ערב: תועד" })).toBeVisible();
 });

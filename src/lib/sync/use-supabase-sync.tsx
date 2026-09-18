@@ -327,14 +327,14 @@ export function useSupabaseSync(args: Args): SyncControls {
       try {
         userIdRef.current = session.user.id;
         queue.setQueueOwner(session.user.id);
-        // Ops left behind by a DIFFERENT account on this device must never be
-        // written into this household. Quarantine them (visible, discardable)
-        // instead of letting them sit invisibly in the pending count.
-        for (const m of queue.pending()) {
-          if (!queue.ownedBy(m, session.user.id)) {
-            queue.quarantine(m.id, "belongs to another signed-in account");
-          }
-        }
+        // Every session on this device is a member of the one shared household
+        // (DEC-031), so ops stamped by a previous device identity are adopted
+        // and drained, never lost or parked as "another account".
+        const adopted = queue.adoptAll(session.user.id);
+        if (adopted > 0)
+          console.info(
+            `[elenas-plate] adopted ${adopted} queued op(s) from a previous device session`,
+          );
         setSyncState("saving");
         const ctx = await bootstrapHousehold();
         if (disposed) return;

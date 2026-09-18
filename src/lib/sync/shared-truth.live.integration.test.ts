@@ -90,9 +90,13 @@ describe.skipIf(!run)("M1 shared truth — live (real Auth/RLS/Realtime)", () =>
       householdId: hid as string,
       profileIdBySlug: Object.fromEntries(profiles!.map((p) => [p.slug, p.id])),
     };
+    // Device B: its own anonymous session, joining the same household (DEC-031).
     B = client();
-    const { data: sB, error: eB } = await B.auth.signInWithPassword({ email, password });
+    const { data: sB, error: eB } = await B.auth.signInAnonymously();
     if (eB) throw eB;
+    const { data: hidB, error: jErr } = await B.rpc("bootstrap_household");
+    if (jErr) throw jErr;
+    if (hidB !== ctx.householdId) throw new Error("device B did not join the shared household");
     tokenB = sB.session!.access_token;
   }, 60_000);
 

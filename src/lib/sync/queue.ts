@@ -81,6 +81,26 @@ export function ownedBy(m: QueuedOperation, userId: string | undefined): boolean
 }
 
 /**
+ * Re-stamps every stored op with the current device session (DEC-031). Every
+ * session on a device belongs to the one shared household, so an op left
+ * behind by a previous session identity (storage partly cleared, token
+ * revoked) is still valid and must reach the cloud rather than sit unowned.
+ * Returns the number of ops whose owner changed.
+ */
+export function adoptAll(userId: string): number {
+  const items = read();
+  let n = 0;
+  for (const m of items) {
+    if (m.owner !== userId) {
+      m.owner = userId;
+      n += 1;
+    }
+  }
+  if (n > 0) write(items);
+  return n;
+}
+
+/**
  * Adds a mutation. Duplicate ids are ignored. A pending (non-quarantined) op
  * with the same coalesce key is replaced IN PLACE by the newer one, which keeps
  * the original ordering slot while guaranteeing the latest value wins.

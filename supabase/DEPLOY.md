@@ -1,6 +1,29 @@
 # Deploying to the remote Supabase project
 
-## M1 release (2026-09-18) — ONE migration pending on production
+## Access simplification (2026-09-18, DEC-031) — ONE migration + ONE Auth setting pending on production
+
+`supabase/migrations/20260918160000_anonymous_device_join.sql` replaces `bootstrap_household()` so
+that every device session (Supabase **anonymous** user) joins the one existing household instead of
+creating its own. No table DDL, no policy change, no data change, no privilege for `anon`. Proven on
+the real SQL by `src/lib/supabase/household-join.pg.test.ts`.
+
+Apply path (Dashboard SQL Editor or Management API, ~2 minutes, no CLI, no DB password):
+
+1. Run `supabase/verify_anonymous_join.sql` (read-only); keep the output. §1 must show the July
+   household first (seeded catalog, two profiles).
+2. Run `supabase/apply_anonymous_join_production.sql` (idempotent; also records `20260918160000` in
+   `supabase_migrations.schema_migrations`).
+3. Run `supabase/verify_anonymous_join.sql` again: §3 `is_device_join_version = true`,
+   `anon_can_execute = false`; §4 lists `20260918160000`; §5 RLS on all 10.
+4. **Auth setting:** Authentication → Sign In / Providers → **Allow anonymous sign-ins = ON**
+   (Management API: `PATCH /v1/projects/rqgoiuztphkcvbwtbxbj/config/auth` with
+   `{"external_anonymous_users_enabled": true}`). Verified disabled on 2026-09-18 15:50
+   (`POST /auth/v1/signup {}` → `422 anonymous_provider_disabled`). Leave CAPTCHA off (it would
+   break the silent connection); keep the default anonymous sign-in rate limit.
+
+**Still never a plain `supabase db push` against production** (ledger reasons below).
+
+## M1 release (2026-09-18) — applied to production on 2026-09-18 (kept for history)
 
 > Single entrypoint for the whole release (config, publish, this migration, live acceptance):
 > `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md`.

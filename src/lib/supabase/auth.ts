@@ -1,25 +1,19 @@
 /**
- * Auth helpers for the single shared household account. Wraps supabase.auth
- * with friendly Hebrew messages; never surfaces raw Supabase error text.
+ * Session helpers for the couple app (DEC-031: silent device sessions).
+ *
+ * There is no login. Each device holds a Supabase ANONYMOUS session — a real
+ * authenticated user (role `authenticated`, RLS applies) that identifies the
+ * device, not a person. The person (אריאל / אלנה) is the device profile
+ * (`lib/device-profile.ts`). `bootstrap_household()` makes every such session a
+ * member of the one shared household, so a fresh session (new phone, cleared
+ * storage) sees the same cloud data after choosing the person again.
+ *
+ * The historical email/password + magic-link sign-in was retired on 2026-09-18
+ * (RUN_2026-09-18_ACCESS_SIMPLIFICATION.md); an existing permanent session is
+ * still honoured by `ensureSession()` because it is simply "a session".
  */
 import type { Session } from "@supabase/supabase-js";
 import { getSupabase } from "./client";
-
-export type AuthResult = { ok: true; message?: string } | { ok: false; message: string };
-
-const GENERIC_ERROR = "משהו השתבש. אפשר לנסות שוב.";
-
-function friendly(message: string | undefined): string {
-  const m = (message ?? "").toLowerCase();
-  if (m.includes("invalid login") || m.includes("invalid credentials")) {
-    return "אימייל או סיסמה שגויים.";
-  }
-  if (m.includes("email not confirmed")) return "יש לאשר את האימייל לפני הכניסה.";
-  if (m.includes("rate limit") || m.includes("too many"))
-    return "יותר מדי נסיונות. כדאי להמתין רגע.";
-  if (m.includes("network") || m.includes("fetch")) return "אין חיבור לרשת כרגע.";
-  return GENERIC_ERROR;
-}
 
 export async function getSession(): Promise<Session | null> {
   const sb = getSupabase();
@@ -35,31 +29,19 @@ export function onAuthChange(cb: (session: Session | null) => void): () => void 
   return () => data.subscription.unsubscribe();
 }
 
-export async function signInWithPassword(email: string, password: string): Promise<AuthResult> {
+/**
+ * Returns the device's session, creating a silent anonymous one when none is
+ * stored. Throws when the backend cannot be reached or anonymous sign-ins are
+ * disabled on the project — the gate shows a plain retry state in that case.
+ */
+export async function ensureSession(): Promise<Session | null> {
   const sb = getSupabase();
-  if (!sb) return { ok: false, message: GENERIC_ERROR };
-  const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password });
-  return error ? { ok: false, message: friendly(error.message) } : { ok: true };
-}
-
-export async function signUpWithPassword(email: string, password: string): Promise<AuthResult> {
-  const sb = getSupabase();
-  if (!sb) return { ok: false, message: GENERIC_ERROR };
-  const { error } = await sb.auth.signUp({ email: email.trim(), password });
-  return error ? { ok: false, message: friendly(error.message) } : { ok: true };
-}
-
-export async function signInWithMagicLink(email: string): Promise<AuthResult> {
-  const sb = getSupabase();
-  if (!sb) return { ok: false, message: GENERIC_ERROR };
-  const redirectTo = typeof window !== "undefined" ? window.location.origin : undefined;
-  const { error } = await sb.auth.signInWithOtp({
-    email: email.trim(),
-    options: { emailRedirectTo: redirectTo },
-  });
-  return error
-    ? { ok: false, message: friendly(error.message) }
-    : { ok: true, message: "שלחנו קישור כניסה לאימייל." };
+  if (!sb) return null;
+  const existing = await sb.auth.getSession();
+  if (existing.data.session) return existing.data.session;
+  const { data, error } = await sb.auth.signInAnonymously();
+  if (error) throw error;
+  return data.session;
 }
 
 export async function signOut(): Promise<void> {

@@ -1,13 +1,5 @@
 import { test, expect } from "@playwright/test";
-import {
-  addSearchedFood,
-  closeDialog,
-  openMeal,
-  signIn,
-  uniqueEmail,
-  waitForApp,
-  waitSaved,
-} from "./helpers";
+import { addSearchedFood, closeDialog, openMeal, openApp, waitForApp, waitSaved } from "./helpers";
 
 const SUPABASE_HOST = /supabase\.(co|in)|127\.0\.0\.1:54321/;
 
@@ -25,7 +17,7 @@ test("offline mutation survives a reload, then syncs exactly once on reconnect",
   page,
   context,
 }) => {
-  await signIn(page, uniqueEmail());
+  await openApp(page);
   // Let bootstrap + initial hydrate settle so the mutation is made against a
   // fully active sync (not an in-flight activation).
   await waitSaved(page);

@@ -51,7 +51,7 @@ export function getSupabase(): SupabaseClient<Database> | null {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: true, // required for magic-link redirects
+        detectSessionInUrl: false, // no magic links since DEC-031 (silent device sessions)
       },
     });
   }

@@ -1,8 +1,8 @@
 import { test, expect } from "@playwright/test";
-import { signIn, uniqueEmail, waitForApp } from "./helpers";
+import { openApp, waitForApp } from "./helpers";
 
 test("sign in, bootstrap, RTL, profiles and six meal slots", async ({ page }) => {
-  await signIn(page, uniqueEmail());
+  await openApp(page);
 
   // RTL document
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
@@ -28,7 +28,7 @@ test("sign in, bootstrap, RTL, profiles and six meal slots", async ({ page }) =>
 });
 
 test("mobile viewport has no horizontal overflow", async ({ page }) => {
-  await signIn(page, uniqueEmail());
+  await openApp(page);
   await waitForApp(page);
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,

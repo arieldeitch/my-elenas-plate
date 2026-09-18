@@ -30,9 +30,12 @@ vi.mock("../supabase/client", () => ({
 }));
 const auth = vi.hoisted(() => ({
   callback: null as null | ((s: unknown) => void),
+  // The device session identity (DEC-031): an anonymous Supabase user per device.
+  userId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  token: "token",
 }));
 vi.mock("../supabase/auth", () => ({
-  getSession: async () => ({ user: { id: USER }, access_token: "token" }),
+  getSession: async () => ({ user: { id: auth.userId }, access_token: auth.token }),
   onAuthChange: (cb: (s: unknown) => void) => {
     auth.callback = cb;
     return () => {};
@@ -80,6 +83,8 @@ async function mountActive() {
 beforeEach(() => {
   window.localStorage.clear();
   window.localStorage.setItem(DEVICE_PROFILE_KEY, "me");
+  auth.userId = USER;
+  auth.token = "token";
   seedHousehold();
   fake.log.length = 0;
   fake.channelCount = 0;
@@ -434,24 +439,88 @@ describe("account boundaries", () => {
     hook.unmount();
   });
 
-  it("ops left by another account are quarantined, never written into this household", async () => {
-    const foreign = queue.toQueued({
+  it("ops left by a previous device session are adopted and written into the same household (DEC-031)", async () => {
+    const earlier = queue.toQueued({
       kind: "fasting.set",
       profile: "me",
       iso: today(),
       fasting: { start: "20:00", end: "12:00" },
     });
-    queue.enqueue({ ...foreign, owner: "someone-else" });
+    queue.enqueue({ ...earlier, owner: "previous-device-identity" });
     const hook = await mountActive();
-    // Not applied, not silently pending: visible as failed with a reason.
-    expect(fake.rows("fasting_logs")).toHaveLength(0);
-    expect(queue.pending()).toHaveLength(0);
-    expect(queue.quarantined()[0].lastError).toContain("another signed-in account");
-    await waitFor(() => expect(hook.result.current.syncState).toBe("error"));
-    expect(hook.result.current.syncDetail.failed).toBe(1);
-    act(() => hook.result.current.discardFailedSync());
-    await waitFor(() => expect(hook.result.current.syncState).toBe("saved"));
+    // Drained under the new identity: the household is the same one.
+    await waitFor(() => expect(fake.rows("fasting_logs")).toHaveLength(1));
+    expect(fake.rows("fasting_logs")[0]).toMatchObject({ profile_id: ARIEL, log_date: today() });
+    expect(queue.quarantined()).toHaveLength(0);
+    expect(hook.result.current.syncDetail.failed).toBe(0);
     hook.unmount();
+  });
+});
+
+describe("device sessions (DEC-031)", () => {
+  it("the realtime channel is authenticated with the device session's access token", async () => {
+    const tokens: string[] = [];
+    fake.realtime = { setAuth: (t: string) => void tokens.push(t) };
+    auth.token = "device-jwt";
+    const hook = await mountActive();
+    expect(tokens).toEqual(["device-jwt"]);
+    hook.unmount();
+  });
+
+  it("session loss: a fresh device identity sees the same household's data again and keeps the device's person", async () => {
+    const first = await mountActive();
+    act(() => first.result.current.addEntry("dinner", apple));
+    await waitFor(() => expect(first.result.current.syncState).toBe("saved"));
+    expect(fake.rows("food_entries")).toHaveLength(1);
+    const writesBefore = fake.log.filter((l) => l.action !== "select").length;
+    first.unmount();
+
+    // Browser storage cleared (except the device's person, which the user
+    // chooses again in the real flow): a NEW anonymous user id on next open.
+    window.localStorage.clear();
+    window.localStorage.setItem(DEVICE_PROFILE_KEY, "me");
+    auth.userId = "99999999-9999-4999-8999-999999999999";
+    auth.token = "fresh-jwt";
+
+    const again = await mountActive();
+    // bootstrap_household joins the existing household → the entry is there.
+    await waitFor(() =>
+      expect(again.result.current.getDay("me", today()).meals.dinner.entries).toHaveLength(1),
+    );
+    expect(again.result.current.activeProfile).toBe("me");
+    // Nothing duplicated, nothing rewritten by the re-join.
+    expect(fake.rows("food_entries")).toHaveLength(1);
+    expect(fake.rows("households")).toHaveLength(1);
+    expect(fake.rows("profiles")).toHaveLength(2);
+    expect(fake.log.filter((l) => l.action !== "select")).toHaveLength(writesBefore); // re-join wrote nothing
+    again.unmount();
+  });
+
+  it("a second device (another anonymous user) writes as Elena and the first device sees it via realtime", async () => {
+    const deviceA = await mountActive();
+    deviceA.unmount();
+    // Device B: different identity, chose אלנה on its own chooser.
+    window.localStorage.clear();
+    window.localStorage.setItem(DEVICE_PROFILE_KEY, "elena");
+    auth.userId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    const deviceB = await mountActive();
+    act(() => deviceB.result.current.addEntry("lunch", apple));
+    await waitFor(() => expect(deviceB.result.current.syncState).toBe("saved"));
+    const row = fake.rows("food_entries")[0];
+    expect(row).toMatchObject({ profile_id: ALENA, log_date: today() });
+    deviceB.unmount();
+
+    // Device A again (its own identity): the partner's entry arrives on the realtime echo.
+    window.localStorage.clear();
+    window.localStorage.setItem(DEVICE_PROFILE_KEY, "me");
+    auth.userId = USER;
+    const deviceA2 = await mountActive();
+    expect(deviceA2.result.current.activeProfile).toBe("me");
+    await waitFor(() =>
+      expect(deviceA2.result.current.getDay("elena", today()).meals.lunch.entries).toHaveLength(1),
+    );
+    expect(deviceA2.result.current.getDay("me", today()).meals.lunch.entries).toHaveLength(0);
+    deviceA2.unmount();
   });
 });
 

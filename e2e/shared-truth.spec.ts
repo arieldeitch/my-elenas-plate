@@ -1,13 +1,5 @@
 import { test, expect } from "@playwright/test";
-import {
-  addSearchedFood,
-  closeDialog,
-  openMeal,
-  signIn,
-  uniqueEmail,
-  waitLive,
-  waitSaved,
-} from "./helpers";
+import { addSearchedFood, closeDialog, openMeal, openApp, waitLive, waitSaved } from "./helpers";
 
 /**
  * M1 §5 Tests 1, 2 and 4 in the real browser against a REAL backend. Runs only
@@ -16,13 +8,12 @@ import {
  * accounts and rows.
  */
 async function twoDevices(browser: import("@playwright/test").Browser) {
-  const email = uniqueEmail();
   const ctxA = await browser.newContext();
   const pageA = await ctxA.newPage();
-  await signIn(pageA, email);
+  await openApp(pageA);
   const ctxB = await browser.newContext();
   const pageB = await ctxB.newPage();
-  await signIn(pageB, email);
+  await openApp(pageB);
   // Let both realtime subscriptions establish (no replay before SUBSCRIBED).
   await waitSaved(pageA);
   await waitSaved(pageB);

@@ -1,21 +1,17 @@
 import { expect, type Page } from "@playwright/test";
 
-const DOMAIN = process.env.E2E_EMAIL_DOMAIN || "nutritiontracker.dev";
-export const PASSWORD = "password123";
-
-export function uniqueEmail(): string {
-  return `e2e_${Date.now()}_${Math.floor(Math.random() * 1e6)}@${DOMAIN}`;
-}
-
-/** Fills the SignIn form (password mode) and waits for the app shell. */
-export async function signIn(page: Page, email: string): Promise<void> {
+/**
+ * Opens the app as a fresh device (DEC-031): the gate creates a silent
+ * anonymous session, `bootstrap_household()` joins the one shared household
+ * of the test branch, and the device chooser is answered. There is no login
+ * form to fill; the helper asserts that none appears. Every browser context
+ * therefore shares one household — specs must tolerate data from earlier runs.
+ */
+export async function openApp(page: Page, device: "me" | "elena" = "me"): Promise<void> {
   await page.goto("/");
-  // SignIn renders once the AuthGate resolves (configured, no session).
-  await page.getByRole("button", { name: "סיסמה" }).click();
-  await page.getByLabel("אימייל").fill(email);
-  await page.getByLabel("סיסמה").fill(PASSWORD);
-  await page.getByRole("button", { name: "כניסה" }).click();
-  await waitForApp(page);
+  await waitForApp(page, device);
+  await expect(page.getByLabel("אימייל")).toHaveCount(0);
+  await expect(page.getByLabel("סיסמה")).toHaveCount(0);
 }
 
 /**
