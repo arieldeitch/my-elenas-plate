@@ -27,7 +27,9 @@ const SUBJECTIVE_FACTOR: Record<SubjectiveAmount, number> = {
   מוגזם: 2,
 };
 
-export function portionFactor(entry: Pick<FoodEntry, "mode" | "amount" | "unit" | "subjective">): number {
+export function portionFactor(
+  entry: Pick<FoodEntry, "mode" | "amount" | "unit" | "subjective">,
+): number {
   if (entry.mode === "subjective") return entry.subjective ? SUBJECTIVE_FACTOR[entry.subjective] : 1;
   const amount = Math.max(0, entry.amount ?? 0);
   const unit: Unit | undefined = entry.unit;
@@ -56,10 +58,13 @@ export function pointsForDay(day: DayData, foods: Food[]): number {
   const byId = new Map(foods.map((food) => [food.id, food]));
   const byName = new Map(foods.map((food) => [food.name, food]));
   return Object.values(day.meals).reduce(
-    (total, meal) => total + meal.entries.reduce(
-      (sum, entry) => sum + resolvedEntryPoints(entry, byId.get(entry.foodId) ?? byName.get(entry.foodName)),
-      0,
-    ),
+    (total, meal) =>
+      total +
+      meal.entries.reduce(
+        (sum, entry) =>
+          sum + resolvedEntryPoints(entry, byId.get(entry.foodId) ?? byName.get(entry.foodName)),
+        0,
+      ),
     0,
   );
 }

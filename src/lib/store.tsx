@@ -304,7 +304,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const dayCtx = { profile: activeProfile, iso };
 
   const withPointsSnapshot = (entry: Omit<FoodEntry, "id">): Omit<FoodEntry, "id"> => {
-    const food = foods.find((candidate) => candidate.id === entry.foodId || candidate.name === entry.foodName);
+    const food = foods.find(
+      (candidate) => candidate.id === entry.foodId || candidate.name === entry.foodName,
+    );
     return {
       ...entry,
       pointsValue: pointsForEntry(entry, food),

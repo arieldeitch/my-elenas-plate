@@ -201,7 +201,9 @@ export function MealEditor({ slot, onClose }: Props) {
                       <EntryRow
                         key={e.id}
                         entry={e}
-                        food={store.foods.find((food) => food.id === e.foodId || food.name === e.foodName)}
+                        food={store.foods.find(
+                          (food) => food.id === e.foodId || food.name === e.foodName,
+                        )}
                         isFavorite={store.favorites.includes(e.foodId)}
                         onToggleFavorite={() => store.toggleFavorite(e.foodId)}
                         onEdit={() => {
@@ -348,7 +350,9 @@ function EntryRow({
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-baseline gap-2">
             <span className="truncate font-medium text-foreground">{entry.foodName}</span>
-            <span className="shrink-0 text-xs text-muted-foreground">{formatPoints(resolvedEntryPoints(entry, food))} נק׳</span>
+            <span className="shrink-0 text-xs text-muted-foreground">
+              {formatPoints(resolvedEntryPoints(entry, food))} נק׳
+            </span>
           </div>
           {entry.coffee && <div className="truncate text-xs text-muted-foreground">{detail}</div>}
           {entry.coffee?.note && (
