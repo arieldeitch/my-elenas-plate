@@ -1,9 +1,11 @@
 # Claude Context
 
 Fast-start context for Claude Code. The latest user instruction always overrides older docs.
-Updated 2026-09-18 (eleventh run: reliability/hardening; Auth "Allow anonymous sign-ins" still OFF on production).
+Updated 2026-09-19 (DEC-032 real-device UX + daily steps; Supabase ready, Lovable publish pending).
 
 ## Start state
+
+- **LATEST OVERRIDE (2026-09-19, DEC-032):** Anonymous Auth is ON and working on Ariel's phone. Production DB now has 11 public RLS tables; `20260919044237_daily_steps` is applied/verified. `main` carries the real-device feedback pass: calmer light palette, stronger borders, only Home/Quick Add/Journal nav, global keyboard-safe VisualViewport behavior, 4-tile DailyContext (weight/workout/fasting/steps), and cloud-synced retroactive steps (exact or completed, remembered per-profile goal). Do not rebuild this from scratch. First verify current HEAD/tests, then get Lovable synced/published and run live smoke. Full quality gate has not yet been observed for this HEAD, so do not claim GREEN until it runs.
 
 - **Project:** shared Nutrition Tracker for **אריאל (Ariel)** and **אלנה (Elena)** — Hebrew, RTL,
   mobile-first daily logging.
@@ -40,7 +42,7 @@ Updated 2026-09-18 (eleventh run: reliability/hardening; Auth "Allow anonymous s
   `m1-shared-truth-test` (`uyroeumwmjhrcbkesmgb`).
 - **Production DB status:** bootstrap complete, catalog seeded. The reviewed M1 grants/default
   privileges are applied to production and verified. The migration ledger contains both
-  `20260725190000` and `20260916120000`; all 10 public tables have RLS enabled; authenticated/service_role
+  `20260725190000` and `20260916120000`; the original 10 public tables plus `daily_steps` (11 total) have RLS enabled; authenticated/service_role
   have the required table privileges. Owner action C is complete.
 - **Fail-safe since 2026-09-18 (DEC-025):** a production build without Supabase config is now
   **blocked** (`RuntimeGate`), `.env.production` is committed with the public URL/target and one
