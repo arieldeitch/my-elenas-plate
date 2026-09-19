@@ -10,6 +10,7 @@ import { countEntries } from "@/lib/activity";
 import { coffeeSummary } from "@/lib/coffee";
 import { formatQuantity } from "@/lib/quantity";
 import { cn } from "@/lib/utils";
+import { formatPoints, pointsForDay, pointsForEntry } from "@/lib/points";
 
 interface Props {
   /** Which person's day to show first; null = closed. */
@@ -67,6 +68,8 @@ export function DayReview({ person, onClose, onEditSlot }: Props) {
   const items = countEntries(day);
   const canEdit = viewing === store.activeProfile;
   const feminine = viewing === "elena";
+  const dayPoints = pointsForDay(day, store.foods);
+  const pointsBudget = store.getPointsBudget(viewing);
 
   return (
     <div
@@ -108,6 +111,7 @@ export function DayReview({ person, onClose, onEditSlot }: Props) {
               <div className="text-[12px] text-muted-foreground" data-testid="day-review-summary">
                 {completion.documented}/{completion.total} ארוחות תועדו
                 {items > 0 ? ` · ${items} ${items === 1 ? "פריט" : "פריטים"}` : ""}
+                {` · ${formatPoints(dayPoints)}/${formatPoints(pointsBudget)} נק׳`}
                 {isToday ? ` · ${formatShortDate(store.selectedDate)}` : ""}
               </div>
             </div>
@@ -214,6 +218,7 @@ function SlotRow({
   canEdit: boolean;
   onEdit: () => void;
 }) {
+  const { foods } = useStore();
   const Icon = MEAL_ICONS[slot];
   const label = MEAL_LABELS[slot];
   const stateText = status === "skipped" ? "לא נאכלה ארוחה" : status === "empty" ? "לא תועד" : "";
@@ -261,6 +266,9 @@ function SlotRow({
               <Check className="mt-0.5 h-3 w-3 shrink-0 text-primary" aria-hidden />
               <span className="min-w-0 flex-1 truncate text-foreground">{e.foodName}</span>
               <span className="shrink-0 text-[12px] text-muted-foreground">{entryDetail(e)}</span>
+              <span className="shrink-0 text-[11px] font-medium text-primary">
+                {formatPoints(pointsForEntry(e, foods.find((f) => f.id === e.foodId)))} נק׳
+              </span>
               {timeOf(e) && (
                 <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums" dir="ltr">
                   {timeOf(e)}
