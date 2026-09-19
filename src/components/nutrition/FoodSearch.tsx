@@ -18,7 +18,7 @@ interface Props {
    * the chips are visible again), or opens the quantity / coffee step and
    * returns "opened".
    */
-  onChoose: (food: Food) => "added" | "opened";
+  onChoose: (food: Food, source: "typed" | "quick") => "added" | "opened";
   onCreate: (name: string) => void;
   /** Fast path straight into the coffee editor. */
   onAddCoffee?: () => void;
@@ -27,8 +27,8 @@ interface Props {
 }
 
 export function FoodSearch({ onChoose, onCreate, onAddCoffee, autoFocus = true }: Props) {
-  function choose(food: Food) {
-    if (onChoose(food) === "added") {
+  function choose(food: Food, source: "typed" | "quick") {
+    if (onChoose(food, source) === "added") {
       setRaw("");
       setQ("");
       inputRef.current?.focus();
@@ -113,7 +113,7 @@ export function FoodSearch({ onChoose, onCreate, onAddCoffee, autoFocus = true }
                     food={f}
                     isFav
                     recent={recents.includes(f.id)}
-                    onChoose={choose}
+                    onChoose={(food) => choose(food, "quick")}
                   />
                 ))}
               </Grid>
@@ -123,7 +123,7 @@ export function FoodSearch({ onChoose, onCreate, onAddCoffee, autoFocus = true }
             <Section title="אחרונים" icon={<Clock className="h-4 w-4" />}>
               <Grid>
                 {recentList.map((f) => (
-                  <FoodChip key={f.id} food={f} onChoose={choose} />
+                  <FoodChip key={f.id} food={f} onChoose={(food) => choose(food, "quick")} />
                 ))}
               </Grid>
             </Section>
@@ -148,7 +148,7 @@ export function FoodSearch({ onChoose, onCreate, onAddCoffee, autoFocus = true }
             return (
               <button
                 key={f.id}
-                onClick={() => choose(f)}
+                onClick={() => choose(f, "typed")}
                 data-testid="search-result"
                 data-direct={usual ? "true" : "false"}
                 aria-label={
