@@ -37,10 +37,9 @@ holds 1 household, 2 profiles (אריאל/אלנה), 6 meal slots, RLS on 10 tab
       calibration (`RUN_2026-09-19_POINTS_V2_HARDENING.md`).
 - [x] Personalised budget (Mifflin-St Jeor backbone, override, fallback 23 + quiet prompt), profile setup
       sheet, isolation + realtime proven.
-- [ ] **Apply `supabase/apply_points_v2_production.sql` to production (controlling GPT) and run
-      `supabase/verify_points_v2.sql`** — BEFORE publishing (the v2 client writes the new columns).
-- [ ] Lovable publish of `main`; then the three phone checks (budget personalisation, quantity mode edit,
-      keyboard) and M1 §3b.
+- [x] **Production migration applied + verified (2026-09-19).** `20260919100000 points_v2_profile_facts` is in the ledger; five profile fields present; no profile facts guessed/backfilled; existing v1/legacy entry snapshots untouched; RLS retained.
+- [x] Lovable publish of current `main` triggered after the verified apply.
+- [ ] Three phone checks (budget personalisation, quantity mode edit, keyboard) and M1 §3b.
 - [ ] Elena calibration of the table in the run record ("נמוך / נכון / גבוה"); results change only
       `points-config.ts` / `pointsPerPortion`. No weekly bank yet (schema does not preclude it).
 
