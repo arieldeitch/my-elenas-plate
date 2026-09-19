@@ -175,6 +175,14 @@ export interface WorkoutLog {
   feeling?: WorkoutFeeling;
 }
 
+export interface DailySteps {
+  /** Omitted when the person used the quick "completed" report. */
+  steps?: number;
+  completed: boolean;
+  /** Snapshot of the profile goal when this day was reported. */
+  goal: number;
+}
+
 export interface WeighIn {
   id: string;
   dateISO: string; // yyyy-mm-dd
@@ -187,6 +195,7 @@ export interface DayData {
   meals: Record<MealSlotId, DailyMeal>;
   fasting?: FastingLog;
   workout?: WorkoutLog;
+  steps?: DailySteps;
 }
 
 export type SyncState = "saved" | "saving" | "offline" | "pending" | "error";

@@ -22,6 +22,7 @@ export interface PersistedState {
   favorites: PerProfile<string[]>;
   recents: PerProfile<string[]>;
   foods: Food[];
+  stepGoals?: PerProfile<number>;
 }
 
 export function loadState(): PersistedState | null {
