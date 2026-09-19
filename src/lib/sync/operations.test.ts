@@ -6,6 +6,7 @@ import {
   opsForRemoveEntry,
   opsForSetFasting,
   opsForSetMealSkipped,
+  opsForSetSteps,
   opsForSetWorkout,
   opsForUpdateEntry,
   touchesProfile,
@@ -71,6 +72,19 @@ describe("store edits → narrow operations", () => {
       { kind: "workout.set", ...ctx, workout: { performed: false } },
     ]);
     expect(opsForSetWorkout(ctx, undefined)).toEqual([{ kind: "workout.clear", ...ctx }]);
+  });
+
+  it("steps use one coalesced row per person/date and preserve exact vs completed mode", () => {
+    expect(opsForSetSteps(ctx, { goalSteps: 10_000, steps: 8_734, completed: false })).toEqual([
+      {
+        kind: "steps.set",
+        ...ctx,
+        steps: { goalSteps: 10_000, steps: 8_734, completed: false },
+      },
+    ]);
+    const completed = opsForSetSteps(ctx, { goalSteps: 10_000, completed: true })[0];
+    expect(coalesceKey(completed)).toBe("steps:elena:2026-09-16");
+    expect(dayKeyOf(completed)).toBe("elena::2026-09-16");
   });
 
   it("coalesce keys name exactly one row; day keys name the affected day", () => {
