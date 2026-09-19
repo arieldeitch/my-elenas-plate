@@ -108,7 +108,7 @@ export function MealEditor({ slot, onClose }: Props) {
         tabIndex={-1}
         className={cn(
           "relative flex flex-col w-full max-w-lg bg-card border border-border shadow-lg outline-none",
-          "rounded-t-3xl sm:rounded-3xl max-h-[92vh] sm:max-h-[85vh] sm:my-8",
+          "rounded-t-3xl sm:rounded-3xl max-h-[min(92dvh,var(--visual-viewport-height,92vh))] sm:max-h-[85dvh] sm:my-8",
           "animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200",
         )}
       >
@@ -206,7 +206,7 @@ export function MealEditor({ slot, onClose }: Props) {
 
         {/* Footer */}
         {view.kind === "list" && meal.status !== "skipped" && (
-          <div className="border-t border-border p-3 flex gap-2 bg-card">
+          <div className="sticky bottom-0 border-t border-border p-3 pb-[calc(.75rem+env(safe-area-inset-bottom))] flex gap-2 bg-card">
             <button
               onClick={() => setView({ kind: "search" })}
               className="flex-1 inline-flex items-center justify-center gap-2 rounded-2xl bg-primary py-3 font-semibold text-primary-foreground hover:bg-primary/90"

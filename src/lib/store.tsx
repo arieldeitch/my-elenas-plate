@@ -298,10 +298,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const setSteps: StoreValue["setSteps"] = (report) => {
-    mutateDay(activeProfile, iso, (d) => {
-      d.steps = report;
-      return d;
+    setDays((prev) => {
+      const existing = prev[activeProfile][iso] ?? emptyDay();
+      const next = structuredClone(existing);
+      next.steps = report;
+      return { ...prev, [activeProfile]: { ...prev[activeProfile], [iso]: next } };
     });
+    triggerSave();
     sync.markStepsDirty(activeProfile, iso, report);
   };
 

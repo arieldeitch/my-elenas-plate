@@ -172,6 +172,14 @@ export function useSupabaseSync(args: Args): SyncControls {
         const dayKey = `${profile}::${isoDate}`;
         if (day && !dirtyDays.current.has(dayKey) && !inFlightDays.current.has(dayKey)) {
           setDays((prev) => ({ ...prev, [profile]: { ...prev[profile], [isoDate]: day } }));
+        } else if (day && dirtySteps.current.has(dayKey)) {
+          setDays((prev) => ({
+            ...prev,
+            [profile]: {
+              ...prev[profile],
+              [isoDate]: { ...day, steps: prev[profile][isoDate]?.steps },
+            },
+          }));
         }
         const pid = profileIdFor(ctx, profile);
         if (pid && !dirtyWeigh.current.has(profile)) {
