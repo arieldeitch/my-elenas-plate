@@ -114,6 +114,10 @@
     overscroll-behavior: contain;
     scroll-padding-block: 88px;
   }
+  html[data-keyboard-open="true"] .keyboard-safe-sheet {
+    animation: none !important;
+    transition: none !important;
+  }
   button {
     -webkit-tap-highlight-color: transparent;
   }
