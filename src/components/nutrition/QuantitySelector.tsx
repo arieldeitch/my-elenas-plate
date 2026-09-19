@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { Food, FoodEntry, QuantityMode, SubjectiveAmount, Unit } from "@/lib/domain";
 import { ALL_UNITS } from "@/lib/domain";
 import { parseAmount, validateMeasured } from "@/lib/quantity";
-import { calculatePointsV1, formatPoints } from "@/lib/points";
+import { calculatePointsV2, formatPoints, SUBJECTIVE_LABEL } from "@/lib/points";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -14,12 +14,6 @@ interface Props {
 }
 
 const SUBJECTIVES: SubjectiveAmount[] = ["מעט", "במידה", "הרבה", "מוגזם"];
-const SUBJECTIVE_LABEL: Record<SubjectiveAmount, string> = {
-  מעט: "מעט",
-  במידה: "במידה",
-  הרבה: "יותר מדי",
-  מוגזם: "מוגזם",
-};
 
 export function QuantitySelector({
   food,
@@ -40,7 +34,7 @@ export function QuantitySelector({
   const suggested = food.suggestedUnits ?? [food.defaultUnit ?? "יחידה"];
   const unitList = showAllUnits ? ALL_UNITS : suggested;
   const parsedPreviewAmount = parseAmount(amount);
-  const previewPoints = calculatePointsV1(
+  const previewPoints = calculatePointsV2(
     mode === "measured"
       ? { mode: "measured", amount: parsedPreviewAmount ?? 0, unit }
       : { mode: "subjective", subjective },
@@ -133,6 +127,9 @@ export function QuantitySelector({
               {unitList.map((u) => (
                 <button
                   key={u}
+                  type="button"
+                  aria-pressed={unit === u}
+                  data-testid="unit-option"
                   onClick={() => {
                     setUnit(u);
                     setError(null);
@@ -149,8 +146,9 @@ export function QuantitySelector({
               ))}
               {!showAllUnits && (
                 <button
+                  type="button"
                   onClick={() => setShowAllUnits(true)}
-                  className="rounded-full border border-dashed border-border px-3 py-2 text-sm text-muted-foreground"
+                  className="min-h-10 rounded-full border border-dashed border-border px-3 py-2 text-sm text-muted-foreground"
                 >
                   יחידות נוספות
                 </button>
@@ -164,6 +162,10 @@ export function QuantitySelector({
           {SUBJECTIVES.map((s) => (
             <button
               key={s}
+              type="button"
+              aria-pressed={subjective === s}
+              data-testid="subjective-option"
+              data-value={s}
               onClick={() => setSubjective(s)}
               className={cn(
                 "min-h-[64px] rounded-2xl border text-base font-semibold transition-colors",
@@ -181,8 +183,11 @@ export function QuantitySelector({
       <div
         className="rounded-xl border border-border bg-secondary/55 px-3 py-2 text-sm text-muted-foreground"
         data-testid="points-preview"
+        data-points={previewPoints}
+        aria-live="polite"
       >
-        נקודות למנה הזו: <strong className="text-foreground">{formatPoints(previewPoints)} נק׳</strong>
+        נקודות למנה הזו:{" "}
+        <strong className="text-foreground">{formatPoints(previewPoints)} נק׳</strong>
       </div>
 
       <div className="flex gap-2 pt-1">

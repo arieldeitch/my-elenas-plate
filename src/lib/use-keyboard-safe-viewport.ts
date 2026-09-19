@@ -1,9 +1,10 @@
 import { useEffect } from "react";
 
 function editable(el: EventTarget | Element | null): el is HTMLElement {
-  return el instanceof HTMLElement && (
-    el.matches("input, textarea, select, [contenteditable='true']") ||
-    Boolean(el.closest("[data-keyboard-focus]"))
+  return (
+    el instanceof HTMLElement &&
+    (el.matches("input, textarea, select, [contenteditable='true']") ||
+      Boolean(el.closest("[data-keyboard-focus]")))
   );
 }
 
@@ -15,6 +16,9 @@ function editable(el: EventTarget | Element | null): el is HTMLElement {
  * only make an instant nearest-edge correction when the focused control would
  * actually be obscured.
  */
+/** Fraction of the viewport height below which a tapped control is likely to be covered by the keyboard. */
+export const KEYBOARD_ZONE_FROM = 0.5;
+
 export function useKeyboardSafeViewport(): void {
   useEffect(() => {
     const root = document.documentElement;
@@ -58,9 +62,16 @@ export function useKeyboardSafeViewport(): void {
         (typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches);
       if (coarse) {
         // Pre-position while the tap is still being handled, before focus asks
-        // the OS to animate the software keyboard. This avoids the visible
-        // "keyboard opens, then the form jumps" sequence.
-        target.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
+        // the OS to animate the software keyboard — but ONLY when the control
+        // sits in the lower part of the viewport, where the keyboard will land.
+        // A control already in the upper half stays exactly where the finger
+        // is: centring it would itself be a visible jump before the keyboard.
+        const height = vv?.height ?? window.innerHeight;
+        const top = vv?.offsetTop ?? 0;
+        const rect = target.getBoundingClientRect();
+        if (rect.bottom > top + height * KEYBOARD_ZONE_FROM) {
+          target.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
+        }
       } else {
         ensureVisible(target);
       }

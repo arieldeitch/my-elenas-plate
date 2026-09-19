@@ -28,10 +28,11 @@ import {
   type WeighIn,
 } from "../domain";
 import { isSupabaseConfigured } from "../supabase/client";
+import type { ProfileFacts } from "../points";
 import { getSession, onAuthChange } from "../supabase/auth";
 import {
   bootstrapHousehold,
-  loadProfilePointsBudgets,
+  loadProfileFacts,
   loadWeighIns,
   type HouseholdContext,
 } from "../supabase/repositories";
@@ -63,7 +64,7 @@ interface Args {
   setFoods: Dispatch<SetStateAction<Food[]>>;
   setFavoritesMap: Dispatch<SetStateAction<PerProfile<string[]>>>;
   setRecentsMap: Dispatch<SetStateAction<PerProfile<string[]>>>;
-  setPointsBudgetsMap: Dispatch<SetStateAction<PerProfile<number>>>;
+  setProfileFactsMap: Dispatch<SetStateAction<PerProfile<ProfileFacts>>>;
   activeProfile: ProfileId;
   iso: string;
   setSyncState: (s: SyncState) => void;
@@ -94,7 +95,7 @@ export interface SyncControls {
 
 const WEIGH_KINDS = new Set(["weighin.insert"]);
 const PREF_KINDS = new Set(["pref.favorite", "pref.recent"]);
-const POINTS_BUDGET_KINDS = new Set(["profile.points-budget.set"]);
+const PROFILE_FACTS_KINDS = new Set(["profile.points-budget.set", "profile.facts.set"]);
 const DRAIN_DEBOUNCE_MS = 400;
 /**
  * Converging a day from the cloud after our own drain and after each realtime
@@ -116,7 +117,7 @@ export function useSupabaseSync(args: Args): SyncControls {
     setFoods,
     setFavoritesMap,
     setRecentsMap,
-    setPointsBudgetsMap,
+    setProfileFactsMap,
     activeProfile,
     iso,
     setSyncState,
@@ -206,25 +207,25 @@ export function useSupabaseSync(args: Args): SyncControls {
     [setWeighInsMap],
   );
 
-  const hydratePointsBudgets = useCallback(async () => {
+  // Profile facts (sex / birth date / height / goal / override) for BOTH
+  // profiles in one read; a profile with an unsent local change keeps it.
+  const hydrateProfileFacts = useCallback(async () => {
     const ctx = ctxRef.current;
     if (!ctx) return;
     try {
-      const remote = await loadProfilePointsBudgets(ctx.householdId);
-      setPointsBudgetsMap((prev) => {
+      const remote = await loadProfileFacts(ctx.householdId);
+      setProfileFactsMap((prev) => {
         const next = { ...prev };
-        if (!queue.hasPendingForProfile("me", POINTS_BUDGET_KINDS)) {
-          next.me = remote.ariel ?? 30;
-        }
-        if (!queue.hasPendingForProfile("elena", POINTS_BUDGET_KINDS)) {
-          next.elena = remote.alena ?? 30;
-        }
+        if (!queue.hasPendingForProfile("me", PROFILE_FACTS_KINDS) && remote.ariel)
+          next.me = remote.ariel;
+        if (!queue.hasPendingForProfile("elena", PROFILE_FACTS_KINDS) && remote.alena)
+          next.elena = remote.alena;
         return next;
       });
     } catch (err) {
-      console.warn("hydrate points budgets failed", err);
+      console.warn("hydrate profile facts failed", err);
     }
-  }, [setPointsBudgetsMap]);
+  }, [setProfileFactsMap]);
 
   /**
    * Loads one profile/date from Supabase into the store. A day with unsent or
@@ -416,10 +417,14 @@ export function useSupabaseSync(args: Args): SyncControls {
         const ctx = await bootstrapHousehold();
         if (disposed || gen !== generation) return; // session replaced meanwhile
         ctxRef.current = ctx;
-        setPointsBudgetsMap({
-          me: ctx.pointsBudgetBySlug?.ariel ?? 30,
-          elena: ctx.pointsBudgetBySlug?.alena ?? 30,
-        });
+        // Facts arrive with the bootstrap read — no second profiles query.
+        const facts = ctx.profileFactsBySlug;
+        if (facts?.ariel || facts?.alena) {
+          setProfileFactsMap((prev) => ({
+            me: facts.ariel ?? prev.me,
+            elena: facts.alena ?? prev.elena,
+          }));
+        }
 
         // The one-time localStorage -> cloud import (T-023) is retired; markers
         // are still set so it can never fire again on an old profile.
@@ -466,7 +471,7 @@ export function useSupabaseSync(args: Args): SyncControls {
           void hydrateWeighInsFor(change.profile ?? view.profile);
           return;
         case "profiles":
-          void hydratePointsBudgets();
+          void hydrateProfileFacts();
           return;
         default: {
           // Day-scoped tables. Use payload metadata when present; a DELETE
@@ -523,12 +528,12 @@ export function useSupabaseSync(args: Args): SyncControls {
     hydrateDayOnly,
     hydrateFoodsList,
     hydratePrefsFor,
-    hydratePointsBudgets,
+    hydrateProfileFacts,
     hydrateWeighInsFor,
     publishState,
     scheduleDayConverge,
     setSyncState,
-    setPointsBudgetsMap,
+    setProfileFactsMap,
   ]);
 
   // Hydrate when the viewed profile/date changes. The partner's day for the same

@@ -26,14 +26,16 @@ interface Props {
  * Review ("what exactly did I eat today?") — no extra button on the home.
  */
 export function TodayCard({ onOpenCalendar, onOpenReview, onOpenPoints }: Props) {
-  const { activeProfile, selectedDate, setSelectedDate, getDay, foods, getPointsBudget } = useStore();
+  const { activeProfile, selectedDate, setSelectedDate, getDay, foods, getPointsBudgetInfo } =
+    useStore();
   const profile = PROFILES.find((p) => p.id === activeProfile)!;
   const isToday = isSameDay(selectedDate, new Date());
   const day = getDay(activeProfile, toISODate(selectedDate));
   const completion = useMemo(() => calcCompletion(day.meals), [day.meals]);
   const latest = useMemo(() => latestActivity(day), [day]);
   const points = useMemo(() => pointsForDay(day, foods), [day, foods]);
-  const pointsBudget = getPointsBudget(activeProfile);
+  const budgetInfo = getPointsBudgetInfo(activeProfile);
+  const pointsBudget = budgetInfo.budget;
   const remaining = pointsRemaining(points, pointsBudget);
   const pct = (completion.documented / completion.total) * 100;
   const barColor =
@@ -109,16 +111,38 @@ export function TodayCard({ onOpenCalendar, onOpenReview, onOpenPoints }: Props)
           !onOpenPoints && "pointer-events-none",
         )}
         aria-label={`נקודות ${formatPoints(points)} מתוך ${formatPoints(pointsBudget)}. ${
-          remaining >= 0 ? `נשארו ${formatPoints(remaining)}` : `חריגה ${formatPoints(Math.abs(remaining))}`
-        }. עריכת תקציב יומי`}
+          remaining >= 0
+            ? `נשארו ${formatPoints(remaining)}`
+            : `חריגה ${formatPoints(Math.abs(remaining))}`
+        }. ${
+          budgetInfo.source === "override"
+            ? "יעד מותאם אישית"
+            : budgetInfo.source === "fallback"
+              ? "השלמת פרטים להתאמת יעד הנקודות"
+              : "יעד אוטומטי"
+        }`}
+        data-budget-source={budgetInfo.source}
       >
         <span>
           <span className="text-xs font-medium text-muted-foreground">נקודות</span>
           <span className="mr-2 font-bold tabular-nums text-foreground">
             {formatPoints(points)} / {formatPoints(pointsBudget)}
           </span>
+          {budgetInfo.source === "override" && (
+            <span className="mr-2 text-[11px] text-muted-foreground">יעד מותאם אישית</span>
+          )}
+          {budgetInfo.source === "fallback" && (
+            <span className="mr-2 text-[11px] text-info" data-testid="budget-setup-prompt">
+              השלמת פרטים להתאמת יעד הנקודות
+            </span>
+          )}
         </span>
-        <span className={cn("text-xs font-semibold", remaining < 0 ? "text-warn-foreground" : "text-primary")}>
+        <span
+          className={cn(
+            "text-xs font-semibold",
+            remaining < 0 ? "text-warn-foreground" : "text-primary",
+          )}
+        >
           {remaining >= 0
             ? `נשארו ${formatPoints(remaining)}`
             : `חריגה ${formatPoints(Math.abs(remaining))}`}

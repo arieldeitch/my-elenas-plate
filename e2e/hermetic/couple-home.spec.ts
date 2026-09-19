@@ -26,12 +26,16 @@ test("log as Elena in a few taps, see it on Ariel's partner card, never mixed up
   await expect(dialog).toHaveAttribute("data-owner", "elena");
   await expect(page.getByLabel("חיפוש מאכל")).toBeFocused();
 
-  // Tap 2: the typed result adds directly with its usual quantity (M2-6) — no confirm.
+  // Tap 2: a TYPED result always opens the quantity choice (DEC-033/034 §T):
+  // measured tab with the suggested unit, points preview, explicit confirm.
   await page.getByLabel("חיפוש מאכל").fill("סלט ירקות");
   const first = dialog.getByTestId("search-result").first();
-  await expect(first).toHaveAttribute("data-direct", "true");
-  await expect(first).toContainText("1 קערה");
+  await expect(first).toHaveAttribute("data-direct", "false");
+  await expect(first).toContainText("בחירת כמות");
   await first.click();
+  await expect(page.getByRole("tab", { name: "מדידה" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByTestId("points-preview")).toBeVisible();
+  await page.getByRole("button", { name: "הוספת המאכל" }).click();
   await expect(page.getByTestId("meal-entries").getByText("סלט ירקות")).toBeVisible();
   await expect(page.getByLabel("חיפוש מאכל")).toHaveValue("");
   await expect(page.getByRole("button", { name: "הוספת המאכל" })).toHaveCount(0);

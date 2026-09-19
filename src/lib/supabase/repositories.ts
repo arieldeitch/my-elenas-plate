@@ -4,6 +4,7 @@
  * require a configured, authenticated client (see requireSupabase()).
  */
 import { requireSupabase } from "./client";
+import type { ProfileFacts } from "../points";
 import type {
   DayData,
   Food,
@@ -37,7 +38,21 @@ import {
 export interface HouseholdContext {
   householdId: string;
   profileIdBySlug: Record<string, string>;
+  /** @deprecated v1 budget column; kept for fixtures. */
   pointsBudgetBySlug?: Record<string, number>;
+  /** v2-il profile facts (sex / birth date / height / goal / override) by slug. */
+  profileFactsBySlug?: Record<string, ProfileFacts>;
+}
+
+/** Maps a profiles row to the budget facts (DEC-034). */
+export function profileFactsFromRow(p: Partial<ProfileRow>): ProfileFacts {
+  return {
+    sexAtBirth: (p.sex_at_birth as ProfileFacts["sexAtBirth"]) ?? null,
+    birthDate: p.birth_date ?? null,
+    heightCm: p.height_cm == null ? null : Number(p.height_cm),
+    goalMode: (p.goal_mode as ProfileFacts["goalMode"]) ?? "lose",
+    pointsBudgetOverride: p.points_budget_override ?? null,
+  };
 }
 
 /** Ensures the household + two profiles exist and returns the mapping. */
@@ -53,33 +68,53 @@ export async function bootstrapHousehold(): Promise<HouseholdContext> {
   if (pErr) throw pErr;
   const profileIdBySlug: Record<string, string> = {};
   const pointsBudgetBySlug: Record<string, number> = {};
+  const profileFactsBySlug: Record<string, ProfileFacts> = {};
   for (const p of (profiles ?? []) as ProfileRow[]) {
     profileIdBySlug[p.slug] = p.id;
     pointsBudgetBySlug[p.slug] = p.daily_points_budget ?? 30;
+    profileFactsBySlug[p.slug] = profileFactsFromRow(p);
   }
-  return { householdId: householdId as string, profileIdBySlug, pointsBudgetBySlug };
+  return {
+    householdId: householdId as string,
+    profileIdBySlug,
+    pointsBudgetBySlug,
+    profileFactsBySlug,
+  };
 }
 
-export async function loadProfilePointsBudgets(
-  householdId: string,
-): Promise<Record<string, number>> {
+/** Facts of every profile in the household (one read), keyed by slug. */
+export async function loadProfileFacts(householdId: string): Promise<Record<string, ProfileFacts>> {
   const sb = requireSupabase();
   const { data, error } = await sb
     .from("profiles")
-    .select("slug,daily_points_budget")
+    .select("slug,sex_at_birth,birth_date,height_cm,goal_mode,points_budget_override")
     .eq("household_id", householdId);
   if (error) throw error;
-  const result: Record<string, number> = {};
-  for (const row of data ?? []) result[row.slug] = row.daily_points_budget ?? 30;
+  const result: Record<string, ProfileFacts> = {};
+  for (const row of data ?? []) result[row.slug] = profileFactsFromRow(row as Partial<ProfileRow>);
   return result;
 }
 
-export async function updateProfilePointsBudget(profileId: string, budget: number): Promise<void> {
+/** Partial update of a profile's facts; only the given keys are written. */
+export async function updateProfileFacts(
+  profileId: string,
+  patch: Partial<ProfileFacts>,
+): Promise<void> {
   const sb = requireSupabase();
-  const { error } = await sb
-    .from("profiles")
-    .update({ daily_points_budget: Math.max(1, Math.round(budget)) })
-    .eq("id", profileId);
+  const row: Partial<
+    Pick<
+      ProfileRow,
+      "sex_at_birth" | "birth_date" | "height_cm" | "goal_mode" | "points_budget_override"
+    >
+  > = {};
+  if ("sexAtBirth" in patch) row.sex_at_birth = patch.sexAtBirth ?? null;
+  if ("birthDate" in patch) row.birth_date = patch.birthDate ?? null;
+  if ("heightCm" in patch) row.height_cm = patch.heightCm ?? null;
+  if ("goalMode" in patch) row.goal_mode = patch.goalMode ?? "lose";
+  if ("pointsBudgetOverride" in patch)
+    row.points_budget_override = patch.pointsBudgetOverride ?? null;
+  if (Object.keys(row).length === 0) return;
+  const { error } = await sb.from("profiles").update(row).eq("id", profileId);
   if (error) throw error;
 }
 

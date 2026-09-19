@@ -23,7 +23,8 @@ interface Props {
 }
 
 export function PartnerGlance({ onOpen }: Props = {}) {
-  const { activeProfile, setActiveProfile, selectedDate, getDay, foods, getPointsBudget } = useStore();
+  const { activeProfile, setActiveProfile, selectedDate, getDay, foods, getPointsBudget } =
+    useStore();
   const partnerId = partnerOf(activeProfile);
   const partner = PROFILES.find((p) => p.id === partnerId)!;
   const iso = toISODate(selectedDate);
@@ -101,7 +102,10 @@ export function PartnerGlance({ onOpen }: Props = {}) {
               );
             })}
           </span>
-          <span className="text-[11px] font-semibold text-primary tabular-nums" data-testid="partner-points">
+          <span
+            className="text-[11px] font-semibold text-primary tabular-nums"
+            data-testid="partner-points"
+          >
             {formatPoints(partnerPoints)}/{formatPoints(partnerBudget)} נק׳
           </span>
           {(workout || fasting || steps) && (

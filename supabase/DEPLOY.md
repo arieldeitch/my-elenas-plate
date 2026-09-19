@@ -10,7 +10,6 @@ Verified: `profiles.daily_points_budget integer not null default 30`;
 `supabase/apply_internal_points_v1_production.sql` and `supabase/verify_internal_points_v1.sql`.
 Do not rerun and never use plain `supabase db push`.
 
-
 ## Daily steps (2026-09-19, DEC-032) — APPLIED + VERIFIED
 
 Migration `20260919044237_daily_steps` is present in the production ledger and `public.daily_steps` is live with RLS. The apply/verify scripts remain as deployment history. The wrapper creates `daily_steps`, grants authenticated/service access before enabling RLS,

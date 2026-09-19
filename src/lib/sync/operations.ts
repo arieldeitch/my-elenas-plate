@@ -17,6 +17,7 @@
  * clear of the same fasting record) into the latest one — keeping order among
  * unrelated ops intact.
  */
+import type { ProfileFacts } from "../points";
 import type {
   FastingLog,
   Food,
@@ -38,7 +39,8 @@ export type Operation =
   | { kind: "workout.set"; profile: ProfileId; iso: string; workout: WorkoutLog }
   | { kind: "workout.clear"; profile: ProfileId; iso: string }
   | { kind: "steps.set"; profile: ProfileId; iso: string; steps: StepLog }
-  | { kind: "profile.points-budget.set"; profile: ProfileId; budget: number }
+  | { kind: "profile.points-budget.set"; profile: ProfileId; budget: number } // v1 legacy (replayed as an override)
+  | { kind: "profile.facts.set"; profile: ProfileId; facts: Partial<ProfileFacts> }
   | { kind: "weighin.insert"; profile: ProfileId; weighIn: WeighIn }
   | { kind: "food.upsert"; food: Food }
   | { kind: "pref.favorite"; profile: ProfileId; foodId: string; isFavorite: boolean }
@@ -68,6 +70,10 @@ export function coalesceKey(op: Operation): string {
       return `steps:${op.profile}:${op.iso}`;
     case "profile.points-budget.set":
       return `profile.points-budget:${op.profile}`;
+    case "profile.facts.set":
+      // One key per profile: rapid edits of the setup sheet coalesce; the LAST
+      // op carries the merged patch (see store.setProfileFacts).
+      return `profile.facts:${op.profile}`;
     case "weighin.insert":
       return `weighin:${op.weighIn.id}`;
     case "food.upsert":

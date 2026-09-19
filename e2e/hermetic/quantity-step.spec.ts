@@ -11,12 +11,21 @@ test("quick add, one tap on +, finish — the day review shows 2 units", async (
   await waitForHydration(page);
   await page.getByRole("dialog").getByRole("button", { name: /אלנה/ }).click();
 
-  // First time through search: the result adds directly (M2-6) and makes the egg a recent chip.
+  // First time through search: a typed result opens the quantity choice (vegetables 0,
+  // an egg 2 points); confirming with the default 1 unit makes the egg a recent chip.
   await page.getByRole("button", { name: /^פתיחת חלון אכילה:/ }).click();
   await page.getByLabel("חיפוש מאכל").fill("ביצה קשה");
   const result = page.getByTestId("search-result").filter({ hasText: "ביצה קשה" }).first();
-  await expect(result).toContainText("1 יחידה");
+  await expect(result).toContainText("בחירת כמות");
   await result.click();
+  await expect(page.getByTestId("points-preview")).toHaveAttribute("data-points", "2");
+  // Subjective tab: the visible labels and instant preview; back to measured leaves no leak.
+  await page.getByRole("tab", { name: "לפי תחושה" }).click();
+  await page.getByRole("button", { name: "יותר מדי" }).click();
+  await expect(page.getByTestId("points-preview")).toHaveAttribute("data-points", "3");
+  await page.getByRole("tab", { name: "מדידה" }).click();
+  await expect(page.getByTestId("points-preview")).toHaveAttribute("data-points", "2");
+  await page.getByRole("button", { name: "הוספת המאכל" }).click();
   await expect(page.getByTestId("meal-entry").first()).toHaveAttribute("data-quantity", "1 יחידה");
   await page.getByRole("button", { name: "סיום" }).click();
 

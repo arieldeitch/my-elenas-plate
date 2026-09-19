@@ -57,6 +57,7 @@ const queue = await import("./queue");
 const { bootstrapHousehold } = await import("../supabase/repositories");
 const { applyOperation, hydrateDay } = await import("./supabase-sync");
 const { opsForAddEntry, opsForSetSteps, opsForUpdateEntry } = await import("./operations");
+const pointsLib = await import("../points");
 
 const wrapper = ({ children }: { children: ReactNode }) => (
   <StoreProvider>{children}</StoreProvider>
@@ -429,6 +430,212 @@ describe("offline / recovery sequences", () => {
   });
 });
 
+describe("points v2-il — persisted snapshots follow the FINAL entry state (DEC-034 §R)", () => {
+  const { calculatePointsV2 } = pointsLib;
+  const fruit = { ...apple, foodId: "f_apple" }; // catalog apple: פירות → 1 point per unit
+  const bread = {
+    foodId: "f_bread_slice",
+    foodName: "לחם לבן",
+    mode: "measured" as const,
+    amount: 1,
+    unit: "פרוסה" as const,
+  };
+  const row = () => fake.rows("food_entries")[0];
+  const settled = async (hook: { result: { current: { syncState: string } } }) => {
+    await waitFor(() => expect(hook.result.current.syncState).toBe("saved"));
+    await new Promise((r) => setTimeout(r, 30));
+  };
+
+  it("new entry, amount edit, unit change, measured→subjective, level edit, subjective→measured: row = final state, version v2-il", async () => {
+    const A = await mountDevice(USER_A, "me");
+    act(() => A.result.current.addEntry("lunch", fruit));
+    await settled(A);
+    expect(row()).toMatchObject({ points_value: 1, points_model_version: "v2-il" });
+    const f = A.result.current.foods.find((x) => x.id === "f_apple");
+    const e = () => A.result.current.getDay("me", today()).meals.lunch.entries[0];
+
+    act(() => A.result.current.updateEntry("lunch", { ...e(), amount: 3 }));
+    await settled(A);
+    expect(row()).toMatchObject({ amount: 3, points_value: 3, points_model_version: "v2-il" });
+
+    act(() => A.result.current.updateEntry("lunch", { ...e(), amount: 150, unit: "גרם" }));
+    await settled(A);
+    expect(row()).toMatchObject({ unit: "גרם", points_value: 1.5, points_model_version: "v2-il" });
+
+    act(() =>
+      A.result.current.updateEntry("lunch", {
+        ...e(),
+        mode: "subjective",
+        subjective: "הרבה",
+        amount: undefined,
+        unit: undefined,
+      }),
+    );
+    await settled(A);
+    expect(row()).toMatchObject({ quantity_mode: "subjective", points_value: 1.5 });
+
+    act(() => A.result.current.updateEntry("lunch", { ...e(), subjective: "מוגזם" }));
+    await settled(A);
+    expect(row()).toMatchObject({ points_value: 2 });
+
+    act(() =>
+      A.result.current.updateEntry("lunch", {
+        ...e(),
+        mode: "measured",
+        amount: 2,
+        unit: "יחידה",
+        subjective: undefined,
+      }),
+    );
+    await settled(A);
+    expect(row()).toMatchObject({ quantity_mode: "measured", amount: 2, points_value: 2 });
+    // The persisted snapshot always equals a fresh v2 calculation of the final row.
+    expect(row().points_value).toBe(calculatePointsV2(e(), f));
+    expect(row().points_model_version).toBe("v2-il");
+    A.unmount();
+  });
+
+  it("a legacy v1 snapshot is hydrated as saved (fruit = 0) and only a deliberate edit moves it to v2-il", async () => {
+    fake.rows("food_entries").push({
+      id: "legacy-v1",
+      household_id: HOUSEHOLD,
+      profile_id: ARIEL,
+      log_date: today(),
+      slot: "main_meal",
+      food_id: "f_apple",
+      food_name: "תפוח",
+      quantity_mode: "measured",
+      amount: 1,
+      unit: "יחידה",
+      points_value: 0,
+      points_model_version: "v1",
+      created_at: new Date().toISOString(),
+    });
+    const A = await mountDevice(USER_A, "me");
+    await waitFor(() =>
+      expect(A.result.current.getDay("me", today()).meals.lunch.entries).toHaveLength(1),
+    );
+    const e = A.result.current.getDay("me", today()).meals.lunch.entries[0];
+    expect(e).toMatchObject({ pointsValue: 0, pointsModelVersion: "v1" });
+    const f = A.result.current.foods.find((x) => x.id === "f_apple");
+    expect(pointsLib.pointsForEntry(e, f)).toBe(0);
+    // Activation/hydration wrote nothing back.
+    expect(fake.rows("food_entries")[0]).toMatchObject({
+      points_value: 0,
+      points_model_version: "v1",
+    });
+    expect(writes()).toBe(0);
+    // Deliberate edit (same quantity) → v2-il snapshot: fruit is 1 now.
+    act(() => A.result.current.updateEntry("lunch", { ...e }));
+    await settled(A);
+    expect(fake.rows("food_entries")[0]).toMatchObject({
+      points_value: 1,
+      points_model_version: "v2-il",
+    });
+    A.unmount();
+  });
+
+  it("offline write + queue replay and a realtime roundtrip keep the v2-il snapshot", async () => {
+    const A = await mountDevice(USER_A, "me");
+    setOnline(false);
+    fake.offline = true;
+    act(() => A.result.current.addEntry("dinner", bread));
+    await waitFor(() => expect(A.result.current.syncState).toBe("offline"));
+    setOnline(true);
+    fake.offline = false;
+    act(() => window.dispatchEvent(new Event("online")));
+    await waitFor(() => expect(A.result.current.syncState).toBe("saved"), { timeout: 5000 });
+    expect(row()).toMatchObject({ points_value: 3, points_model_version: "v2-il" });
+
+    // Device B writes a scored Elena entry; A receives it with the snapshot intact.
+    const B = await deviceB();
+    const f = A.result.current.foods.find((x) => x.id === "f_apple");
+    await B.add("elena", "lunch", pointsLib.scoreEntry({ id: "b-1", ...fruit, amount: 2 }, f));
+    await waitFor(() =>
+      expect(A.result.current.getDay("elena", today()).meals.lunch.entries[0]).toMatchObject({
+        pointsValue: 2,
+        pointsModelVersion: "v2-il",
+      }),
+    );
+    A.unmount();
+  });
+});
+
+describe("profile facts & personalised budget — isolation and realtime (DEC-034)", () => {
+  it("Ariel's facts and weigh-in change only Ariel's budget; Elena's arrive via realtime and change only hers", async () => {
+    const A = await mountDevice(USER_A, "me");
+    const fallback = A.result.current.getPointsBudget("me");
+    expect(A.result.current.getPointsBudgetInfo("me").source).toBe("fallback");
+
+    act(() =>
+      A.result.current.setProfileFacts({
+        sexAtBirth: "male",
+        birthDate: "1980-06-15",
+        heightCm: 178,
+        goalMode: "lose",
+      }),
+    );
+    await waitFor(() => expect(A.result.current.syncState).toBe("saved"));
+    const ariel = fake.rows("profiles").find((p) => p.id === ARIEL)!;
+    const alena = fake.rows("profiles").find((p) => p.id === ALENA)!;
+    expect(ariel).toMatchObject({ sex_at_birth: "male", birth_date: "1980-06-15", height_cm: 178 });
+    expect(alena.sex_at_birth).toBeUndefined();
+    expect(A.result.current.getPointsBudgetInfo("me")).toMatchObject({
+      source: "fallback",
+      missing: ["weight"],
+    });
+
+    act(() => A.result.current.addWeighIn({ dateISO: today(), weightKg: 84 }));
+    await waitFor(() =>
+      expect(A.result.current.getPointsBudgetInfo("me").source).toBe("personalized"),
+    );
+    const personalised = A.result.current.getPointsBudget("me");
+    expect(personalised).not.toBe(fallback);
+    expect(A.result.current.getPointsBudgetInfo("elena").source).toBe("fallback");
+
+    act(() => A.result.current.setProfileFacts({ pointsBudgetOverride: 31 }));
+    expect(A.result.current.getPointsBudgetInfo("me")).toMatchObject({
+      budget: 31,
+      source: "override",
+    });
+    act(() => A.result.current.setProfileFacts({ pointsBudgetOverride: null }));
+    expect(A.result.current.getPointsBudget("me")).toBe(personalised);
+    await waitFor(() => expect(A.result.current.syncState).toBe("saved"));
+    expect(fake.rows("profiles").find((p) => p.id === ARIEL)!.points_budget_override).toBeNull();
+
+    // Elena (device B) completes her facts and weighs in; the realtime events
+    // refresh the partner budget on A. Ariel's own number does not move.
+    Object.assign(fake.rows("profiles").find((p) => p.id === ALENA)!, {
+      sex_at_birth: "female",
+      birth_date: "1990-01-01",
+      height_cm: 165,
+      goal_mode: "maintain",
+      points_budget_override: null,
+    });
+    fake.rows("weigh_ins").push({
+      id: "w-b",
+      household_id: HOUSEHOLD,
+      profile_id: ALENA,
+      log_date: today(),
+      weight_kg: 62,
+      created_at: new Date().toISOString(),
+    });
+    fake.emit("profiles", "UPDATE", { id: ALENA, slug: "alena", household_id: HOUSEHOLD });
+    fake.emit("weigh_ins", "INSERT", {
+      id: "w-b",
+      profile_id: ALENA,
+      log_date: today(),
+      weight_kg: 62,
+    });
+    await waitFor(() =>
+      expect(A.result.current.getPointsBudgetInfo("elena").source).toBe("personalized"),
+    );
+    expect(A.result.current.getPointsBudget("me")).toBe(personalised);
+    expect(fake.channels.size).toBe(1);
+    A.unmount();
+  });
+});
+
 describe("network budget (reads / writes / subscriptions)", () => {
   it("activation, partner switch, quick add and rapid quantity stay within the expected budget", async () => {
     const A = await mountDevice(USER_A, "me");
@@ -439,7 +646,8 @@ describe("network budget (reads / writes / subscriptions)", () => {
     expect(activationReads).toBeLessThanOrEqual(17);
     expect(activationWrites).toBe(0);
     expect(fake.channels.size).toBe(1);
-    expect(fake.log.filter((l) => l.table === "profiles" && l.action === "select")).toHaveLength(2);
+    // Profile facts arrive with the bootstrap read — exactly ONE profiles query.
+    expect(fake.log.filter((l) => l.table === "profiles" && l.action === "select")).toHaveLength(1);
 
     // Partner switch: at most the partner's day/weigh-ins/prefs + the other day again.
     fake.log.length = 0;

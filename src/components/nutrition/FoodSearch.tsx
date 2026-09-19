@@ -164,7 +164,11 @@ export function FoodSearch({ onChoose, onCreate, onAddCoffee, autoFocus = true }
                   )}
                   aria-hidden
                 >
-                  {f.kind === "coffee" ? <Coffee className="h-3 w-3" /> : <SlidersHorizontal className="h-3 w-3" />}
+                  {f.kind === "coffee" ? (
+                    <Coffee className="h-3 w-3" />
+                  ) : (
+                    <SlidersHorizontal className="h-3 w-3" />
+                  )}
                   {hint}
                 </span>
               </button>

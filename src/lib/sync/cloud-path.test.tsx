@@ -279,6 +279,7 @@ describe("active cloud path (hermetic)", () => {
         "food_preferences",
         "foods",
         "meal_statuses",
+        "profiles",
         "weigh_ins",
         "workout_logs",
       ].sort(),

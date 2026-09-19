@@ -43,7 +43,13 @@ import type {
 import { MEAL_SLOTS } from "./domain";
 import { FOOD_CATALOG, mergeCatalog } from "./food-catalog";
 import { normalizeFoodName } from "./food-normalize";
-import { calculatePointsV1, DEFAULT_POINTS_BUDGET, POINTS_MODEL_VERSION } from "./points";
+import {
+  latestWeightKg,
+  resolvePointsBudget,
+  scoreEntry,
+  type BudgetInfo,
+  type ProfileFacts,
+} from "./points";
 import { toISODate } from "./format";
 import { loadState, saveState } from "./persistence";
 import { loadDeviceProfile, saveDeviceProfile } from "./device-profile";
@@ -103,7 +109,15 @@ interface StoreValue {
   setWorkout: (w: WorkoutLog | undefined) => void;
   setSteps: (s: StepLog) => void;
 
+  /** Effective daily budget (override → personalised → fallback). */
   getPointsBudget: (profile: ProfileId) => number;
+  /** Budget plus where it comes from and which facts are still missing. */
+  getPointsBudgetInfo: (profile: ProfileId) => BudgetInfo;
+  /** The active person's stored facts (DEC-034). */
+  profileFacts: ProfileFacts;
+  /** Partial update of the active person's facts; `pointsBudgetOverride: null` = back to automatic. */
+  setProfileFacts: (patch: Partial<ProfileFacts>) => void;
+  /** @deprecated v1 name — sets the manual override. */
   setPointsBudget: (budget: number) => void;
 
   weighIns: WeighIn[];
@@ -155,9 +169,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [weighInsMap, setWeighInsMap] = useState<PerProfile<WeighIn[]>>({ me: [], elena: [] });
   const [favoritesMap, setFavoritesMap] = useState<PerProfile<string[]>>({ me: [], elena: [] });
   const [recentsMap, setRecentsMap] = useState<PerProfile<string[]>>({ me: [], elena: [] });
-  const [pointsBudgetsMap, setPointsBudgetsMap] = useState<PerProfile<number>>({
-    me: DEFAULT_POINTS_BUDGET,
-    elena: DEFAULT_POINTS_BUDGET,
+  const [profileFactsMap, setProfileFactsMap] = useState<PerProfile<ProfileFacts>>({
+    me: {},
+    elena: {},
   });
   // The built-in catalog is the pre-hydration fallback; Supabase supersedes it
   // by normalized name once loaded (see `mergeCatalog`).
@@ -176,7 +190,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setFoods,
     setFavoritesMap,
     setRecentsMap,
-    setPointsBudgetsMap,
+    setProfileFactsMap,
     activeProfile,
     iso,
     setSyncState,
@@ -305,11 +319,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const addEntry: StoreValue["addEntry"] = (slot, entry) => {
     const base: FoodEntry = { ...entry, id: genId("e"), loggedAt: new Date().toISOString() };
     const food = foods.find((f) => f.id === base.foodId);
-    const withId: FoodEntry = {
-      ...base,
-      pointsValue: calculatePointsV1(base, food),
-      pointsModelVersion: POINTS_MODEL_VERSION,
-    };
+    // Every NEW entry carries a v2-il snapshot.
+    const withId: FoodEntry = scoreEntry(base, food);
     mutateDay(activeProfile, iso, (d) => {
       const meal = d.meals[slot];
       meal.entries.push(withId);
@@ -323,11 +334,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const updateEntry: StoreValue["updateEntry"] = (slot, entry) => {
     const food = foods.find((f) => f.id === entry.foodId);
-    const scored: FoodEntry = {
-      ...entry,
-      pointsValue: calculatePointsV1(entry, food),
-      pointsModelVersion: POINTS_MODEL_VERSION,
-    };
+    // A deliberate edit re-scores under v2-il — this is the only path by which
+    // a legacy v1 snapshot changes (DEC-034 §S).
+    const scored: FoodEntry = scoreEntry(entry, food);
     mutateDay(activeProfile, iso, (d) => {
       const meal = d.meals[slot];
       meal.entries = meal.entries.map((e) => (e.id === scored.id ? scored : e));
@@ -411,15 +420,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     sync.enqueue(opsForSetSteps(dayCtx, normalized));
   };
 
+  // Budget = f(facts, latest weigh-in of THAT profile). Pure and cheap; the
+  // partner's facts/weight never enter the other person's number.
+  const getPointsBudgetInfo = useCallback(
+    (profile: ProfileId): BudgetInfo =>
+      resolvePointsBudget(profileFactsMap[profile], latestWeightKg(weighInsMap[profile] ?? [])),
+    [profileFactsMap, weighInsMap],
+  );
   const getPointsBudget = useCallback(
-    (profile: ProfileId) => pointsBudgetsMap[profile] ?? DEFAULT_POINTS_BUDGET,
-    [pointsBudgetsMap],
+    (profile: ProfileId) => getPointsBudgetInfo(profile).budget,
+    [getPointsBudgetInfo],
   );
 
+  const setProfileFacts: StoreValue["setProfileFacts"] = (patch) => {
+    const merged = { ...profileFactsMap[activeProfile], ...patch };
+    setProfileFactsMap((prev) => ({ ...prev, [activeProfile]: merged }));
+    // The queue coalesces per profile, so the op carries the WHOLE merged facts:
+    // the last write always contains every field, never a partial that would
+    // drop an earlier unsent change.
+    sync.enqueue([{ kind: "profile.facts.set", profile: activeProfile, facts: merged }]);
+  };
+
   const setPointsBudget: StoreValue["setPointsBudget"] = (budget) => {
-    const normalized = Math.max(1, Math.round(budget));
-    setPointsBudgetsMap((prev) => ({ ...prev, [activeProfile]: normalized }));
-    sync.enqueue([{ kind: "profile.points-budget.set", profile: activeProfile, budget: normalized }]);
+    setProfileFacts({ pointsBudgetOverride: Math.max(10, Math.min(60, Math.round(budget))) });
   };
 
   const addFood: StoreValue["addFood"] = (name, category) => {
@@ -500,6 +523,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setWorkout,
       setSteps,
       getPointsBudget,
+      getPointsBudgetInfo,
+      profileFacts: profileFactsMap[activeProfile],
+      setProfileFacts,
       setPointsBudget,
       weighIns: weighInsMap[activeProfile],
       addWeighIn,
@@ -516,7 +542,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       weighInsMap,
       favoritesMap,
       recentsMap,
-      pointsBudgetsMap,
+      profileFactsMap,
       foods,
     ],
   );

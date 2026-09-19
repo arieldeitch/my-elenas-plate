@@ -410,3 +410,72 @@ describe("hardening migration 20260918180000 (search_path + execute grants)", ()
     expect(rows.rows.length).toBeGreaterThan(0);
   });
 });
+
+describe("migration 20260919100000 — points v2-il profile facts", () => {
+  it("adds the nullable facts with checks; a non-default v1 budget carries over as the override once, 30 does not", async () => {
+    const cols = await db.query<{
+      column_name: string;
+      is_nullable: string;
+      column_default: string | null;
+    }>(
+      `select column_name, is_nullable, column_default from information_schema.columns
+       where table_schema = 'public' and table_name = 'profiles'
+         and column_name in ('sex_at_birth','birth_date','height_cm','goal_mode','points_budget_override','daily_points_budget')
+       order by column_name`,
+    );
+    expect(cols.rows.map((c) => c.column_name)).toEqual([
+      "birth_date",
+      "daily_points_budget",
+      "goal_mode",
+      "height_cm",
+      "points_budget_override",
+      "sex_at_birth",
+    ]);
+    expect(cols.rows.find((c) => c.column_name === "goal_mode")!.column_default).toContain("lose");
+    // Existing profiles stay valid with null facts.
+    const nulls = await db.query<{ n: string }>(
+      "select count(*) as n from public.profiles where sex_at_birth is null and birth_date is null and height_cm is null and points_budget_override is null",
+    );
+    expect(Number(nulls.rows[0].n)).toBe(2);
+    // Constraints reject nonsense.
+    await expect(
+      db.exec("update public.profiles set sex_at_birth = 'x' where slug = 'ariel'"),
+    ).rejects.toThrow();
+    await expect(
+      db.exec("update public.profiles set height_cm = 10 where slug = 'ariel'"),
+    ).rejects.toThrow();
+    await expect(
+      db.exec("update public.profiles set goal_mode = 'bulk' where slug = 'ariel'"),
+    ).rejects.toThrow();
+    await expect(
+      db.exec("update public.profiles set points_budget_override = 5 where slug = 'ariel'"),
+    ).rejects.toThrow();
+    // Carry-over rule (idempotent re-run of the migration statement).
+    await db.exec("update public.profiles set daily_points_budget = 27 where slug = 'ariel'");
+    await db.exec("update public.profiles set daily_points_budget = 30 where slug = 'alena'");
+    await db.exec(
+      readFileSync(join(MIGRATIONS, "20260919100000_points_v2_profile_facts.sql"), "utf8"),
+    );
+    const after = await db.query<{ slug: string; points_budget_override: number | null }>(
+      "select slug, points_budget_override from public.profiles order by sort_order",
+    );
+    expect(after.rows).toEqual([
+      { slug: "ariel", points_budget_override: 27 },
+      { slug: "alena", points_budget_override: null },
+    ]);
+    // A member (authenticated) can update their household's profile facts; a stranger cannot.
+    await asUser(DEVICE_A, () =>
+      db.exec(
+        "update public.profiles set sex_at_birth = 'male', height_cm = 178 where slug = 'ariel'",
+      ),
+    );
+    const upd = await asUser(STRANGER, () =>
+      db.query("update public.profiles set height_cm = 100 where slug = 'ariel' returning id"),
+    );
+    expect(upd.rows).toEqual([]);
+    const ariel = await db.query<{ height_cm: string }>(
+      "select height_cm from public.profiles where slug = 'ariel'",
+    );
+    expect(Number(ariel.rows[0].height_cm)).toBe(178);
+  });
+});

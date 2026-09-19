@@ -51,7 +51,17 @@ describe("useKeyboardSafeViewport", () => {
     Object.defineProperty(window, "visualViewport", { configurable: true, value: viewport });
     const reveal = vi.fn();
     HTMLElement.prototype.scrollIntoView = reveal;
-    const rect = { top: 120, bottom: 165, left: 0, right: 200, width: 200, height: 45, x: 0, y: 120, toJSON: () => ({}) };
+    const rect = {
+      top: 120,
+      bottom: 165,
+      left: 0,
+      right: 200,
+      width: 200,
+      height: 45,
+      x: 0,
+      y: 120,
+      toJSON: () => ({}),
+    };
 
     const { getByLabelText } = render(<Harness />);
     const input = getByLabelText("מספר צעדים");
@@ -61,5 +71,40 @@ describe("useKeyboardSafeViewport", () => {
     act(() => listeners.get("resize")?.(new Event("resize")));
 
     expect(reveal).not.toHaveBeenCalled();
+  });
+
+  it("a touch on a control in the upper half of the viewport does not move anything before the keyboard", () => {
+    const viewport = {
+      height: 740,
+      offsetTop: 0,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    };
+    Object.defineProperty(window, "visualViewport", { configurable: true, value: viewport });
+    const reveal = vi.fn();
+    HTMLElement.prototype.scrollIntoView = reveal;
+    const { getByLabelText } = render(<Harness />);
+    const input = getByLabelText("מספר צעדים");
+    vi.spyOn(input, "getBoundingClientRect").mockReturnValue({ top: 100, bottom: 148 } as DOMRect);
+    fireEvent.pointerDown(input, { pointerType: "touch" });
+    expect(reveal).not.toHaveBeenCalled();
+  });
+
+  it("a touch on a control in the keyboard zone pre-positions it once, instantly, before focus", () => {
+    const viewport = {
+      height: 740,
+      offsetTop: 0,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    };
+    Object.defineProperty(window, "visualViewport", { configurable: true, value: viewport });
+    const reveal = vi.fn();
+    HTMLElement.prototype.scrollIntoView = reveal;
+    const { getByLabelText } = render(<Harness />);
+    const input = getByLabelText("מספר צעדים");
+    vi.spyOn(input, "getBoundingClientRect").mockReturnValue({ top: 600, bottom: 648 } as DOMRect);
+    fireEvent.pointerDown(input, { pointerType: "touch" });
+    expect(reveal).toHaveBeenCalledTimes(1);
+    expect(reveal.mock.calls[0][0]).toMatchObject({ block: "center", behavior: "auto" });
   });
 });

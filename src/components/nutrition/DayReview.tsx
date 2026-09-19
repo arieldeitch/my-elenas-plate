@@ -267,7 +267,13 @@ function SlotRow({
               <span className="min-w-0 flex-1 truncate text-foreground">{e.foodName}</span>
               <span className="shrink-0 text-[12px] text-muted-foreground">{entryDetail(e)}</span>
               <span className="shrink-0 text-[11px] font-medium text-primary">
-                {formatPoints(pointsForEntry(e, foods.find((f) => f.id === e.foodId)))} נק׳
+                {formatPoints(
+                  pointsForEntry(
+                    e,
+                    foods.find((f) => f.id === e.foodId),
+                  ),
+                )}{" "}
+                נק׳
               </span>
               {timeOf(e) && (
                 <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums" dir="ltr">

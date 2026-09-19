@@ -104,7 +104,10 @@ export function MealEditor({ slot, onClose }: Props) {
     }
     const added = store.addEntry(slot!, { foodId: food.id, foodName: food.name, ...usual });
     setJustAdded(added.id);
-    toast(`נוסף: ${food.name} · ${formatQuantity(added)} · ${formatPoints(added.pointsValue ?? 0)} נק׳ · אפשר לערוך כמות מיד`, { duration: 2500 });
+    toast(
+      `נוסף: ${food.name} · ${formatQuantity(added)} · ${formatPoints(added.pointsValue ?? 0)} נק׳ · אפשר לערוך כמות מיד`,
+      { duration: 2500 },
+    );
     return "added";
   }
 
@@ -113,6 +116,18 @@ export function MealEditor({ slot, onClose }: Props) {
     const amount = stepAmount(entry, direction);
     if (amount == null) return;
     store.updateEntry(slot!, { ...entry, amount });
+  }
+
+  /** Carries id/coffee/loggedAt over and sets exactly the submitted quantity fields. */
+  function withQuantity(base: FoodEntry, next: Omit<FoodEntry, "id">): FoodEntry {
+    return {
+      ...base,
+      ...next,
+      mode: next.mode,
+      amount: next.mode === "measured" ? next.amount : undefined,
+      unit: next.mode === "measured" ? next.unit : undefined,
+      subjective: next.mode === "subjective" ? next.subjective : undefined,
+    };
   }
 
   function handleUpdate(entry: FoodEntry) {
@@ -238,7 +253,9 @@ export function MealEditor({ slot, onClose }: Props) {
               initial={view.editing}
               submitLabel={view.editing ? "עדכון" : "הוספת המאכל"}
               onSubmit={(entry) => {
-                if (view.editing) handleUpdate({ ...view.editing, ...entry });
+                // Replace the quantity WHOLE: a mode switch must not leave the
+                // other mode's fields (amount/unit or subjective) behind.
+                if (view.editing) handleUpdate(withQuantity(view.editing, entry));
                 else handleAdd(entry);
               }}
               onCancel={() => setView({ kind: "meal" })}
@@ -250,7 +267,9 @@ export function MealEditor({ slot, onClose }: Props) {
               initial={view.editing}
               submitLabel={view.editing ? "עדכון" : "הוספת הקפה"}
               onSubmit={(entry) => {
-                if (view.editing) handleUpdate({ ...view.editing, ...entry });
+                // Replace the quantity WHOLE: a mode switch must not leave the
+                // other mode's fields (amount/unit or subjective) behind.
+                if (view.editing) handleUpdate(withQuantity(view.editing, entry));
                 else handleAdd(entry);
               }}
               onCancel={() => setView({ kind: "meal" })}
@@ -329,7 +348,10 @@ function EntryRow({
 }) {
   const { foods } = useStore();
   const quantityText = formatQuantity(entry);
-  const pointValue = pointsForEntry(entry, foods.find((f) => f.id === entry.foodId));
+  const pointValue = pointsForEntry(
+    entry,
+    foods.find((f) => f.id === entry.foodId),
+  );
   const detail = entry.coffee
     ? [coffeeSummary(entry.coffee), quantityText].filter(Boolean).join(" · ")
     : quantityText;

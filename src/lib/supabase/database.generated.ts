@@ -394,8 +394,13 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          birth_date: string | null
           daily_points_budget: number
           display_name: string
+          goal_mode: string
+          height_cm: number | null
+          points_budget_override: number | null
+          sex_at_birth: string | null
           household_id: string
           id: string
           slug: string
@@ -404,8 +409,13 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          birth_date?: string | null
           daily_points_budget?: number
           display_name: string
+          goal_mode?: string
+          height_cm?: number | null
+          points_budget_override?: number | null
+          sex_at_birth?: string | null
           household_id: string
           id?: string
           slug: string
@@ -414,8 +424,13 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          birth_date?: string | null
           daily_points_budget?: number
           display_name?: string
+          goal_mode?: string
+          height_cm?: number | null
+          points_budget_override?: number | null
+          sex_at_birth?: string | null
           household_id?: string
           id?: string
           slug?: string

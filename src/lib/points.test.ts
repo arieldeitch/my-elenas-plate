@@ -27,7 +27,9 @@ const entry = (patch: Partial<FoodEntry> = {}): FoodEntry => ({
 
 describe("internal points v1", () => {
   it("keeps zero-point categories at zero", () => {
-    expect(calculatePointsV1(entry({ amount: 500, unit: "גרם" }), food("ירקות ועשבי תיבול"))).toBe(0);
+    expect(calculatePointsV1(entry({ amount: 500, unit: "גרם" }), food("ירקות ועשבי תיבול"))).toBe(
+      0,
+    );
     expect(calculatePointsV1(entry({ amount: 3 }), food("פירות"))).toBe(0);
   });
 
@@ -39,10 +41,18 @@ describe("internal points v1", () => {
   });
 
   it("uses the four subjective multipliers", () => {
-    expect(calculatePointsV1(entry({ mode: "subjective", subjective: "מעט" }), food("מנות ותבשילים"))).toBe(2.5);
-    expect(calculatePointsV1(entry({ mode: "subjective", subjective: "במידה" }), food("מנות ותבשילים"))).toBe(5);
-    expect(calculatePointsV1(entry({ mode: "subjective", subjective: "הרבה" }), food("מנות ותבשילים"))).toBe(7.5);
-    expect(calculatePointsV1(entry({ mode: "subjective", subjective: "מוגזם" }), food("מנות ותבשילים"))).toBe(10);
+    expect(
+      calculatePointsV1(entry({ mode: "subjective", subjective: "מעט" }), food("מנות ותבשילים")),
+    ).toBe(2.5);
+    expect(
+      calculatePointsV1(entry({ mode: "subjective", subjective: "במידה" }), food("מנות ותבשילים")),
+    ).toBe(5);
+    expect(
+      calculatePointsV1(entry({ mode: "subjective", subjective: "הרבה" }), food("מנות ותבשילים")),
+    ).toBe(7.5);
+    expect(
+      calculatePointsV1(entry({ mode: "subjective", subjective: "מוגזם" }), food("מנות ותבשילים")),
+    ).toBe(10);
   });
 
   it("uses fallback 4 for unknown/custom categories and minimum 0.5", () => {
@@ -51,7 +61,12 @@ describe("internal points v1", () => {
   });
 
   it("scores coffee as zero in v1 rather than inventing milk/sugar precision", () => {
-    expect(calculatePointsV1(entry({ coffee: { type: "אספרסו", milk: "ללא חלב" } }), food("משקאות", "coffee"))).toBe(0);
+    expect(
+      calculatePointsV1(
+        entry({ coffee: { type: "אספרסו", milk: "ללא חלב" } }),
+        food("משקאות", "coffee"),
+      ),
+    ).toBe(0);
   });
 
   it("prefers persisted snapshots and totals a day", () => {

@@ -32,7 +32,7 @@ import {
   upsertFood,
   upsertWeighIn,
   upsertWorkout,
-  updateProfilePointsBudget,
+  updateProfileFacts,
   type HouseholdContext,
 } from "../supabase/repositories";
 import { SLUG_BY_LOCAL_PROFILE } from "./migrate-local";
@@ -135,8 +135,16 @@ export async function applyOperation(ctx: HouseholdContext, op: Operation): Prom
       return;
     }
     case "profile.points-budget.set": {
+      // v1 op left in a queue by the previous build: a manual budget → override.
       const profileId = requireProfile(ctx, op.profile);
-      await updateProfilePointsBudget(profileId, op.budget);
+      await updateProfileFacts(profileId, {
+        pointsBudgetOverride: Math.max(10, Math.min(60, Math.round(op.budget))),
+      });
+      return;
+    }
+    case "profile.facts.set": {
+      const profileId = requireProfile(ctx, op.profile);
+      await updateProfileFacts(profileId, op.facts);
       return;
     }
     case "weighin.insert": {

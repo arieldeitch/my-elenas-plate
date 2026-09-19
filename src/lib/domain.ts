@@ -88,6 +88,14 @@ export interface Food {
   suggestedUnits?: Unit[];
   kind?: FoodKind;
   /**
+   * Calibrated points per STANDARD PORTION (DEC-034 hierarchy step 1). Set only
+   * from real calibration (e.g. Elena's experiential values); overrides both
+   * nutrition facts and the category fallback.
+   */
+  pointsPerPortion?: number;
+  /** Real nutrition facts per serving (hierarchy step 2). Never fabricated. */
+  nutrition?: import("./points").NutritionFacts;
+  /**
    * Mirrors `foods.is_active`. Only set on foods loaded from Supabase: `false`
    * means the household archived it, which removes it from the catalog while
    * keeping historical entries readable (they store the name).
@@ -165,7 +173,7 @@ export interface FoodEntry {
   coffee?: CoffeeMeta;
   /** Snapshot from the transparent internal points model at log/edit time. */
   pointsValue?: number;
-  /** Model version used for the persisted snapshot (currently "v1"). */
+  /** Model version of the persisted snapshot ("v1" legacy or "v2-il"); never rewritten in place. */
   pointsModelVersion?: string;
   /**
    * When the entry was logged (ISO). Set locally at creation and read back from
