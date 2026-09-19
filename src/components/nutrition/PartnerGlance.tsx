@@ -7,6 +7,7 @@ import { latestActivity } from "@/lib/activity";
 import { useStore, PROFILES } from "@/lib/store";
 import { toISODate } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { formatPoints, pointsForDay } from "@/lib/points";
 
 /**
  * M2 — the partner's day at a glance, for the same selected date, without
@@ -22,7 +23,7 @@ interface Props {
 }
 
 export function PartnerGlance({ onOpen }: Props = {}) {
-  const { activeProfile, setActiveProfile, selectedDate, getDay } = useStore();
+  const { activeProfile, setActiveProfile, selectedDate, getDay, foods, getPointsBudget } = useStore();
   const partnerId = partnerOf(activeProfile);
   const partner = PROFILES.find((p) => p.id === partnerId)!;
   const iso = toISODate(selectedDate);
@@ -46,6 +47,8 @@ export function PartnerGlance({ onOpen }: Props = {}) {
     : null;
   const workout = day.workout?.performed ? (day.workout.type ?? "אימון") : null;
   const fasting = day.fasting ? `${day.fasting.start}–${day.fasting.end}` : null;
+  const partnerPoints = pointsForDay(day, foods);
+  const partnerBudget = getPointsBudget(partnerId);
   const steps =
     day.steps?.steps != null
       ? day.steps.steps.toLocaleString("he-IL")
@@ -97,6 +100,9 @@ export function PartnerGlance({ onOpen }: Props = {}) {
                 </span>
               );
             })}
+          </span>
+          <span className="text-[11px] font-semibold text-primary tabular-nums" data-testid="partner-points">
+            {formatPoints(partnerPoints)}/{formatPoints(partnerBudget)} נק׳
           </span>
           {(workout || fasting || steps) && (
             <span
