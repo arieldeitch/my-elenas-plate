@@ -18,7 +18,7 @@ const TYPES: WorkoutType[] = [
 ];
 const FEELINGS: WorkoutFeeling[] = ["קל", "טוב", "מאתגר", "קשה", "אחר"];
 
-export function WorkoutCard() {
+export function WorkoutCard({ onDone }: { onDone?: () => void }) {
   const store = useStore();
   const day = store.getDay(store.activeProfile, toISODate(store.selectedDate));
   const workout = day.workout;
@@ -36,6 +36,7 @@ export function WorkoutCard() {
     } else {
       store.setWorkout({ performed: false });
       setEditing(false);
+      onDone?.();
     }
   }
 
@@ -108,7 +109,7 @@ export function WorkoutCard() {
           {editing && (
             <div className="pt-1">
               <button
-                onClick={() => setEditing(false)}
+                onClick={() => { setEditing(false); onDone?.(); }}
                 className="inline-flex items-center gap-1 rounded-2xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
               >
                 <X className="h-4 w-4" /> סיום

@@ -5,7 +5,7 @@ import { useStore } from "@/lib/store";
 import { toISODate } from "@/lib/format";
 import { calcFastingHours as calcHours } from "@/lib/fasting";
 
-export function FastingCard() {
+export function FastingCard({ onDone }: { onDone?: () => void }) {
   const store = useStore();
   const day = store.getDay(store.activeProfile, toISODate(store.selectedDate));
   const [editing, setEditing] = useState(false);
@@ -22,11 +22,13 @@ export function FastingCard() {
     const f: FastingLog = { start, end };
     store.setFasting(f);
     setEditing(false);
+    onDone?.();
   }
 
   function clear() {
     store.setFasting(undefined);
     setEditing(false);
+    onDone?.();
   }
 
   const hours = day.fasting ? calcHours(day.fasting.start, day.fasting.end) : null;

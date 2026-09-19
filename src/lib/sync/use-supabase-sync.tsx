@@ -91,6 +91,8 @@ export interface SyncControls {
   markFoodDirty: (food: Food) => void;
   markFavoriteDirty: (profile: ProfileId, foodId: string, isFavorite: boolean) => void;
   markRecentDirty: (profile: ProfileId, foodId: string, whenISO: string) => void;
+  markStepsDirty: (profile: ProfileId, iso: string, report: DailySteps) => void;
+  markStepGoalDirty: (profile: ProfileId, goal: number) => void;
 }
 
 export function useSupabaseSync(args: Args): SyncControls {
@@ -367,7 +369,6 @@ export function useSupabaseSync(args: Args): SyncControls {
       dirtyDays.current.size > 0 ||
       dirtyWeigh.current.size > 0 ||
       dirtyFoods.current.size > 0 ||
-      dirtyPrefs.current.size > 0;
       dirtyPrefs.current.size > 0 ||
       dirtySteps.current.size > 0 ||
       dirtyStepGoals.current.size > 0;

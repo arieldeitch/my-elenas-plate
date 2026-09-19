@@ -10,9 +10,7 @@ import { SyncStatus } from "@/components/nutrition/SyncStatus";
 import { DailyCompletionIndicator } from "@/components/nutrition/DailyCompletionIndicator";
 import { MealCard } from "@/components/nutrition/MealCard";
 import { MealEditor } from "@/components/nutrition/MealEditor";
-import { FastingCard } from "@/components/nutrition/FastingCard";
-import { WorkoutCard } from "@/components/nutrition/WorkoutCard";
-import { WeightBanner } from "@/components/nutrition/WeightBanner";
+import { DailyContext } from "@/components/nutrition/DailyContext";
 import { WeighInForm } from "@/components/nutrition/WeighInForm";
 import { CalendarView } from "@/components/nutrition/CalendarView";
 import { BottomNav } from "@/components/nutrition/BottomNav";
@@ -83,11 +81,7 @@ function Home() {
           </div>
         </section>
 
-        {/* Secondary */}
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          <WorkoutCard />
-          <FastingCard />
-        </div>
+        <DailyContext onOpenWeight={() => setWeighOpen(true)} />
 
         <p className="mt-8 text-center text-xs text-[#94A3B4]">
           הנתונים בגרסת ההדגמה נשמרים באופן זמני בדפדפן בלבד.
@@ -97,12 +91,10 @@ function Home() {
       <MealEditor slot={openSlot} onClose={closeSlot} />
       <CalendarView open={calendarOpen} onClose={closeCalendar} />
       <WeighInForm open={weighOpen} onClose={closeWeigh} />
-      <WeightBanner onOpen={() => setWeighOpen(true)} />
       <BottomNav
         active="home"
         onCalendar={() => setCalendarOpen(true)}
         onAdd={() => setOpenSlot("lunch")}
-        onHistory={() => setCalendarOpen(true)}
       />
     </div>
   );

@@ -22,6 +22,7 @@ import {
 } from "react";
 import type {
   DayData,
+  DailySteps,
   DailyMeal,
   FastingLog,
   Food,
@@ -73,6 +74,10 @@ interface StoreValue {
 
   setFasting: (f: FastingLog | undefined) => void;
   setWorkout: (w: WorkoutLog | undefined) => void;
+  steps?: DailySteps;
+  stepGoal: number;
+  setSteps: (steps: DailySteps) => void;
+  setStepGoal: (goal: number) => void;
 
   weighIns: WeighIn[];
   addWeighIn: (w: Omit<WeighIn, "id">) => void;
@@ -109,6 +114,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [weighInsMap, setWeighInsMap] = useState<PerProfile<WeighIn[]>>({ me: [], elena: [] });
   const [favoritesMap, setFavoritesMap] = useState<PerProfile<string[]>>({ me: [], elena: [] });
   const [recentsMap, setRecentsMap] = useState<PerProfile<string[]>>({ me: [], elena: [] });
+  const [stepGoals, setStepGoals] = useState<PerProfile<number>>({ me: 10_000, elena: 10_000 });
   // The built-in catalog is the pre-hydration fallback; Supabase supersedes it
   // by normalized name once loaded (see `mergeCatalog`).
   const [foods, setFoods] = useState<Food[]>(FOOD_CATALOG);
@@ -126,6 +132,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setFoods,
     setFavoritesMap,
     setRecentsMap,
+    stepGoals,
+    setStepGoals,
     activeProfile,
     iso,
     setSyncState,
@@ -154,6 +162,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // not shrink the catalog back to its older contents.
       setFoods(mergeCatalog(FOOD_CATALOG, saved.foods));
       setActiveProfile(saved.activeProfile);
+      if (saved.stepGoals) setStepGoals(saved.stepGoals);
     }
     setHydrated(true);
   }, []);
@@ -170,8 +179,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       favorites: favoritesMap,
       recents: recentsMap,
       foods,
+      stepGoals,
     });
-  }, [hydrated, activeProfile, days, weighInsMap, favoritesMap, recentsMap, foods]);
+  }, [hydrated, activeProfile, days, weighInsMap, favoritesMap, recentsMap, foods, stepGoals]);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -287,6 +297,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const setSteps: StoreValue["setSteps"] = (report) => {
+    mutateDay(activeProfile, iso, (d) => {
+      d.steps = report;
+      return d;
+    });
+    sync.markStepsDirty(activeProfile, iso, report);
+  };
+
+  const setStepGoal: StoreValue["setStepGoal"] = (goal) => {
+    if (!Number.isInteger(goal) || goal <= 0) return;
+    setStepGoals((prev) => ({ ...prev, [activeProfile]: goal }));
+    triggerSave();
+    sync.markStepGoalDirty(activeProfile, goal);
+  };
+
   const addFood: StoreValue["addFood"] = (name, category) => {
     const trimmed = name.trim();
     // Duplicate prevention: the DB enforces unique (household_id, normalized_name),
@@ -353,11 +378,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setMealSkipped,
       setFasting,
       setWorkout,
+      steps: getDay(activeProfile, iso).steps,
+      stepGoal: stepGoals[activeProfile],
+      setSteps,
+      setStepGoal,
       weighIns: weighInsMap[activeProfile],
       addWeighIn,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeProfile, selectedDate, syncState, days, weighInsMap, favoritesMap, recentsMap, foods],
+    [activeProfile, selectedDate, syncState, days, weighInsMap, favoritesMap, recentsMap, foods, stepGoals],
   );
 
   return <StoreCtx.Provider value={value}>{children}</StoreCtx.Provider>;
