@@ -1,7 +1,7 @@
 # Project Status
 
-**Date:** 2026-09-19 (owner reports anonymous sign-ins ON; live verification pending)
-**Branch:** current synced working branch — DEC-032 steps/UX pass implemented; production migration remains unapplied. Release path: review/apply only `20260919044237_daily_steps`, verify, then publish.
+**Date:** 2026-09-19 (DEC-033 quantity restoration + internal points v1)
+**Branch:** `main` — anonymous access ON, DEC-032 daily steps applied, DEC-033 points/quantity/keyboard refinement ready for publish.
 **Supabase project:** `rqgoiuztphkcvbwtbxbj` (production) · isolated branch `uyroeumwmjhrcbkesmgb`
 **Stage:** **Feature work paused. M1 = YELLOW only until live verification: DEC-031 + hardening are applied, owner reports Supabase "Allow anonymous sign-ins" = ON, and current main is published. Next: fresh-device smoke + §3b on two phones → M1 CLOSED → M2-7 (`M2_7_PILOT.md`).**
 **Deployment:** <https://my-elenas-plate.lovable.app> serves `main` `fd32a38` (no-login build): `mode=cloud`, `target=shared`, `misconfigured=false`, host `rqgoiuztphkcvbwtbxbj`, no secrets — `PREFLIGHT PASS — 14 checks` (2026-09-18 16:40). Fresh device → one anonymous sign-in request → `422 anonymous_provider_disabled` → retry state until the Auth switch is ON.
@@ -16,9 +16,21 @@ Implemented a calmer light palette and clearer card boundaries; a balanced four-
 VisualViewport/dvh keyboard protection for input editors. Daily steps support exact counts or a truthful
 completed-only report, selected-date backfill, per-profile goals with a 10,000 first-run fallback,
 historical goal snapshots, narrow durable queue writes, hydration guards, Realtime, and partner visibility.
-Migration `supabase/migrations/20260919044237_daily_steps.sql` plus the production apply/verify scripts
-are reviewed artifacts only: **production SQL was not applied**. Current verification is recorded in
+Migration `20260919044237_daily_steps` is applied to production and verified. Current verification is recorded in
 `docs/claude-tasks/RUN_2026-09-19_STEPS_UX.md`.
+
+## 2026-09-19 — quantity restoration + internal points v1 (DEC-033)
+
+Real-device feedback restores the explicit quantity flow for typed search: measured quantity/unit or
+subjective amount (מעט / במידה / יותר מדי / מוגזם). Favourite/recent quick chips keep one-tap only
+when the existing trusted usual quantity applies. Keyboard handling no longer smooth-scrolls or
+performs an 80ms delayed recenter; it pre-positions and only corrects an actually obscured control.
+
+Internal points v1 is additive and transparent: category × portion/subjective factor, rounded to 0.5,
+with snapshots on new/edited food entries and a cloud-synced configurable daily budget per profile.
+It is deliberately not the proprietary Weight Watchers formula and does not add calories/macros.
+Production migration `20260919082000_internal_points_v1` is applied and verified: columns present,
+profiles in Realtime, RLS retained. Next gate is publish + real-phone acceptance.
 
 ## 2026-09-18 (eleventh run) — reliability / hardening before the pilot
 
