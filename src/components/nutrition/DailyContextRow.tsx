@@ -1,5 +1,14 @@
 import { useEffect, useState } from "react";
-import { ArrowDown, ArrowUp, ChevronUp, Dumbbell, Hourglass, Minus, Scale } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronUp,
+  Dumbbell,
+  Footprints,
+  Hourglass,
+  Minus,
+  Scale,
+} from "lucide-react";
 import { useStore } from "@/lib/store";
 import { formatNumber, formatShortDate, fromISODate, toISODate } from "@/lib/format";
 import { calcFastingHours } from "@/lib/fasting";
@@ -7,21 +16,18 @@ import { calcWeightDelta, latestAndPrevious } from "@/lib/weight";
 import { cn } from "@/lib/utils";
 import { WorkoutEditor } from "./WorkoutEditor";
 import { FastingEditor } from "./FastingEditor";
+import { StepsEditor } from "./StepsEditor";
 
 interface Props {
   onOpenWeight: () => void;
 }
 
-type Panel = "workout" | "fasting" | null;
+type Panel = "workout" | "fasting" | "steps" | null;
 
 /**
- * M2-3 — the secondary daily context in ONE compact row under the meal tiles:
- * weight · workout · fasting. Each cell states its current value at a glance
- * (no colour-only meaning, no nagging copy) and is a real button: weight opens
- * the existing weigh-in form; workout and fasting unfold an inline editor
- * below the row — one at a time — so nothing large sits on the home screen
- * until it is wanted. Replaces the fixed WeightBanner and the two full-size
- * WorkoutCard / FastingCard sections.
+ * Four balanced daily-context tiles: weight · workout · fasting · steps.
+ * Narrow phones use a 2×2 grid so labels and values stay centred and readable.
+ * Editors unfold below the grid, one at a time.
  */
 export function DailyContextRow({ onOpenWeight }: Props) {
   const store = useStore();
@@ -29,10 +35,8 @@ export function DailyContextRow({ onOpenWeight }: Props) {
   const day = store.getDay(store.activeProfile, iso);
   const [panel, setPanel] = useState<Panel>(null);
 
-  // Editors describe one person's one day: fold them when either changes.
   useEffect(() => setPanel(null), [store.activeProfile, iso]);
 
-  // --- weight -----------------------------------------------------------------
   const { latest, previous } = latestAndPrevious(store.weighIns);
   const todays = latest?.dateISO === iso ? latest : undefined;
   const delta = latest ? calcWeightDelta(latest.weightKg, previous?.weightKg) : null;
@@ -46,17 +50,24 @@ export function DailyContextRow({ onOpenWeight }: Props) {
     ? `${weightValue}, ${todays ? "נשקל היום" : `נשקל ב־${weightWhen}`}`
     : "לא תועדה שקילה";
 
-  // --- workout ----------------------------------------------------------------
   const w = day.workout;
   const workoutValue =
     w?.performed === true ? (w.type ?? "בוצע") : w?.performed === false ? "לא בוצע" : "לא תועד";
   const workoutSub = w?.performed === true ? (w.feeling ?? "") : "";
 
-  // --- fasting ----------------------------------------------------------------
-  const f = day.fasting;
-  const hours = f ? calcFastingHours(f.start, f.end) : null;
-  const fastingValue = f ? `${hours} שעות` : "לא תועד";
-  const fastingSub = f ? `${f.start}–${f.end}` : "";
+  const fasting = day.fasting;
+  const hours = fasting ? calcFastingHours(fasting.start, fasting.end) : null;
+  const fastingValue = fasting ? `${hours} שעות` : "לא תועד";
+  const fastingSub = fasting ? `${fasting.start}–${fasting.end}` : "";
+
+  const steps = day.steps ?? { goalSteps: 10_000, completed: false };
+  const stepsValue =
+    steps.steps != null
+      ? steps.steps.toLocaleString("he-IL")
+      : steps.completed
+        ? "בוצע"
+        : "לא דווח";
+  const stepsSub = `יעד ${steps.goalSteps.toLocaleString("he-IL")}`;
 
   function toggle(p: Exclude<Panel, null>) {
     setPanel((cur) => (cur === p ? null : p));
@@ -64,11 +75,19 @@ export function DailyContextRow({ onOpenWeight }: Props) {
 
   return (
     <section
-      aria-label="הקשר יומי: שקילה, אימון וצום"
+      aria-label="הקשר יומי: שקילה, אימון, צום וצעדים"
       data-testid="daily-context"
-      className="mt-3 rounded-2xl border border-[#E9EEF3] bg-white shadow-soft"
+      className="mt-3 overflow-hidden rounded-2xl border border-border bg-card shadow-soft"
     >
-      <div className="grid grid-cols-3 [&>*+*]:border-s [&>*+*]:border-[#EEF2F6]">
+      <div
+        className={cn(
+          "grid grid-cols-2 sm:grid-cols-4",
+          "[&>*]:border-border",
+          "[&>*:nth-child(odd)]:border-e sm:[&>*:nth-child(odd)]:border-e-0",
+          "[&>*:nth-child(-n+2)]:border-b sm:[&>*:nth-child(-n+2)]:border-b-0",
+          "sm:[&>*+*]:border-s",
+        )}
+      >
         <Cell
           icon={<Scale className="h-4 w-4" />}
           label="שקילה"
@@ -99,33 +118,47 @@ export function DailyContextRow({ onOpenWeight }: Props) {
           value={fastingValue}
           sub={fastingSub}
           ariaLabel={
-            f ? `צום: ${fastingValue}, ${fastingSub}. עריכת צום` : "צום: לא תועד. הוספת שעות"
+            fasting
+              ? `צום: ${fastingValue}, ${fastingSub}. עריכת צום`
+              : "צום: לא תועד. הוספת שעות"
           }
           expanded={panel === "fasting"}
           onClick={() => toggle("fasting")}
           testId="context-fasting"
         />
+        <Cell
+          icon={<Footprints className="h-4 w-4" />}
+          label="צעדים"
+          value={stepsValue}
+          sub={stepsSub}
+          ariaLabel={`צעדים: ${stepsValue}, ${stepsSub}. עריכת צעדים`}
+          expanded={panel === "steps"}
+          onClick={() => toggle("steps")}
+          testId="context-steps"
+        />
       </div>
 
       {panel && (
-        <div className="border-t border-[#EEF2F6] px-4 py-3" data-testid="daily-context-panel">
+        <div className="border-t border-border bg-card px-4 py-3" data-testid="daily-context-panel">
           <div className="mb-2 flex items-center justify-between">
             <span className="text-sm font-semibold text-foreground">
-              {panel === "workout" ? "אימון" : "צום"}
+              {panel === "workout" ? "אימון" : panel === "fasting" ? "צום" : "צעדים"}
             </span>
             <button
               type="button"
               onClick={() => setPanel(null)}
               aria-label="סגירה"
-              className="grid h-10 w-10 place-items-center rounded-xl text-muted-foreground hover:bg-[#F1F5F9]"
+              className="grid h-10 w-10 place-items-center rounded-xl text-muted-foreground hover:bg-muted"
             >
               <ChevronUp className="h-4 w-4" />
             </button>
           </div>
           {panel === "workout" ? (
             <WorkoutEditor />
-          ) : (
+          ) : panel === "fasting" ? (
             <FastingEditor onDone={() => setPanel(null)} />
+          ) : (
+            <StepsEditor onDone={() => setPanel(null)} />
           )}
         </div>
       )}
@@ -152,7 +185,7 @@ function Cell({
   onClick: () => void;
   testId: string;
 }) {
-  const documented = value !== "—" && value !== "לא תועד";
+  const documented = value !== "—" && value !== "לא תועד" && value !== "לא דווח";
   return (
     <button
       type="button"
@@ -162,17 +195,17 @@ function Cell({
       data-testid={testId}
       data-value={value}
       className={cn(
-        "flex min-h-[64px] flex-col items-center justify-center gap-0.5 px-1 py-2 text-center transition-colors hover:bg-[#F8FAFC] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring first:rounded-r-2xl last:rounded-l-2xl",
-        expanded && "bg-[#F8FAFC]",
+        "flex min-h-[82px] flex-col items-center justify-center gap-1 px-2 py-3 text-center transition-colors hover:bg-muted/65 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+        expanded && "bg-muted/65",
       )}
     >
-      <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+      <span className="flex items-center justify-center gap-1 text-[12px] font-medium text-muted-foreground">
         <span aria-hidden>{icon}</span>
         {label}
       </span>
       <span
         className={cn(
-          "text-[14px] leading-tight tabular-nums",
+          "text-[15px] leading-tight tabular-nums",
           documented ? "font-bold text-foreground" : "font-medium text-muted-foreground",
         )}
         dir="auto"
