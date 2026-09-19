@@ -54,18 +54,18 @@
   --color-ring: var(--primary);
   --color-ring-offset-background: var(--background);
 
-  --shadow-soft: 0 6px 24px rgba(20, 40, 70, 0.05);
-  --shadow-float: 0 10px 32px rgba(20, 40, 70, 0.07);
-  --shadow-banner: 0 -8px 28px rgba(20, 40, 70, 0.06);
+  --shadow-soft: 0 6px 22px rgba(20, 40, 70, 0.08);
+  --shadow-float: 0 10px 30px rgba(20, 40, 70, 0.11);
+  --shadow-banner: 0 -8px 28px rgba(20, 40, 70, 0.09);
 }
 
 :root {
-  --background: #f7f9fb;
+  --background: #eef3f6;
   --foreground: #182a42;
   --muted-fg: #5f6f86; /* ≥ 4.5:1 on white and on the soft surfaces (AA) */
 
-  --card: #ffffff;
-  --surface-2: #f1f5f9;
+  --card: #fbfcfd;
+  --surface-2: #e7edf2;
 
   --primary: #117d52; /* white text on it: 5.1:1, on the soft tints ≥ 4.7:1 (AA) */
   --primary-soft: #edf8f2;
@@ -79,7 +79,7 @@
   --danger: #d75c5c;
   --danger-soft: #fdecec;
 
-  --border: #e9eef3;
+  --border: #cfd9e2;
 }
 
 @layer base {
@@ -96,6 +96,23 @@
   }
   body {
     font-feature-settings: "kern", "ss01";
+    min-height: 100dvh;
+    scroll-padding-bottom: 112px;
+  }
+  :root {
+    --app-viewport-height: 100dvh;
+  }
+  input,
+  textarea,
+  select {
+    scroll-margin-block: 96px;
+  }
+  .keyboard-safe-sheet {
+    max-height: min(92dvh, calc(var(--app-viewport-height, 100dvh) - 8px));
+  }
+  .keyboard-safe-scroll {
+    overscroll-behavior: contain;
+    scroll-padding-block: 88px;
   }
   button {
     -webkit-tap-highlight-color: transparent;
