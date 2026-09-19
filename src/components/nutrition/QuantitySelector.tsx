@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Food, FoodEntry, QuantityMode, SubjectiveAmount, Unit } from "@/lib/domain";
 import { ALL_UNITS } from "@/lib/domain";
 import { parseAmount, validateMeasured } from "@/lib/quantity";
+import { formatPoints } from "@/lib/points";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -10,6 +11,7 @@ interface Props {
   onSubmit: (entry: Omit<FoodEntry, "id">) => void;
   onCancel: () => void;
   submitLabel?: string;
+  pointsPreview?: (entry: Omit<FoodEntry, "id">) => number;
 }
 
 const SUBJECTIVES: SubjectiveAmount[] = ["מעט", "במידה", "הרבה", "מוגזם"];
@@ -20,6 +22,7 @@ export function QuantitySelector({
   onSubmit,
   onCancel,
   submitLabel = "הוספת המאכל",
+  pointsPreview,
 }: Props) {
   const [mode, setMode] = useState<QuantityMode>(initial?.mode ?? "measured");
   const [amount, setAmount] = useState<string>(
@@ -32,6 +35,10 @@ export function QuantitySelector({
 
   const suggested = food.suggestedUnits ?? [food.defaultUnit ?? "יחידה"];
   const unitList = showAllUnits ? ALL_UNITS : suggested;
+
+  const previewEntry: Omit<FoodEntry, "id"> = mode === "measured"
+    ? { foodId: food.id, foodName: food.name, mode, amount: parseAmount(amount), unit }
+    : { foodId: food.id, foodName: food.name, mode, subjective };
 
   function handleSubmit() {
     if (mode === "measured") {
@@ -88,7 +95,7 @@ export function QuantitySelector({
               mode === m ? "bg-card text-foreground shadow-soft" : "text-muted-foreground",
             )}
           >
-            {m === "measured" ? "מדידה" : "תחושה"}
+            {m === "measured" ? "מדידה" : "לפי תחושה"}
           </button>
         ))}
       </div>
@@ -161,6 +168,12 @@ export function QuantitySelector({
               {s}
             </button>
           ))}
+        </div>
+      )}
+
+      {pointsPreview && (
+        <div className="rounded-xl bg-info-soft px-3 py-2 text-sm font-medium text-info" aria-live="polite" data-testid="points-preview">
+          {formatPoints(pointsPreview(previewEntry))} נק׳
         </div>
       )}
 
