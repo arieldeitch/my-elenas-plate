@@ -139,23 +139,14 @@ export function FoodSearch({ onChoose, onCreate, onAddCoffee, autoFocus = true }
       {nq && (
         <div className="space-y-1">
           {results.map((f) => {
-            const usual = usualQuantity(f);
-            const hint = usual
-              ? formatQuantity(usual)
-              : f.kind === "coffee"
-                ? "סוג וחלב"
-                : "בחירת כמות";
+            const hint = f.kind === "coffee" ? "סוג וחלב" : "בחירת כמות";
             return (
               <button
                 key={f.id}
                 onClick={() => choose(f, "typed")}
                 data-testid="search-result"
-                data-direct={usual ? "true" : "false"}
-                aria-label={
-                  usual
-                    ? `${f.name}, הוספה של ${hint}`
-                    : `${f.name}, ${f.kind === "coffee" ? "פתיחת עורך הקפה" : "פתיחת בחירת כמות"}`
-                }
+                data-direct="false"
+                aria-label={`${f.name}, ${f.kind === "coffee" ? "פתיחת עורך הקפה" : "פתיחת בחירת כמות"}`}
                 className="flex w-full items-center gap-3 rounded-xl border border-border bg-card px-3 py-3 text-right hover:border-primary/40"
               >
                 <div className="min-w-0 flex-1">
@@ -169,11 +160,11 @@ export function FoodSearch({ onChoose, onCreate, onAddCoffee, autoFocus = true }
                 <span
                   className={cn(
                     "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[12px] tabular-nums",
-                    usual ? "bg-primary-soft text-primary" : "bg-secondary text-muted-foreground",
+                    "bg-secondary text-muted-foreground",
                   )}
                   aria-hidden
                 >
-                  {usual ? <Plus className="h-3 w-3" /> : <SlidersHorizontal className="h-3 w-3" />}
+                  {f.kind === "coffee" ? <Coffee className="h-3 w-3" /> : <SlidersHorizontal className="h-3 w-3" />}
                   {hint}
                 </span>
               </button>
