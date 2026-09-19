@@ -1,5 +1,11 @@
 # Project Status
 
+## 2026-09-19 — UX יומי וצעדים
+
+נוסף מעבר חזותי רגוע יותר, ניווט תחתון בן שלוש פעולות ללא יעדים מתים, אזור הקשר יומי 2×2 במובייל, ותשתית VisualViewport משותפת לעורכים. נוספו דיווח צעדים מדויק/“ביצעתי”, יעד פרופיל, תאריך רטרואקטיבי, הפרדת אריאל/אלנה, hydration, Realtime ו-Offline Queue עמיד.
+
+Migration מוצע לבדיקה בלבד: `scripts/migrations/20260919090000_daily_steps.sql`. הוא לא הופעל בפרודקשן. עד החלתו, מסכי הענן החדשים יחזירו שגיאת schema; ה-UI המקומי נשאר פעיל.
+
 **Date:** 2026-08-01
 **Branch:** `main` @ `d5d2ce3` — merged (fast-forward) and synchronized with `origin/main`
 **Supabase project:** `rqgoiuztphkcvbwtbxbj`

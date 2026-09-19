@@ -1,5 +1,9 @@
 # TODO
 
+## T-044 (P0) — UX יומי וצעדים — In Progress
+
+יישום האפליקציה והבדיקות ההרמטיות הושלמו. נדרש review והחלה ידנית של `scripts/migrations/20260919090000_daily_steps.sql`, ואז הרצת בדיקות PGlite/E2E מול backend מעודכן.
+
 Status legend: Done / In Progress / Blocked / Deferred / Not Started.
 Updated 2026-08-01. **Production bootstrap is complete** — Supabase project `rqgoiuztphkcvbwtbxbj`
 holds 1 household, 2 profiles (אריאל/אלנה), 6 meal slots, RLS on 10 tables and 390 active foods

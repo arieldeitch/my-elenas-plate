@@ -1,5 +1,9 @@
 # Claude Context
 
+## עדכון 2026-09-19
+
+T-044 מוסיף ניווט בית/הוספה מהירה/יומן, DailyContext בן ארבעה אריחים, בטיחות VisualViewport וצעדים מסונכרנים. migration ממתין לבדיקה ב-`scripts/migrations/20260919090000_daily_steps.sql`; לא להפעיל בפרודקשן ללא אישור.
+
 Fast-start context for Claude Code. The latest user instruction always overrides older docs.
 Updated 2026-08-01.
 
