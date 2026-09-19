@@ -131,7 +131,7 @@ describe("MealEditor (M2 one-screen logging loop)", () => {
     expect(store!.getDay("me", isoToday()).meals.dinner.entries).toHaveLength(0);
   });
 
-  it("the subjective mode is reached through the row's pencil after a direct add", async () => {
+  it("typed food supports the exact subjective amount labels", async () => {
     const user = userEvent.setup();
     renderEditor();
 
@@ -139,7 +139,7 @@ describe("MealEditor (M2 one-screen logging loop)", () => {
     await user.click((await screen.findAllByTestId("search-result"))[0]);
     await user.click(screen.getByRole("tab", { name: "לפי תחושה" }));
     await user.click(screen.getByRole("button", { name: "הרבה" }));
-    await user.click(screen.getByRole("button", { name: "עדכון" }));
+    await user.click(screen.getByRole("button", { name: "הוספת המאכל" }));
 
     const entries = screen.getByTestId("meal-entries");
     expect(within(entries).getByText("סלט ירקות")).toBeInTheDocument();
