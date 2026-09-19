@@ -117,7 +117,10 @@ async function deviceB() {
           applyOperation(ctx, op),
         ),
       ),
-    steps: (profile: "me" | "elena", log: { goalSteps: number; steps?: number; completed: boolean }) =>
+    steps: (
+      profile: "me" | "elena",
+      log: { goalSteps: number; steps?: number; completed: boolean },
+    ) =>
       Promise.all(
         opsForSetSteps({ profile, iso: today() }, log).map((op) => applyOperation(ctx, op)),
       ),
@@ -191,9 +194,7 @@ describe("multi-device: A = Ariel, B = Elena, C = fresh phone", () => {
     const A = await mountDevice(USER_A, "me");
     const B = await deviceB();
 
-    act(() =>
-      A.result.current.setSteps({ goalSteps: 10_000, steps: 8_734, completed: false }),
-    );
+    act(() => A.result.current.setSteps({ goalSteps: 10_000, steps: 8_734, completed: false }));
     await waitFor(() => expect(A.result.current.syncState).toBe("saved"));
     const bSeesAriel = await B.view("me");
     expect(bSeesAriel!.steps).toEqual({
@@ -214,8 +215,14 @@ describe("multi-device: A = Ariel, B = Elena, C = fresh phone", () => {
 
     const rows = fake.rows("daily_steps");
     expect(rows).toHaveLength(2);
-    expect(rows.find((r) => r.profile_id === ARIEL)).toMatchObject({ steps: 8734, completed: false });
-    expect(rows.find((r) => r.profile_id === ALENA)).toMatchObject({ steps: null, completed: true });
+    expect(rows.find((r) => r.profile_id === ARIEL)).toMatchObject({
+      steps: 8734,
+      completed: false,
+    });
+    expect(rows.find((r) => r.profile_id === ALENA)).toMatchObject({
+      steps: null,
+      completed: true,
+    });
     A.unmount();
   });
 

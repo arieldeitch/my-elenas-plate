@@ -110,9 +110,7 @@ export function DailyContextRow({ onOpenWeight }: Props) {
           value={fastingValue}
           sub={fastingSub}
           ariaLabel={
-            fasting
-              ? `צום: ${fastingValue}, ${fastingSub}. עריכת צום`
-              : "צום: לא תועד. הוספת שעות"
+            fasting ? `צום: ${fastingValue}, ${fastingSub}. עריכת צום` : "צום: לא תועד. הוספת שעות"
           }
           expanded={panel === "fasting"}
           onClick={() => toggle("fasting")}

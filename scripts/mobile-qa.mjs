@@ -212,7 +212,9 @@ for (const [name, opts] of Object.entries(VIEWPORTS)) {
       saveVisible: Boolean(save && save.top >= 0 && save.bottom <= window.innerHeight),
     };
   });
-  log(`[${name}] keyboard-steps: input=${keyboardSafety.inputVisible} save=${keyboardSafety.saveVisible}`);
+  log(
+    `[${name}] keyboard-steps: input=${keyboardSafety.inputVisible} save=${keyboardSafety.saveVisible}`,
+  );
   if (!keyboardSafety.inputVisible || !keyboardSafety.saveVisible) {
     throw new Error(`${name}: steps input or save action is hidden by constrained viewport`);
   }
