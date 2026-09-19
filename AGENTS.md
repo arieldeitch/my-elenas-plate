@@ -33,3 +33,7 @@ getting Ariel's explicit approval. If container execution is unavoidable,
 prefer CI/cloud execution over Ariel's workstation.
 
 See `docs/NO_LOCAL_DOCKER_POLICY.md` for the full decision and test strategy.
+
+## OS alignment (Control Tower)
+
+At the start of every substantial run read the canonical Ariel AI Operating System and record an OS Access Receipt as described in `OS_ALIGNMENT_RECEIPT.md` (project P-005 on PROJECT_CONTROL_BOARD). Control Tower is the evidence owner; commits and pushes are not alignment evidence.
