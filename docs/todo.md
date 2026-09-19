@@ -33,12 +33,7 @@ Spec `docs/claude-tasks/M1_SHARED_TRUTH_RECOVERY.md`, status `M1_STATUS.md`, run
       Auth → "Allow anonymous sign-ins" = ON is still pending** (OFF at 17:39:
       `422 anonymous_provider_disabled`); then (4) `npm run preflight -- --live` and (5) §3b on two
       phones. Reliability run: `RUN_2026-09-18_RELIABILITY_HARDENING.md`.
-- [ ] **M1-R8 — post-pilot hardening apply (not a blocker).** `supabase/apply_hardening_post_pilot.sql`
-      (migration `20260918180000`: `set_updated_at` pinned `search_path`, `is_household_member`
-      execute revoked from anon; PGlite-proven, behaviour unchanged) + optionally enable leaked-password
-      protection (no user impact). Gated live suites (`rls.integration`, `remote-live`,
-      `shared-truth.live`, `e2e/*.spec.ts`) are ported but unexecuted — run them once against the
-      isolated hosted branch with anonymous sign-ins ON.
+- [x] **M1-R8 — production hardening applied (2026-09-19).** `20260918180000` is in the production ledger; `set_updated_at` has pinned `search_path`, and `is_household_member` EXECUTE is revoked from `public`/`anon` while retained for authenticated/service_role. Advisor findings for mutable search_path and anonymous SECURITY DEFINER execution are cleared. Gated live suites remain for later branch validation once anonymous sign-ins are ON.
 - [ ] M1-R4 — housekeeping: reset the leaked branch DB password or delete branch `uyroeumwmjhrcbkesmgb`
       once M1 is closed.
 - [ ] **M1-R6 — hardening pass (after M1, not a blocker; from the Supabase security advisors,
