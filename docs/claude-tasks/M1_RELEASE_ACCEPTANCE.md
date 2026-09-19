@@ -5,9 +5,7 @@ genuinely live in production. Everything below is read-only against production; 
 writes production data except the two real-user acceptance entries in §3, made by the couple's
 own accounts through the app.
 
-**Status (updated 2026-09-18, eleventh run): migration applied; the no-login build `fd32a38` is
-live (`PREFLIGHT PASS`); ONE Auth switch ("Allow anonymous sign-ins", verified OFF at 17:39) + a
-republish of the hardening commits remain, then the two-minute path §3b.** Reliability run
+**Status (updated 2026-09-19): migration + hardening applied; owner reports "Allow anonymous sign-ins" switched ON; current main is published. Live fresh-device verification and the two-minute path §3b remain before M1 closes.** Reliability run
 `RUN_2026-09-18_RELIABILITY_HARDENING.md`: auth races/storm, multi-device, realtime, offline, mobile,
 a11y and network budget verified and fixed on `main`.
 Evidence so far (`RUN_2026-09-18_M1_ACCEPTANCE.md`, `RUN_2026-09-18_ACCESS_SIMPLIFICATION.md`): §2
