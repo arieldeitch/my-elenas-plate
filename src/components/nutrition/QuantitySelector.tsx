@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Food, FoodEntry, QuantityMode, SubjectiveAmount, Unit } from "@/lib/domain";
 import { ALL_UNITS } from "@/lib/domain";
 import { parseAmount, validateMeasured } from "@/lib/quantity";
+import { calculatePointsV1, formatPoints } from "@/lib/points";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -13,6 +14,12 @@ interface Props {
 }
 
 const SUBJECTIVES: SubjectiveAmount[] = ["מעט", "במידה", "הרבה", "מוגזם"];
+const SUBJECTIVE_LABEL: Record<SubjectiveAmount, string> = {
+  מעט: "מעט",
+  במידה: "במידה",
+  הרבה: "יותר מדי",
+  מוגזם: "מוגזם",
+};
 
 export function QuantitySelector({
   food,
@@ -32,6 +39,13 @@ export function QuantitySelector({
 
   const suggested = food.suggestedUnits ?? [food.defaultUnit ?? "יחידה"];
   const unitList = showAllUnits ? ALL_UNITS : suggested;
+  const parsedPreviewAmount = parseAmount(amount);
+  const previewPoints = calculatePointsV1(
+    mode === "measured"
+      ? { mode: "measured", amount: parsedPreviewAmount ?? 0, unit }
+      : { mode: "subjective", subjective },
+    food,
+  );
 
   function handleSubmit() {
     if (mode === "measured") {
@@ -88,7 +102,7 @@ export function QuantitySelector({
               mode === m ? "bg-card text-foreground shadow-soft" : "text-muted-foreground",
             )}
           >
-            {m === "measured" ? "מדידה" : "תחושה"}
+            {m === "measured" ? "מדידה" : "לפי תחושה"}
           </button>
         ))}
       </div>
@@ -158,11 +172,18 @@ export function QuantitySelector({
                   : "border-border bg-card hover:border-primary/40",
               )}
             >
-              {s}
+              {SUBJECTIVE_LABEL[s]}
             </button>
           ))}
         </div>
       )}
+
+      <div
+        className="rounded-xl border border-border bg-secondary/55 px-3 py-2 text-sm text-muted-foreground"
+        data-testid="points-preview"
+      >
+        נקודות למנה הזו: <strong className="text-foreground">{formatPoints(previewPoints)} נק׳</strong>
+      </div>
 
       <div className="flex gap-2 pt-1">
         <button
