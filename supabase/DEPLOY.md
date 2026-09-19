@@ -1,10 +1,19 @@
 # Deploying to the remote Supabase project
 
-## Daily steps (2026-09-19, DEC-032) — PENDING REVIEW, NOT APPLIED
+## Internal points v1 (2026-09-19, DEC-033) — APPLIED + VERIFIED
 
-Review `supabase/migrations/20260919044237_daily_steps.sql`, then apply only
-`supabase/apply_daily_steps_production.sql` through the approved SQL Editor or controlling migration
-tool. The wrapper creates `daily_steps`, grants authenticated/service access before enabling RLS,
+Production project `rqgoiuztphkcvbwtbxbj` has ledger version `20260919082000 internal_points_v1`.
+Verified: `profiles.daily_points_budget integer not null default 30`;
+`food_entries.points_value numeric null`; `food_entries.points_model_version text null`;
+`profiles` is in the `supabase_realtime` publication; RLS remains enabled on `profiles` and
+`food_entries`. No historical entries were backfilled. Safe artifacts:
+`supabase/apply_internal_points_v1_production.sql` and `supabase/verify_internal_points_v1.sql`.
+Do not rerun and never use plain `supabase db push`.
+
+
+## Daily steps (2026-09-19, DEC-032) — APPLIED + VERIFIED
+
+Migration `20260919044237_daily_steps` is present in the production ledger and `public.daily_steps` is live with RLS. The apply/verify scripts remain as deployment history. The wrapper creates `daily_steps`, grants authenticated/service access before enabling RLS,
 adds household-member policies, the update trigger, index, Realtime publication, and the migration
 ledger row. Afterwards run `supabase/verify_daily_steps.sql` read-only.
 
