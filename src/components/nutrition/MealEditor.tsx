@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { X, Pencil, Trash2, Star, MinusCircle, RotateCcw, Check, Minus, Plus } from "lucide-react";
+import { X, Pencil, Trash2, Star, Plus, MinusCircle, RotateCcw, Check } from "lucide-react";
 import { toast } from "sonner";
 import type { Food, FoodEntry, MealSlotId } from "@/lib/domain";
 import { MEAL_ICONS, MEAL_LABELS } from "@/lib/meal-slots";
 import { useStore, PROFILES } from "@/lib/store";
 import { formatShortDate } from "@/lib/format";
 import { coffeeSummary } from "@/lib/coffee";
-import { canStep, formatQuantity, stepAmount, usualQuantity } from "@/lib/quantity";
 import { cn } from "@/lib/utils";
 import { FoodSearch } from "./FoodSearch";
 import { QuantitySelector } from "./QuantitySelector";
@@ -17,35 +16,24 @@ interface Props {
   onClose: () => void;
 }
 
-/**
- * M2 logging loop: ONE meal view — what is already in the meal (editable rows)
- * plus the search / recents right below it — so adding never bounces between a
- * "list" and a "search" screen. Quantity and coffee are steps, not places.
- */
 type View =
-  | { kind: "meal" }
+  | { kind: "list" }
+  | { kind: "search" }
   | { kind: "quantity"; food: Food; editing?: FoodEntry }
   | { kind: "coffee"; editing?: FoodEntry };
 
 export function MealEditor({ slot, onClose }: Props) {
   const store = useStore();
-  const [view, setView] = useState<View>({ kind: "meal" });
-  // M2-5: the row that was just quick-added is highlighted briefly so "tap + once"
-  // needs no hunting. Cleared when another meal opens.
-  const [justAdded, setJustAdded] = useState<string | null>(null);
+  const [view, setView] = useState<View>({ kind: "list" });
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Reset the view ONLY when a different meal opens. Depending on `onClose`
-  // (a fresh function each parent render) would reset the editor on every
-  // background sync re-render, losing the user's place mid-flow.
+  // (a fresh function each parent render) would reset the editor to the list
+  // view on every background sync re-render, losing the user's place mid-flow.
   useEffect(() => {
     if (!slot) return;
-    setView({ kind: "meal" });
-    setJustAdded(null);
-    // Focus the panel for Escape / screen readers unless a child (the search box
-    // of an empty meal) already took focus — child effects run first.
-    const panel = panelRef.current;
-    if (panel && !panel.contains(document.activeElement)) panel.focus();
+    setView({ kind: "list" });
+    panelRef.current?.focus();
   }, [slot]);
 
   // Escape-to-close + scroll lock; may re-run when onClose changes without
@@ -68,48 +56,17 @@ export function MealEditor({ slot, onClose }: Props) {
   const meal = store.getDay(store.activeProfile, toISO(store.selectedDate)).meals[slot];
   const Icon = MEAL_ICONS[slot];
   const profile = PROFILES.find((p) => p.id === store.activeProfile)!;
-  const isEmpty = meal.entries.length === 0;
+
+  const isEmpty = meal.entries.length === 0 && meal.status !== "skipped";
 
   function handleAdd(entry: Omit<FoodEntry, "id">) {
     store.addEntry(slot!, entry);
-    setView({ kind: "meal" });
-  }
-
-  /**
-   * ONE choose path for favourite / recent chips AND typed search results
-   * (M2-2 quick add, unified in M2-6): a food with a trusted usual quantity
-   * (`usualQuantity` — 1 × a count unit) is added immediately, attributed to
-   * the active person / selected date / this slot through the same store
-   * path as any add, and can be corrected on the row with − / +. Coffee opens
-   * its editor; a food without a trusted default opens the quantity screen.
-   * Returns what happened so the search box can clear itself after an add.
-   */
-  function handleChoose(food: Food): "added" | "opened" {
-    if (food.kind === "coffee") {
-      setView({ kind: "coffee" });
-      return "opened";
-    }
-    const usual = usualQuantity(food);
-    if (!usual) {
-      setView({ kind: "quantity", food });
-      return "opened";
-    }
-    const added = store.addEntry(slot!, { foodId: food.id, foodName: food.name, ...usual });
-    setJustAdded(added.id);
-    toast(`נוסף: ${food.name} · ${formatQuantity(added)}`, { duration: 2500 });
-    return "added";
-  }
-
-  /** M2-5: one-tap − / + on a count-unit row; the same upsert path as any edit. */
-  function handleStep(entry: FoodEntry, direction: 1 | -1) {
-    const amount = stepAmount(entry, direction);
-    if (amount == null) return;
-    store.updateEntry(slot!, { ...entry, amount });
+    setView({ kind: "search" });
   }
 
   function handleUpdate(entry: FoodEntry) {
     store.updateEntry(slot!, entry);
-    setView({ kind: "meal" });
+    setView({ kind: "list" });
   }
 
   function handleDelete(entry: FoodEntry) {
@@ -129,12 +86,16 @@ export function MealEditor({ slot, onClose }: Props) {
     setView({ kind: "quantity", food: f });
   }
 
+  function handlePick(food: Food) {
+    if (food.kind === "coffee") setView({ kind: "coffee" });
+    else setView({ kind: "quantity", food });
+  }
+
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={`${MEAL_LABELS[slot]} · ${profile.name}`}
-      data-owner={profile.id}
+      aria-label={MEAL_LABELS[slot]}
       className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
     >
       <div
@@ -147,33 +108,22 @@ export function MealEditor({ slot, onClose }: Props) {
         tabIndex={-1}
         className={cn(
           "relative flex flex-col w-full max-w-lg bg-card border border-border shadow-lg outline-none",
-          "rounded-t-3xl sm:rounded-3xl max-h-[92vh] sm:max-h-[85vh] sm:my-8",
+          "rounded-t-3xl sm:rounded-3xl max-h-[min(92dvh,var(--visual-viewport-height,92vh))] sm:max-h-[85dvh] sm:my-8",
           "animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200",
         )}
-        style={{ borderTopColor: profile.color, borderTopWidth: 3 }}
       >
-        {/* Header — whose meal this is, unmistakably: name + personal colour. */}
-        <div className="flex items-center gap-3 border-b border-border p-4">
+        {/* Header */}
+        <div className="flex items-start gap-3 border-b border-border p-4">
           <div
-            className="grid h-11 w-11 place-items-center rounded-xl shrink-0"
-            style={{ backgroundColor: profile.tint, color: profile.color }}
+            className="grid h-11 w-11 place-items-center rounded-xl bg-primary-soft text-primary shrink-0"
             aria-hidden
           >
             <Icon className="h-5 w-5" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="font-bold text-foreground">{MEAL_LABELS[slot]}</div>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span
-                className="grid h-4 w-4 place-items-center rounded-full text-[10px] font-semibold text-white"
-                style={{ backgroundColor: profile.color }}
-                aria-hidden
-              >
-                {profile.initials}
-              </span>
-              <span className="truncate" data-testid="meal-owner">
-                {profile.name} · {formatShortDate(store.selectedDate)}
-              </span>
+            <div className="text-xs text-muted-foreground truncate">
+              {profile.name} · {formatShortDate(store.selectedDate)}
             </div>
           </div>
           <button
@@ -187,42 +137,46 @@ export function MealEditor({ slot, onClose }: Props) {
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-4">
-          {view.kind === "meal" &&
-            (meal.status === "skipped" ? (
-              <SkippedState onUndo={() => store.setMealSkipped(slot, false)} />
-            ) : (
-              <div className="space-y-4">
-                {!isEmpty && (
-                  <div className="space-y-2" data-testid="meal-entries">
-                    {meal.entries.map((e) => (
-                      <EntryRow
-                        key={e.id}
-                        entry={e}
-                        isFavorite={store.favorites.includes(e.foodId)}
-                        onToggleFavorite={() => store.toggleFavorite(e.foodId)}
-                        onEdit={() => {
-                          if (e.coffee) {
-                            setView({ kind: "coffee", editing: e });
-                            return;
-                          }
-                          const food = store.foods.find((f) => f.id === e.foodId);
-                          if (food) setView({ kind: "quantity", food, editing: e });
-                        }}
-                        onDelete={() => handleDelete(e)}
-                        onStep={(dir) => handleStep(e, dir)}
-                        highlighted={e.id === justAdded}
-                      />
-                    ))}
-                  </div>
-                )}
-                <FoodSearch
-                  onChoose={handleChoose}
-                  onCreate={handleCreateFood}
-                  onAddCoffee={() => setView({ kind: "coffee" })}
-                  autoFocus={isEmpty}
+          {view.kind === "list" && (
+            <>
+              {meal.status === "skipped" ? (
+                <SkippedState onUndo={() => store.setMealSkipped(slot, false)} />
+              ) : isEmpty ? (
+                <EmptyState
+                  onAdd={() => setView({ kind: "search" })}
+                  onSkip={() => store.setMealSkipped(slot, true)}
                 />
-              </div>
-            ))}
+              ) : (
+                <div className="space-y-2">
+                  {meal.entries.map((e) => (
+                    <EntryRow
+                      key={e.id}
+                      entry={e}
+                      isFavorite={store.favorites.includes(e.foodId)}
+                      onToggleFavorite={() => store.toggleFavorite(e.foodId)}
+                      onEdit={() => {
+                        if (e.coffee) {
+                          setView({ kind: "coffee", editing: e });
+                          return;
+                        }
+                        const food = store.foods.find((f) => f.id === e.foodId);
+                        if (food) setView({ kind: "quantity", food, editing: e });
+                      }}
+                      onDelete={() => handleDelete(e)}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {view.kind === "search" && (
+            <FoodSearch
+              onPick={handlePick}
+              onCreate={handleCreateFood}
+              onAddCoffee={() => setView({ kind: "coffee" })}
+            />
+          )}
 
           {view.kind === "quantity" && (
             <QuantitySelector
@@ -233,7 +187,7 @@ export function MealEditor({ slot, onClose }: Props) {
                 if (view.editing) handleUpdate({ ...view.editing, ...entry });
                 else handleAdd(entry);
               }}
-              onCancel={() => setView({ kind: "meal" })}
+              onCancel={() => setView(view.editing ? { kind: "list" } : { kind: "search" })}
             />
           )}
 
@@ -245,30 +199,49 @@ export function MealEditor({ slot, onClose }: Props) {
                 if (view.editing) handleUpdate({ ...view.editing, ...entry });
                 else handleAdd(entry);
               }}
-              onCancel={() => setView({ kind: "meal" })}
+              onCancel={() => setView(view.editing ? { kind: "list" } : { kind: "search" })}
             />
           )}
         </div>
 
-        {/* Footer: one primary action. Empty meal → offer "skipped"; otherwise done. */}
-        {view.kind === "meal" && meal.status !== "skipped" && (
-          <div className="border-t border-border p-3 flex gap-2 bg-card">
-            {isEmpty ? (
-              <button
-                onClick={() => store.setMealSkipped(slot, true)}
-                className="flex-1 rounded-2xl border border-border bg-card py-3 font-medium text-muted-foreground hover:bg-muted"
-              >
-                לא נאכלה ארוחה
-              </button>
-            ) : (
+        {/* Footer */}
+        {view.kind === "list" && meal.status !== "skipped" && (
+          <div className="sticky bottom-0 border-t border-border p-3 pb-[calc(.75rem+env(safe-area-inset-bottom))] flex gap-2 bg-card">
+            <button
+              onClick={() => setView({ kind: "search" })}
+              className="flex-1 inline-flex items-center justify-center gap-2 rounded-2xl bg-primary py-3 font-semibold text-primary-foreground hover:bg-primary/90"
+            >
+              <Plus className="h-4 w-4" />
+              הוספת מאכל
+            </button>
+            {!isEmpty && (
               <button
                 onClick={onClose}
-                className="flex-1 inline-flex items-center justify-center gap-2 rounded-2xl bg-primary py-3 font-semibold text-primary-foreground hover:bg-primary/90"
+                className="rounded-2xl border border-border bg-card px-4 py-3 font-medium hover:bg-muted inline-flex items-center gap-2"
               >
                 <Check className="h-4 w-4" />
                 סיום
               </button>
             )}
+            {isEmpty && (
+              <button
+                onClick={() => store.setMealSkipped(slot, true)}
+                className="rounded-2xl border border-border bg-card px-4 py-3 font-medium hover:bg-muted"
+              >
+                לא נאכלה ארוחה
+              </button>
+            )}
+          </div>
+        )}
+
+        {view.kind === "search" && (
+          <div className="border-t border-border p-3 flex gap-2 bg-card">
+            <button
+              onClick={() => setView({ kind: "list" })}
+              className="flex-1 rounded-2xl border border-border bg-card py-3 font-medium hover:bg-muted"
+            >
+              חזרה לארוחה
+            </button>
           </div>
         )}
       </div>
@@ -281,6 +254,28 @@ function toISO(d: Date): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+function EmptyState({ onAdd, onSkip }: { onAdd: () => void; onSkip: () => void }) {
+  return (
+    <div className="text-center py-8">
+      <p className="text-muted-foreground">עוד לא תועדו מאכלים בארוחה הזו.</p>
+      <div className="mt-6 flex flex-col gap-2 items-stretch max-w-xs mx-auto">
+        <button
+          onClick={onAdd}
+          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary py-3 font-semibold text-primary-foreground hover:bg-primary/90"
+        >
+          <Plus className="h-4 w-4" /> הוספת מאכל
+        </button>
+        <button
+          onClick={onSkip}
+          className="rounded-2xl border border-border bg-card py-3 font-medium text-muted-foreground hover:bg-muted"
+        >
+          לא נאכלה ארוחה
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function SkippedState({ onUndo }: { onUndo: () => void }) {
@@ -305,110 +300,55 @@ function SkippedState({ onUndo }: { onUndo: () => void }) {
 function EntryRow({
   entry,
   isFavorite,
-  highlighted,
   onToggleFavorite,
   onEdit,
   onDelete,
-  onStep,
 }: {
   entry: FoodEntry;
   isFavorite: boolean;
-  highlighted?: boolean;
   onToggleFavorite: () => void;
   onEdit: () => void;
   onDelete: () => void;
-  onStep: (direction: 1 | -1) => void;
 }) {
-  const quantityText = formatQuantity(entry);
+  const quantityText =
+    entry.mode === "measured"
+      ? `${entry.amount} ${entry.unit ?? ""}`.trim()
+      : (entry.subjective ?? "");
   const detail = entry.coffee
     ? [coffeeSummary(entry.coffee), quantityText].filter(Boolean).join(" · ")
     : quantityText;
-  const steppable = canStep(entry);
-  const canDecrement = steppable && stepAmount(entry, -1) != null;
-
   return (
-    <div
-      data-testid="meal-entry"
-      data-entry-id={entry.id}
-      data-quantity={quantityText}
-      className={cn(
-        "rounded-2xl border border-border bg-card p-2 pr-3 transition-colors duration-700",
-        highlighted && "border-primary/40 bg-primary-soft/40",
-      )}
-    >
-      {/* Line 1: the food + the rare actions */}
-      <div className="flex items-center gap-1">
-        <div className="min-w-0 flex-1">
-          <div className="truncate font-medium text-foreground">{entry.foodName}</div>
-          {entry.coffee && <div className="truncate text-xs text-muted-foreground">{detail}</div>}
-          {entry.coffee?.note && (
-            <div className="truncate text-xs text-muted-foreground/80">{entry.coffee.note}</div>
-          )}
-        </div>
-        <button
-          onClick={onToggleFavorite}
-          aria-label={
-            isFavorite ? `הסרת ${entry.foodName} מהמועדפים` : `הוספת ${entry.foodName} למועדפים`
-          }
-          className="grid h-11 w-11 place-items-center rounded-xl hover:bg-muted"
-        >
-          <Star
-            className={cn("h-4 w-4", isFavorite ? "text-warn fill-warn" : "text-muted-foreground")}
-          />
-        </button>
-        <button
-          onClick={onEdit}
-          aria-label={`עריכה: ${entry.foodName}`}
-          className="grid h-11 w-11 place-items-center rounded-xl hover:bg-muted"
-        >
-          <Pencil className="h-4 w-4" />
-        </button>
-        <button
-          onClick={onDelete}
-          aria-label={`מחיקה: ${entry.foodName}`}
-          className="grid h-11 w-11 place-items-center rounded-xl text-destructive hover:bg-muted"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+    <div className="flex items-center gap-2 rounded-2xl border border-border bg-card p-3">
+      <div className="min-w-0 flex-1">
+        <div className="truncate font-medium text-foreground">{entry.foodName}</div>
+        <div className="text-sm text-muted-foreground">{detail}</div>
+        {entry.coffee?.note && (
+          <div className="truncate text-xs text-muted-foreground/80">{entry.coffee.note}</div>
+        )}
       </div>
-
-      {/* Line 2: the quantity — one-tap − / + for count units (M2-5), text otherwise */}
-      {steppable ? (
-        <div
-          className="mt-1 inline-flex items-center rounded-full border border-border bg-secondary"
-          role="group"
-          aria-label={`כמות של ${entry.foodName}`}
-        >
-          <button
-            type="button"
-            onClick={() => onStep(-1)}
-            disabled={!canDecrement}
-            aria-label={`פחות ${entry.foodName}`}
-            data-testid="qty-minus"
-            className="grid h-10 w-11 place-items-center rounded-full text-foreground hover:bg-card disabled:text-muted-foreground/50 disabled:cursor-not-allowed"
-          >
-            <Minus className="h-4 w-4" />
-          </button>
-          <span
-            className="min-w-[84px] px-1 text-center text-sm font-medium text-foreground tabular-nums"
-            aria-live="polite"
-            data-testid="qty-value"
-          >
-            {quantityText}
-          </span>
-          <button
-            type="button"
-            onClick={() => onStep(1)}
-            aria-label={`עוד ${entry.foodName}`}
-            data-testid="qty-plus"
-            className="grid h-10 w-11 place-items-center rounded-full text-foreground hover:bg-card"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
-        </div>
-      ) : (
-        !entry.coffee && <div className="mt-0.5 text-sm text-muted-foreground">{detail}</div>
-      )}
+      <button
+        onClick={onToggleFavorite}
+        aria-label={isFavorite ? "הסרה ממועדפים" : "הוספה למועדפים"}
+        className="grid h-11 w-11 place-items-center rounded-xl hover:bg-muted"
+      >
+        <Star
+          className={cn("h-4 w-4", isFavorite ? "text-warn fill-warn" : "text-muted-foreground")}
+        />
+      </button>
+      <button
+        onClick={onEdit}
+        aria-label="עריכה"
+        className="grid h-11 w-11 place-items-center rounded-xl hover:bg-muted"
+      >
+        <Pencil className="h-4 w-4" />
+      </button>
+      <button
+        onClick={onDelete}
+        aria-label="מחיקה"
+        className="grid h-11 w-11 place-items-center rounded-xl text-destructive hover:bg-muted"
+      >
+        <Trash2 className="h-4 w-4" />
+      </button>
     </div>
   );
 }

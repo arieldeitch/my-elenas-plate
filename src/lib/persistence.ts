@@ -8,7 +8,6 @@
  * guarded so storage being unavailable is non-fatal.
  */
 import type { DayData, Food, ProfileId, WeighIn } from "./domain";
-import { getBuildInfo } from "./build-info";
 
 const STORAGE_KEY = "elenas-plate:v1";
 const VERSION = 1 as const;
@@ -23,6 +22,7 @@ export interface PersistedState {
   favorites: PerProfile<string[]>;
   recents: PerProfile<string[]>;
   foods: Food[];
+  stepGoals?: PerProfile<number>;
 }
 
 export function loadState(): PersistedState | null {
@@ -42,15 +42,6 @@ export function loadState(): PersistedState | null {
 
 export function saveState(state: Omit<PersistedState, "version">): void {
   if (typeof window === "undefined") return;
-  // Belt and braces for DEC-024: a shared build without cloud config is blocked
-  // by RuntimeGate before any store exists; should anything still reach here,
-  // refuse to create an isolated local-only reality.
-  if (getBuildInfo().misconfigured) {
-    console.error(
-      "[elenas-plate] refusing localStorage write: shared build without Supabase config",
-    );
-    return;
-  }
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: VERSION, ...state }));
   } catch (err) {

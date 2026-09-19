@@ -11,8 +11,6 @@ const PORT = 4330;
 
 export default defineConfig({
   testDir: "./e2e",
-  // Hermetic (no-backend) specs run under playwright.hermetic.config.ts only.
-  testIgnore: ["**/hermetic/**"],
   timeout: 90_000,
   expect: { timeout: 20_000 },
   fullyParallel: false,
@@ -24,13 +22,13 @@ export default defineConfig({
     locale: "he-IL",
     trace: "retain-on-failure",
   },
-  projects: [{ name: "mobile-chrome", use: { ...devices["Pixel 7"] } }],
+  projects: [
+    { name: "mobile-360", use: { ...devices["Pixel 7"], viewport: { width: 360, height: 740 } } },
+    { name: "mobile-412", use: { ...devices["Pixel 7"], viewport: { width: 412, height: 915 } } },
+  ],
   webServer: {
-    // `--mode e2e` loads `.env.e2e` when present. Per docs/NO_LOCAL_DOCKER_POLICY.md
-    // it must point at the ISOLATED HOSTED Supabase test branch — never at
-    // production and never at a local Docker stack. Without `.env.e2e` Vite
-    // falls back to `.env`, so do not run this config while `.env` targets
-    // production: these specs sign up accounts and write rows.
+    // `--mode e2e` loads `.env.e2e` when present (point it at a local Supabase
+    // stack for reliable runs); otherwise it falls back to `.env` (remote).
     command: `npx vite dev --mode e2e --port ${PORT}`,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: true,

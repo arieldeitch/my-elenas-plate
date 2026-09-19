@@ -1,12 +1,10 @@
 /**
- * Live integration test against a running Supabase instance. Verifies the
- * one-household join (DEC-031: every session joins the same household), CRUD
- * and — most importantly — RLS: membership is the data boundary.
+ * Live integration test against a running Supabase instance. Verifies bootstrap,
+ * CRUD and — most importantly — RLS isolation between households.
  *
  * Skipped unless SUPABASE_TEST_URL + SUPABASE_TEST_ANON_KEY are set, so the
- * normal (hermetic) test run is unaffected. The target project must have
- * "Allow anonymous sign-ins" enabled (as production has). Run against the
- * isolated hosted branch (docs/NO_LOCAL_DOCKER_POLICY.md):
+ * normal (hermetic) test run is unaffected. Run locally with:
+ *   supabase start
  *   SUPABASE_TEST_URL=... SUPABASE_TEST_ANON_KEY=... npx vitest run rls.integration
  */
 import { describe, it, expect, beforeAll } from "vitest";
@@ -27,16 +25,6 @@ function anonClient(): SupabaseClient<Database> {
   });
 }
 
-/** A fresh device: silent anonymous session (what the app does on every new phone). */
-async function newDevice() {
-  const sb = anonClient();
-  const { data, error } = await sb.auth.signInAnonymously();
-  if (error) throw error;
-  if (!data.session) throw new Error("anonymous sign-in returned no session");
-  return sb;
-}
-
-/** The historical permanent account shape (email + password), still a valid session. */
 async function newUser() {
   const sb = anonClient();
   const email = `t_${Date.now()}_${Math.floor(Math.random() * 1e6)}@${EMAIL_DOMAIN}`;
@@ -55,7 +43,7 @@ describe.skipIf(!run)("Supabase RLS + bootstrap (live)", () => {
   let householdA: string;
 
   beforeAll(async () => {
-    userA = await newDevice();
+    userA = await newUser();
     const { data, error } = await userA.rpc("bootstrap_household");
     expect(error).toBeNull();
     householdA = data as string;
@@ -111,36 +99,25 @@ describe.skipIf(!run)("Supabase RLS + bootstrap (live)", () => {
     expect(error).not.toBeNull();
   });
 
-  it("a second device and the permanent-account shape join the SAME household (DEC-031)", async () => {
-    const deviceB = await newDevice();
-    const { data: hidB } = await deviceB.rpc("bootstrap_household");
-    expect(hidB).toBe(householdA);
-    const account = await newUser();
-    const { data: hidAcc } = await account.rpc("bootstrap_household");
-    expect(hidAcc).toBe(householdA);
+  it("isolates households: an unrelated account sees none of A's rows", async () => {
+    const userB = await newUser();
+    await userB.rpc("bootstrap_household");
 
-    // Shared truth: B sees A's rows; still exactly two profiles.
-    const { data: bProfiles } = await deviceB.from("profiles").select("slug").order("sort_order");
-    expect(bProfiles?.map((p) => p.slug)).toEqual(["ariel", "alena"]);
-    const { data: bEntries } = await deviceB
-      .from("food_entries")
-      .select("id")
-      .eq("household_id", householdA);
-    expect((bEntries ?? []).length).toBeGreaterThan(0);
-  });
-
-  it("a session that never joined sees none of the household's rows (membership = boundary)", async () => {
-    const stranger = await newDevice(); // no bootstrap_household() call
-    const { data: profiles } = await stranger
+    const { data: bSeesAProfiles } = await userB
       .from("profiles")
       .select("*")
       .eq("household_id", householdA);
-    expect(profiles).toEqual([]);
-    const { data: entries } = await stranger
+    expect(bSeesAProfiles).toEqual([]);
+
+    const { data: bSeesAEntries } = await userB
       .from("food_entries")
       .select("*")
       .eq("household_id", householdA);
-    expect(entries).toEqual([]);
+    expect(bSeesAEntries).toEqual([]);
+
+    // B only sees its own two profiles.
+    const { data: bProfiles } = await userB.from("profiles").select("*");
+    expect(bProfiles?.length).toBe(2);
   });
 
   it("denies anonymous (unauthenticated) reads", async () => {

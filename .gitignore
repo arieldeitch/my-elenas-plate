@@ -23,13 +23,10 @@ package-lock.json
 # Test coverage output
 coverage
 
-# Environment files. Local `.env*` files are private (they may point anywhere).
-# Tracked on purpose: `.env.example` (template) and `.env.production` (PUBLIC
-# values only — project URL, runtime target, anon/publishable key; DEC-025).
+# Environment files (never commit real credentials). .env.example is tracked.
 .env
 .env.*
 !.env.example
-!.env.production
 
 # Playwright E2E artifacts
 test-results

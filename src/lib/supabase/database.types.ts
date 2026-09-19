@@ -41,3 +41,5 @@ export type FoodEntryInsert = T["food_entries"]["Insert"];
 export type FastingLogRow = T["fasting_logs"]["Row"];
 export type WorkoutLogRow = T["workout_logs"]["Row"];
 export type WeighInRow = T["weigh_ins"]["Row"];
+export type DailyStepLogRow = T["daily_step_logs"]["Row"];
+export type ProfileStepSettingRow = T["profile_step_settings"]["Row"];

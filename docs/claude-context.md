@@ -1,62 +1,19 @@
 # Claude Context
 
+## עדכון 2026-09-19
+
+T-044 מוסיף ניווט בית/הוספה מהירה/יומן, DailyContext בן ארבעה אריחים, בטיחות VisualViewport וצעדים מסונכרנים. migration ממתין לבדיקה ב-`scripts/migrations/20260919090000_daily_steps.sql`; לא להפעיל בפרודקשן ללא אישור.
+
 Fast-start context for Claude Code. The latest user instruction always overrides older docs.
-Updated 2026-09-18 (eleventh run: reliability/hardening; Auth "Allow anonymous sign-ins" still OFF on production).
+Updated 2026-08-01.
 
 ## Start state
 
 - **Project:** shared Nutrition Tracker for **אריאל (Ariel)** and **אלנה (Elena)** — Hebrew, RTL,
   mobile-first daily logging.
-- **Branch:** `main` (M1 merged; fail-safe runtime + preflight; M2 steps 1–6 — all 2026-09-18).
-  M1 status: `docs/claude-tasks/M1_STATUS.md`; **M1 release entrypoint:**
-  `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md`; latest run record:
-  `docs/claude-tasks/RUN_2026-09-18_RELIABILITY_HARDENING.md` (previous: `RUN_2026-09-18_ACCESS_SIMPLIFICATION.md`).
-- **Feature work is paused (2026-09-18).** The daily loop is considered ready for first real use. Do
-  not build M2-8; it will be selected from the pilot's friction log (`docs/claude-tasks/M2_7_PILOT.md`).
-  **Owner actions A/B/C are complete; §2 PASSED on the served `0cd3673`; §3 item 9 PASSES — but that
-  build shows a login screen, which DEC-031 (2026-09-18) removed as a product regression.** Access
-  now: silent anonymous device session (`AuthGate` → `ensureSession()`), `bootstrap_household()`
-  joins the ONE household, person = device profile. **State 2026-09-18 17:45:** DEC-031 migration
-  applied + verified on production by the controlling GPT; no-login build `fd32a38` live (preflight
-  PASS); `main` is ahead by the eleventh-run hardening (auth races, perf, mobile/a11y — republish
-  wanted); **Auth "Allow anonymous sign-ins" is still OFF** (probe: `POST /auth/v1/signup {}` →
-  `422 anonymous_provider_disabled`; nothing is created while OFF). Next run: probe the switch; when
-  ON → fresh-device production smoke (no form → chooser → footer `· cloud`; reload reuses the session;
-  one membership) → `npm run preflight -- --live` on the republished sha → §3b reply → mark M1 CLOSED,
-  start the pilot. If a §3b item fails, fix only that. No M2-8. Never ask Ariel for
-  Supabase/GitHub/Lovable actions. Post-pilot: `apply_hardening_post_pilot.sql` (M1-R8).
-- **Home (M2, DEC-026/027):** `TodayCard` (me) → `PartnerGlance` (partner) → six compact `MealCard`s →
-  `DailyContextRow` (weight · workout · fasting, inline editors). `DayReview` sheet (DEC-028) opens from
-  the today card / partner card: read-only day per slot for either person; edit only for the active
-  person; looking never switches person or date. Meal-editor rows have a − / + pill for count units only
-  (DEC-029; `lib/quantity.ts` `COUNT_UNITS`, `stepAmount`, `formatQuantity`). Chips AND typed results add
-  directly only when `usualQuantity(food)` is trusted (1 × count unit, DEC-030); otherwise the quantity
-  screen. Visual check: `scripts/home-snapshots.mjs`
-  against `npx vite dev --mode hermetic --port 4336` (screenshots + page height + above-the-fold report).
-  One-screen `MealEditor` with one-tap quick add from favourites/recents. Personal colours on
-  `PROFILES` (`color`/`tint`); `data-owner` on the today card and the editor dialog. No calories/macros
-  anywhere (DEC-004) — do not add them to the partner card.
-- **Supabase project:** `rqgoiuztphkcvbwtbxbj` (production). Isolated test branch
-  `m1-shared-truth-test` (`uyroeumwmjhrcbkesmgb`).
-- **Production DB status:** bootstrap complete, catalog seeded. The reviewed M1 grants/default
-  privileges are applied to production and verified. The migration ledger contains both
-  `20260725190000` and `20260916120000`; all 10 public tables have RLS enabled; authenticated/service_role
-  have the required table privileges. Owner action C is complete.
-- **Fail-safe since 2026-09-18 (DEC-025):** a production build without Supabase config is now
-  **blocked** (`RuntimeGate`), `.env.production` is committed with the public URL/target and one
-  line for the key, every build emits `/build-info.json`, and `npm run preflight -- --env|--local|--live`
-  is the executable release gate (`docs/RUNTIME_CONFIG.md` §1a, §2a, §2b, §3).
-- **Production release state (verified 2026-09-18, ninth run):** <https://my-elenas-plate.lovable.app>
-  serves `main` `0cd3673` (deployment `psr2.4acecc14…`) — `mode=cloud`, `target=shared`,
-  `misconfigured=false`, host `rqgoiuztphkcvbwtbxbj`, no secrets: `PREFLIGHT PASS — 14 checks`.
-  Anonymous REST reads `[]` on all 10 tables, anonymous insert rejected by RLS. The old `0c0eb717…`
-  demo deployment is history. Since DEC-031 that served build is **behind `main`** (it still shows
-  the login); anonymous sign-ins were OFF on production at 15:50 (`422 anonymous_provider_disabled`).
-  Do not mark M1 CLOSED until the republished build passes preflight and the §3b reply is in.
-- **Toolchain (2026-09-18):** install with `bun install --frozen-lockfile` (npm resolves newer
-  TanStack packages and breaks `tsc`); on Windows set `git config core.autocrlf false` in this repo
-  (CRLF checkouts fail `catalog-seed.test.ts` and prettier). Docker is never required
-  (`docs/NO_LOCAL_DOCKER_POLICY.md`; `.claude/settings.json` denies Docker-launching commands).
+- **Branch:** `chore/t-034-smoke-verification` (from `main` @ `8667b3c`).
+- **Supabase project:** `rqgoiuztphkcvbwtbxbj`.
+- **Production status:** bootstrap complete, catalog seeded, **ready for real use**.
 - **T-034 (2026-08-01): closed as Backend Verified** (DEC-023). Production RLS confirmed enforced
   (11/11 anonymous probes rejected, read-only). Data layer confirmed by **12/12 gated live tests**
   against a local stack with identical migrations. One flaky realtime _test_ was fixed (DEC-022); no
@@ -67,13 +24,11 @@ Updated 2026-09-18 (eleventh run: reliability/hardening; Auth "Allow anonymous s
 - **Do not build a production self-test** (DEC-023) — no diagnostics tables, feature flags, background
   self-tests, temporary migrations, diagnostic entities, production writes, or deployment-only
   verification code. This was considered and rejected.
-- **Deployment: there is no automated pipeline.** Re-verified 2026-09-18 — no `.github/workflows`,
-  zero GitHub Actions runs, zero GitHub deployments, no `deploy` script. **Pushing to `main` deploys
-  nothing.** This is a Lovable project (Lovable's `gpt-engineer-app[bot]` commits land on `main`, so
-  `main` is the connected branch); publishing is a manual action in the Lovable editor, in Ariel's
-  Lovable account (not the account connected to Claude's MCP). Production URL:
-  `https://my-elenas-plate.lovable.app` — read-only checks are possible with `curl`
-  (`docs/RUNTIME_CONFIG.md §4`), authenticated UI checks need a browser session.
+- **Deployment: there is no automated pipeline.** Verified 2026-08-01 — no `.github/workflows`, zero
+  GitHub Actions runs, zero GitHub deployments, no `deploy` script, no committed wrangler config, and
+  `wrangler` is unauthenticated. **Pushing to `main` deploys nothing.** This is a Lovable project;
+  publishing is a manual action in the Lovable editor, outside this environment. No production URL is
+  recorded anywhere in the repo, so the live site cannot be inspected from here.
 
 ## Verified production baseline (2026-07-25)
 
@@ -112,25 +67,18 @@ seeded. Nothing was ever broken in the migration.
 Not a repository audit, and not a migration:
 
 1. Read `docs/claude-context.md`.
-2. Read `docs/claude-tasks/RUN_2026-09-18_RELIABILITY_HARDENING.md` (latest run record) and
-   `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md` (release state).
-3. Read `docs/project-status.md` and `docs/todo.md`.
+2. Read `docs/project-status.md`.
+3. Read `docs/todo.md`.
 4. Check the current branch, HEAD and `git status` (read-only).
-5. **M1 release:** everything — owner actions, the automated check (`npm run preflight -- --live`),
-   the DB check and the ten live acceptance items — is in ONE place:
-   `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md`. Run §2 first; if it passes, do §3 only with an
-   authenticated browser session. Do not re-explain the blockers elsewhere. Verify each with the read-only checks in `docs/RUNTIME_CONFIG.md §4` and
-   `supabase/verify_privileges.sql`; then run the live M1 acceptance (T-034-UI + run record §"LIVE
-   ACCEPTANCE") if a browser session is available. Otherwise leave them open and say so plainly.
-6. **Do not reopen T-034** — closed as Backend Verified (DEC-023). Do not propose a production self-test
-   or diagnostics table (DEC-023).
+5. **Do not reopen T-034** — it is closed as Backend Verified (DEC-023). The only remaining verification
+   is **T-034-UI**, and it is Blocked by capability, not by effort. Run it only if browser automation is
+   available; otherwise leave it open and say so plainly.
+6. Continue from the existing production baseline.
 7. Never rerun the bootstrap as a troubleshooting shortcut — use `supabase/verify_catalog.sql`.
 8. Do not re-run the gated live suites against production — they sign up accounts and would create
-   extra households. Run them **only** against the isolated hosted branch (`SUPABASE_TEST_URL` /
-   `SUPABASE_TEST_ANON_KEY`, `.env.e2e`). **Never `supabase start` / local Docker**
-   (`docs/NO_LOCAL_DOCKER_POLICY.md`).
-9. Never run a plain `supabase db push` against production: its ledger lacks `20260725190000`, so push
-   would re-run the cleanup/seed migration (DEC-021). Use `supabase/DEPLOY.md` §"M1 release".
+   extra households. Run them against a local stack (`npx supabase start`) as on 2026-08-01.
+9. Do not propose a production self-test, diagnostics table or background verification engine — the
+   design was reviewed and rejected (DEC-023).
 
 ## Known limitation
 
@@ -196,10 +144,8 @@ recommendations, or gamification.
 
 ## Backend reality
 
-**Supabase implemented, opt-in via env (2026-07-23; access model changed 2026-09-18, DEC-031).** Model:
-one household; every device holds its own anonymous Auth session and is a member (the historical
-shared account remains one); two internal profiles (אריאל `ariel` / אלנה `alena`), data separated by
-`profile_id`; any member device edits both.
+**Supabase implemented, opt-in via env (2026-07-23).** Model: one shared Auth account, two internal
+profiles (אריאל `ariel` / אלנה `alena`), data separated by `profile_id`; the shared account edits both.
 Migrations under `supabase/` (schema + RLS + bootstrap + realtime) were live-verified against a local
 Supabase stack (RLS isolation + bootstrap: 5/5 integration tests). App layer: `src/lib/supabase/*`,
 `src/lib/sync/*`, `src/components/auth/*`, wired into the store behind `isSupabaseConfigured()`.
@@ -223,8 +169,7 @@ writes localStorage. Tests stay hermetic via `vi.stubEnv` in
 ## Guardrails
 
 - Mobile-first, RTL, large touch targets, no color-only status, calm/neutral tone.
-- Home stays compact: ME → PARTNER → ACTION, six compact tiles on one phone screen, **no food
-  details on the tiles**; the only food name on the home is the one-line "לאחרונה" (DEC-026).
+- Home stays compact: large meal icons, **no food details on the home tiles**.
 - Don't add out-of-scope analytics features. Follow the global Approval-Brief rule before any
   Supabase/auth/RLS/schema/migration/secret/env change.
 

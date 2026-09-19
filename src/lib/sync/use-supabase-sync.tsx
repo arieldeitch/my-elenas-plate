@@ -3,51 +3,70 @@
  * is configured and a session exists. In demo mode every effect returns early,
  * so the local app and its tests are completely unaffected.
  *
- * Responsibilities when active (M1 shared-truth recovery):
+ * Responsibilities when active:
  *  - bootstrap the shared household + two profiles (idempotent RPC)
- *  - hydrate the current profile/date day + weigh-ins + prefs from Supabase
- *  - accept OPERATIONS from the store, persist them in the durable queue
- *    (localStorage) and drain them in order to Supabase — each op is a narrow,
- *    idempotent write; there is no whole-day snapshot reconciliation here
- *  - subscribe to realtime for every mutable table and re-hydrate the affected
- *    profile/date, never clobbering a day that still has unsent local ops
- *  - derive the UI sync state from the queue: "saved" only when the queue is
- *    empty; pending/failed ops are always visible
+ *  - one-time migration of legacy localStorage data (non-destructive)
+ *  - hydrate the current profile/date day + weigh-ins from Supabase
+ *  - push locally-mutated days/weigh-ins (dirty-tracked to avoid echo loops)
+ *  - subscribe to realtime and re-hydrate on remote changes
  *
- * All network work is wrapped defensively; failures keep the optimistic local
- * state and the queued ops intact.
+ * All network work is wrapped defensively; failures set a sync state and keep
+ * the optimistic local state intact.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
-import {
-  partnerOf,
-  type DayData,
-  type Food,
-  type ProfileId,
-  type SyncState,
-  type WeighIn,
-} from "../domain";
-import { isSupabaseConfigured } from "../supabase/client";
+import type { DailySteps, DayData, Food, ProfileId, SyncState, WeighIn } from "../domain";
+import { isSupabaseConfigured, requireSupabase } from "../supabase/client";
 import { getSession, onAuthChange } from "../supabase/auth";
-import { bootstrapHousehold, loadWeighIns, type HouseholdContext } from "../supabase/repositories";
+import {
+  bootstrapHousehold,
+  insertWeighIn,
+  loadWeighIns,
+  type HouseholdContext,
+} from "../supabase/repositories";
 import { deriveFavoritesRecents } from "../supabase/mappers";
 import { BUILT_IN_FOODS, mergeCatalog } from "../food-catalog";
 import {
-  applyOperation,
   hydrateDay,
   hydrateFoods,
   hydratePreferences,
+  hydrateStepGoal,
   profileIdFor,
+  pushDay,
+  pushFoods,
+  pushPreferences,
+  pushDailySteps,
+  pushStepGoal,
   subscribeHousehold,
-  type RealtimeChange,
-  type RealtimeStatus,
+  type PrefMutation,
 } from "./supabase-sync";
-import { isFoodsMigrated, isMigrated, markFoodsMigrated, markMigrated } from "./migrate-local";
-import { dayKey, dayKeyOf, type Operation } from "./operations";
-import * as queue from "./queue";
-import { drainQueue } from "./drain";
+import {
+  buildFoodMigrationPayload,
+  buildMigrationPayload,
+  isCustomFoodId,
+  isFoodsMigrated,
+  isMigrated,
+  markFoodsMigrated,
+  markMigrated,
+  totalFoodRows,
+  totalRows,
+} from "./migrate-local";
+import { loadState } from "../persistence";
+import { enqueueLatest, pending, remove } from "./queue";
 
 type PerProfile<T> = Record<ProfileId, T>;
+
+/**
+ * The one-time localStorage -> Supabase import (T-023).
+ *
+ * OFF since 2026-07-25. It completed for the real household, and the store no
+ * longer produces any demo state, so the only payload it could still build is a
+ * stale pre-fix demo snapshot left in a browser. Importing that would recreate
+ * exactly the mock rows the cleanup migration deletes. The transform itself is
+ * kept (pure and unit-tested) so the import can be re-enabled deliberately if a
+ * genuine local-only dataset ever has to be brought into the cloud.
+ */
+const LOCAL_IMPORT_ENABLED = false;
 
 interface Args {
   days: PerProfile<Record<string, DayData>>;
@@ -58,48 +77,23 @@ interface Args {
   setFoods: Dispatch<SetStateAction<Food[]>>;
   setFavoritesMap: Dispatch<SetStateAction<PerProfile<string[]>>>;
   setRecentsMap: Dispatch<SetStateAction<PerProfile<string[]>>>;
+  stepGoals: PerProfile<number>;
+  setStepGoals: Dispatch<SetStateAction<PerProfile<number>>>;
   activeProfile: ProfileId;
   iso: string;
   setSyncState: (s: SyncState) => void;
-  setSyncDetail: (d: SyncDetail) => void;
 }
-
-export interface SyncDetail {
-  /** Ops persisted locally but not yet confirmed by Supabase. */
-  pending: number;
-  /** Ops Supabase rejected permanently; visible until retried or discarded. */
-  failed: number;
-  /** Realtime channel state: "off" until activation, then the channel status. */
-  realtime: "off" | RealtimeStatus;
-}
-
-export const INITIAL_SYNC_DETAIL: SyncDetail = { pending: 0, failed: 0, realtime: "off" };
 
 export interface SyncControls {
   /** True once Supabase is the active source of truth (disables localStorage). */
   active: boolean;
-  /** Persists operations durably and schedules a drain. No-op in demo mode. */
-  enqueue: (ops: Operation[]) => void;
-  /** Re-queues permanently failed ops for another attempt. */
-  retryFailed: () => void;
-  /** Drops permanently failed ops (local optimistic state is kept). */
-  discardFailed: () => void;
-}
-
-const WEIGH_KINDS = new Set(["weighin.insert"]);
-const PREF_KINDS = new Set(["pref.favorite", "pref.recent"]);
-const DRAIN_DEBOUNCE_MS = 400;
-/**
- * Converging a day from the cloud after our own drain and after each realtime
- * echo of the rows we just wrote would fetch the same day three or four times
- * within a few hundred ms. Day re-reads are coalesced per profile/date instead.
- */
-const DAY_CONVERGE_MS = 150;
-const RETRY_INTERVAL_MS = 3000;
-const ACTIVATION_RETRY_MS = [3000, 6000, 12000, 30000];
-
-function isOnline(): boolean {
-  return typeof navigator === "undefined" || navigator.onLine !== false;
+  markDayDirty: (profile: ProfileId, iso: string) => void;
+  markWeighDirty: (profile: ProfileId) => void;
+  markFoodDirty: (food: Food) => void;
+  markFavoriteDirty: (profile: ProfileId, foodId: string, isFavorite: boolean) => void;
+  markRecentDirty: (profile: ProfileId, foodId: string, whenISO: string) => void;
+  markStepsDirty: (profile: ProfileId, iso: string, report: DailySteps) => void;
+  markStepGoalDirty: (profile: ProfileId, goal: number) => void;
 }
 
 export function useSupabaseSync(args: Args): SyncControls {
@@ -109,44 +103,33 @@ export function useSupabaseSync(args: Args): SyncControls {
     setFoods,
     setFavoritesMap,
     setRecentsMap,
+    setStepGoals,
     activeProfile,
     iso,
     setSyncState,
-    setSyncDetail,
   } = args;
   const [active, setActive] = useState(false);
   const ctxRef = useRef<HouseholdContext | null>(null);
-  const userIdRef = useRef<string | undefined>(undefined);
-  const draining = useRef(false);
-  const drainAgain = useRef(false);
-  const inFlightDay = useRef<string | null>(null);
-  // The view (profile::iso) that activation itself hydrated, so the view
-  // effect does not fetch the same day a second time right after activation.
-  const hydratedAtActivation = useRef<string | null>(null);
-  const drainTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const realtimeRef = useRef<SyncDetail["realtime"]>("off");
+  const dirtyDays = useRef<Set<string>>(new Set());
+  const inFlightDays = useRef<Set<string>>(new Set());
+  const dirtyWeigh = useRef<Set<ProfileId>>(new Set());
+  const dirtyFoods = useRef<Map<string, Food>>(new Map());
+  const dirtyPrefs = useRef<Map<string, PrefMutation & { profile: ProfileId }>>(new Map());
+  const dirtySteps = useRef<Map<string, DailySteps>>(new Map());
+  const inFlightSteps = useRef<Set<string>>(new Set());
+  const dirtyStepGoals = useRef<Map<ProfileId, number>>(new Map());
+  const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Latest state + current view, readable from async callbacks without re-subscribing.
   const daysRef = useRef(args.days);
+  const weighRef = useRef(args.weighInsMap);
+  const foodsRef = useRef(args.foods);
   const viewRef = useRef({ profile: activeProfile, iso });
   daysRef.current = args.days;
+  weighRef.current = args.weighInsMap;
+  foodsRef.current = args.foods;
   viewRef.current = { profile: activeProfile, iso };
 
-  // --- sync state derived from the durable queue -----------------------------
-  const publishState = useCallback(
-    (phase: "idle" | "draining" | "error" = "idle") => {
-      const pendingCount = queue.pending().length;
-      const failedCount = queue.quarantined().length;
-      setSyncDetail({ pending: pendingCount, failed: failedCount, realtime: realtimeRef.current });
-      if (failedCount > 0 || phase === "error") setSyncState("error");
-      else if (phase === "draining") setSyncState("saving");
-      else if (pendingCount > 0) setSyncState(isOnline() ? "pending" : "offline");
-      else setSyncState("saved");
-    },
-    [setSyncDetail, setSyncState],
-  );
-
-  // --- hydration ----------------------------------------------------------------
   // Reconcile the remote catalog with the built-in list. Always merged from
   // BUILT_IN_FOODS (not from previous state) so a row deleted or archived
   // remotely actually disappears instead of lingering from an earlier hydrate.
@@ -166,11 +149,10 @@ export function useSupabaseSync(args: Args): SyncControls {
     async (profile: ProfileId) => {
       const ctx = ctxRef.current;
       if (!ctx) return;
-      // Don't clobber an unsent optimistic change for this profile.
-      if (queue.hasPendingForProfile(profile, PREF_KINDS)) return;
+      // Don't clobber an in-flight optimistic change for this profile.
+      for (const m of dirtyPrefs.current.values()) if (m.profile === profile) return;
       try {
         const prefs = await hydratePreferences(ctx, profile);
-        if (queue.hasPendingForProfile(profile, PREF_KINDS)) return;
         const { favorites, recents } = deriveFavoritesRecents(prefs);
         setFavoritesMap((prev) => ({ ...prev, [profile]: favorites }));
         setRecentsMap((prev) => ({ ...prev, [profile]: recents }));
@@ -181,395 +163,425 @@ export function useSupabaseSync(args: Args): SyncControls {
     [setFavoritesMap, setRecentsMap],
   );
 
-  const hydrateWeighInsFor = useCallback(
-    async (profile: ProfileId) => {
-      const ctx = ctxRef.current;
-      if (!ctx) return;
-      const pid = profileIdFor(ctx, profile);
-      if (!pid || queue.hasPendingForProfile(profile, WEIGH_KINDS)) return;
-      try {
-        const w = await loadWeighIns(pid);
-        if (queue.hasPendingForProfile(profile, WEIGH_KINDS)) return;
-        setWeighInsMap((prev) => ({ ...prev, [profile]: w }));
-      } catch (err) {
-        console.warn("hydrate weigh-ins failed", err);
-      }
-    },
-    [setWeighInsMap],
-  );
-
-  /**
-   * Loads one profile/date from Supabase into the store. A day with unsent or
-   * in-flight local ops is left alone: the optimistic state is newer than what
-   * Supabase returns, and the realtime echo after the drain will converge it.
-   */
-  const hydrateDayOnly = useCallback(
-    async (profile: ProfileId, isoDate: string): Promise<boolean> => {
-      const ctx = ctxRef.current;
-      if (!ctx) return false;
-      const key = dayKey(profile, isoDate);
-      const guarded = () => queue.pendingDayKeys().has(key) || inFlightDay.current === key;
-      if (guarded()) return false;
-      const day = await hydrateDay(ctx, profile, isoDate);
-      if (!day || guarded()) return false;
-      setDays((prev) => ({ ...prev, [profile]: { ...prev[profile], [isoDate]: day } }));
-      return true;
-    },
-    [setDays],
-  );
-
-  // Coalesced day re-read (post-drain converge + realtime echoes → one fetch).
-  const convergeTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
-  const scheduleDayConverge = useCallback(
-    (profile: ProfileId, isoDate: string) => {
-      const key = dayKey(profile, isoDate);
-      const timers = convergeTimers.current;
-      const existing = timers.get(key);
-      if (existing) clearTimeout(existing);
-      timers.set(
-        key,
-        setTimeout(() => {
-          timers.delete(key);
-          void hydrateDayOnly(profile, isoDate).catch((err) =>
-            console.warn("day converge failed", err),
-          );
-        }, DAY_CONVERGE_MS),
-      );
-    },
-    [hydrateDayOnly],
-  );
-  useEffect(() => {
-    const timers = convergeTimers.current;
-    return () => {
-      for (const t of timers.values()) clearTimeout(t);
-      timers.clear();
-    };
-  }, []);
-
   const hydrate = useCallback(
     async (profile: ProfileId, isoDate: string) => {
       const ctx = ctxRef.current;
       if (!ctx) return;
       try {
-        await hydrateDayOnly(profile, isoDate);
-        await hydrateWeighInsFor(profile);
+        const day = await hydrateDay(ctx, profile, isoDate);
+        // Never overwrite a day/weigh-in that has a pending or in-flight local
+        // push — the optimistic state is newer than what Supabase returns.
+        const dayKey = `${profile}::${isoDate}`;
+        if (
+          day &&
+          !dirtyDays.current.has(dayKey) &&
+          !inFlightDays.current.has(dayKey) &&
+          !dirtySteps.current.has(dayKey) &&
+          !inFlightSteps.current.has(dayKey)
+        ) {
+          setDays((prev) => ({ ...prev, [profile]: { ...prev[profile], [isoDate]: day } }));
+        } else if (day && dirtySteps.current.has(dayKey)) {
+          setDays((prev) => ({
+            ...prev,
+            [profile]: {
+              ...prev[profile],
+              [isoDate]: { ...day, steps: prev[profile][isoDate]?.steps },
+            },
+          }));
+        }
+        const pid = profileIdFor(ctx, profile);
+        if (pid && !dirtyWeigh.current.has(profile)) {
+          const w = await loadWeighIns(pid);
+          setWeighInsMap((prev) => ({ ...prev, [profile]: w }));
+        }
         await hydratePrefsFor(profile);
+        if (!dirtyStepGoals.current.has(profile)) {
+          const goal = await hydrateStepGoal(ctx, profile);
+          setStepGoals((prev) => ({ ...prev, [profile]: goal }));
+        }
       } catch (err) {
         console.warn("hydrate failed", err);
-        publishState("error");
+        setSyncState("error");
       }
     },
-    [hydrateDayOnly, hydrateWeighInsFor, hydratePrefsFor, publishState],
+    [setDays, setWeighInsMap, setSyncState, hydratePrefsFor, setStepGoals],
   );
 
-  // --- durable queue drain ---------------------------------------------------------
-  const drain = useCallback(async () => {
-    const ctx = ctxRef.current;
-    if (!ctx) return;
-    if (draining.current) {
-      drainAgain.current = true;
-      return;
-    }
-    draining.current = true;
-    const touchedDays = new Set<string>();
-    try {
-      if (queue.pending().length > 0) publishState("draining");
-      const result = await drainQueue({
-        pending: () => queue.pending().filter((m) => queue.ownedBy(m, userIdRef.current)),
-        apply: async (m) => {
-          const key = dayKeyOf(m.op);
-          inFlightDay.current = key;
-          try {
-            await applyOperation(ctx, m.op);
-            if (key) touchedDays.add(key);
-          } finally {
-            inFlightDay.current = null;
-          }
-        },
-        remove: queue.remove,
-        markFailure: queue.markFailure,
-        quarantine: queue.quarantine,
-        isOnline,
-      });
-      publishState(result.transientFailures > 0 ? "error" : "idle");
-      if (result.transientFailures > 0) {
-        console.warn("sync: transient failure — will retry", result);
-      }
-    } finally {
-      draining.current = false;
-    }
-    // Converge the days we just wrote from the source of truth (cheap; also
-    // covers the case where realtime is delayed or dropped). Coalesced with the
-    // realtime echoes of the same writes.
-    for (const key of touchedDays) {
-      const [profile, isoDate] = key.split("::") as [ProfileId, string];
-      scheduleDayConverge(profile, isoDate);
-    }
-    if (drainAgain.current) {
-      drainAgain.current = false;
-      void drain();
-    }
-  }, [scheduleDayConverge, publishState]);
-
-  const scheduleDrain = useCallback(() => {
-    if (drainTimer.current) clearTimeout(drainTimer.current);
-    drainTimer.current = setTimeout(() => void drain(), DRAIN_DEBOUNCE_MS);
-  }, [drain]);
-
-  // --- activation: session -> bootstrap -> initial hydrate -> realtime -> drain ------
+  // Activation: session -> bootstrap -> migration -> initial hydrate -> realtime.
   useEffect(() => {
     if (!isSupabaseConfigured()) return;
     let disposed = false;
     let unsubRealtime: (() => void) | null = null;
-    // Single-flight: the auth SIGNED_IN event and the initial call can race;
-    // without this both bootstrap and both subscribe (duplicate channels).
-    let activating = false;
-    // Session generation: a sign-out (or session replacement, DEC-031) that
-    // lands while an activation is still awaiting the network must not let
-    // that activation install a context/channel for a session that is gone.
-    let generation = 0;
-    let retryTimer: ReturnType<typeof setTimeout> | null = null;
-    let retryAttempt = 0;
 
-    const setRealtime = (status: SyncDetail["realtime"]) => {
-      realtimeRef.current = status;
-      publishState();
-    };
-
-    // A transient failure at load (server unreachable, DNS hiccup) must not
-    // leave the app permanently inactive: retry with bounded backoff until the
-    // household context exists.
-    function scheduleActivationRetry() {
-      if (disposed || ctxRef.current || retryTimer) return;
-      const delay = ACTIVATION_RETRY_MS[Math.min(retryAttempt, ACTIVATION_RETRY_MS.length - 1)];
-      retryAttempt += 1;
-      retryTimer = setTimeout(() => {
-        retryTimer = null;
-        void activate();
-      }, delay);
-    }
-
-    // A request that arrives mid-activation (e.g. the SIGNED_IN of a replacement
-    // session, DEC-031) is remembered and served right after — never dropped.
-    let activateAgain = false;
     async function activate() {
-      if (activating) {
-        activateAgain = true;
-        return;
-      }
-      activating = true;
-      try {
-        await activateOnce();
-      } finally {
-        activating = false;
-      }
-      if (activateAgain && !disposed) {
-        activateAgain = false;
-        void activate();
-      }
-    }
-
-    async function activateOnce() {
-      const gen = generation;
       const session = await getSession();
-      if (!session || disposed || ctxRef.current || gen !== generation) return;
+      if (!session || disposed || ctxRef.current) return;
       try {
-        userIdRef.current = session.user.id;
-        queue.setQueueOwner(session.user.id);
-        // Every session on this device is a member of the one shared household
-        // (DEC-031), so ops stamped by a previous device identity are adopted
-        // and drained, never lost or parked as "another account".
-        const adopted = queue.adoptAll(session.user.id);
-        if (adopted > 0)
-          console.info(
-            `[elenas-plate] adopted ${adopted} queued op(s) from a previous device session`,
-          );
         setSyncState("saving");
         const ctx = await bootstrapHousehold();
-        if (disposed || gen !== generation) return; // session replaced meanwhile
+        if (disposed) return;
         ctxRef.current = ctx;
+        for (const mutation of pending()) {
+          if (mutation.entity === "daily_step_logs") {
+            const payload = mutation.payload as {
+              profile: ProfileId;
+              iso: string;
+              report: DailySteps;
+            };
+            dirtySteps.current.set(`${payload.profile}::${payload.iso}`, payload.report);
+          } else if (mutation.entity === "profile_step_settings") {
+            const payload = mutation.payload as { profile: ProfileId; goal: number };
+            dirtyStepGoals.current.set(payload.profile, payload.goal);
+          }
+        }
 
-        // The one-time localStorage -> cloud import (T-023) is retired; markers
-        // are still set so it can never fire again on an old profile.
+        // The one-time localStorage -> cloud import is RETIRED (see
+        // LOCAL_IMPORT_ENABLED). It has already run for this household, and the
+        // only thing a browser can still be holding is a pre-fix demo snapshot —
+        // re-importing that would put mock rows back into the cloud right after
+        // the cleanup migration removed them. Markers are still set so the import
+        // can never fire even if it is re-enabled on an old profile.
+        if (LOCAL_IMPORT_ENABLED) {
+          const local = loadState();
+          if (!isMigrated()) {
+            if (local) {
+              const payload = buildMigrationPayload(local, ctx.householdId, ctx.profileIdBySlug);
+              if (totalRows(payload) > 0) await uploadMigration(payload);
+            }
+          }
+          if (!isFoodsMigrated()) {
+            if (local) {
+              const fp = buildFoodMigrationPayload(local, ctx.householdId, ctx.profileIdBySlug);
+              if (totalFoodRows(fp) > 0) await uploadFoodMigration(fp);
+            }
+          }
+        }
         if (!isMigrated()) markMigrated();
         if (!isFoodsMigrated()) markFoodsMigrated();
 
-        retryAttempt = 0;
-        await hydrateFoodsList();
-        // Initial hydrate of the current view (own + partner day) BEFORE the
-        // hook is flagged active, so the view effect below does not fetch the
-        // same day a second time (it skips exactly this key once).
-        const view = viewRef.current;
-        await hydrate(view.profile, view.iso);
-        await hydrateDayOnly(partnerOf(view.profile), view.iso).catch((err) =>
-          console.warn("partner hydrate failed", err),
-        );
-        if (disposed || gen !== generation) return;
-        hydratedAtActivation.current = dayKey(view.profile, view.iso);
         setActive(true);
-        publishState();
+        await hydrateFoodsList();
+        await hydrate(viewRef.current.profile, viewRef.current.iso);
+        setSyncState("saved");
 
-        unsubRealtime = subscribeHousehold(ctx, onRealtime, session.access_token, setRealtime);
-        // Anything left in the durable queue from a previous session goes first.
-        void drain();
+        unsubRealtime = subscribeHousehold(
+          ctx,
+          (table) => {
+            if (table === "foods") void hydrateFoodsList();
+            else if (table === "food_preferences") void hydratePrefsFor(viewRef.current.profile);
+            else void hydrate(viewRef.current.profile, viewRef.current.iso);
+          },
+          session.access_token,
+        );
       } catch (err) {
-        console.warn("supabase activation failed - will retry", err);
-        ctxRef.current = null;
-        setActive(false);
-        publishState("error");
-        scheduleActivationRetry();
-      }
-    }
-
-    function onRealtime(change: RealtimeChange) {
-      const view = viewRef.current;
-      switch (change.table) {
-        case "foods":
-          void hydrateFoodsList();
-          return;
-        case "food_preferences":
-          void hydratePrefsFor(change.profile ?? view.profile);
-          return;
-        case "weigh_ins":
-          void hydrateWeighInsFor(change.profile ?? view.profile);
-          return;
-        default: {
-          // Day-scoped tables. Use payload metadata when present; a DELETE
-          // under default replica identity only carries the row id, so locate
-          // the row in memory, else fall back to the current view.
-          let profile = change.profile;
-          let isoDate = change.iso;
-          if ((!profile || !isoDate) && change.rowId) {
-            const found = findEntryDay(daysRef.current, change.rowId);
-            if (found) ({ profile, isoDate } = found);
-          }
-          if (!profile || !isoDate) ({ profile, iso: isoDate } = view);
-          scheduleDayConverge(profile, isoDate);
-        }
+        console.warn("supabase activation failed", err);
+        setSyncState("error");
       }
     }
 
     void activate();
     const unsubAuth = onAuthChange((s) => {
       if (!s) {
-        // Sign-out: drop the household context AND the realtime channel, so a
-        // later sign-in subscribes exactly once instead of stacking channels.
-        generation += 1;
         setActive(false);
         ctxRef.current = null;
-        userIdRef.current = undefined;
-        queue.setQueueOwner(undefined);
-        unsubRealtime?.();
-        unsubRealtime = null;
-        setRealtime("off");
       } else {
         void activate();
       }
     });
-    // Retry activation immediately when connectivity returns.
+    // Retry activation if it was interrupted (e.g. offline during bootstrap).
     const onOnline = () => {
-      if (!ctxRef.current) {
-        if (retryTimer) clearTimeout(retryTimer);
-        retryTimer = null;
-        void activate();
-      }
+      if (!ctxRef.current) void activate();
     };
     window.addEventListener("online", onOnline);
     return () => {
       disposed = true;
-      if (retryTimer) clearTimeout(retryTimer);
       unsubAuth();
       unsubRealtime?.();
       window.removeEventListener("online", onOnline);
     };
-  }, [
-    drain,
-    hydrate,
-    hydrateDayOnly,
-    hydrateFoodsList,
-    hydratePrefsFor,
-    hydrateWeighInsFor,
-    publishState,
-    scheduleDayConverge,
-    setSyncState,
-  ]);
+  }, [hydrate, hydrateFoodsList, hydratePrefsFor, setSyncState]);
 
-  // Hydrate when the viewed profile/date changes. The partner's day for the same
-  // date is loaded too (M2 couple-first: the home screen shows both), guarded
-  // like any hydrate against unsent local ops for that day.
+  // Hydrate when the viewed profile/date changes.
   useEffect(() => {
     if (!active) return;
-    // Activation already loaded exactly this view (own + partner day).
-    if (hydratedAtActivation.current === dayKey(activeProfile, iso)) {
-      hydratedAtActivation.current = null;
-      return;
-    }
     void hydrate(activeProfile, iso);
-    void hydrateDayOnly(partnerOf(activeProfile), iso).catch((err) =>
-      console.warn("partner hydrate failed", err),
-    );
-  }, [active, activeProfile, iso, hydrate, hydrateDayOnly]);
+  }, [active, activeProfile, iso, hydrate]);
 
-  // Drain when connectivity returns; a short interval is the reliable fallback
-  // (some environments never fire "online") and no-ops when nothing is pending.
+  const flush = useCallback(() => {
+    const ctx = ctxRef.current;
+    if (!ctx) return;
+    // Snapshot + clear; on failure (e.g. offline) re-queue so nothing is lost
+    // and the next flush / reconnect retries. Idempotent upserts prevent dupes.
+    const dayKeys = [...dirtyDays.current];
+    // Move days to in-flight (still protected from hydrate) rather than clearing,
+    // so a concurrent reload can't wipe the optimistic state mid-push.
+    dirtyDays.current.clear();
+    for (const k of dayKeys) inFlightDays.current.add(k);
+    const weighProfiles = [...dirtyWeigh.current];
+    dirtyWeigh.current.clear();
+    const foods = [...dirtyFoods.current.values()];
+    dirtyFoods.current.clear();
+    const prefs = [...dirtyPrefs.current.values()];
+    dirtyPrefs.current.clear();
+    const steps = [...dirtySteps.current.entries()];
+    dirtySteps.current.clear();
+    for (const [key] of steps) inFlightSteps.current.add(key);
+    const stepGoals = [...dirtyStepGoals.current.entries()];
+    dirtyStepGoals.current.clear();
+
+    const requeue = () => {
+      for (const k of dayKeys) dirtyDays.current.add(k);
+      for (const p of weighProfiles) dirtyWeigh.current.add(p);
+      for (const f of foods) if (!dirtyFoods.current.has(f.id)) dirtyFoods.current.set(f.id, f);
+      for (const p of prefs) {
+        const key = `${p.profile}::${p.foodId}`;
+        if (!dirtyPrefs.current.has(key)) dirtyPrefs.current.set(key, p);
+      }
+      for (const [key, report] of steps)
+        if (!dirtySteps.current.has(key)) dirtySteps.current.set(key, report);
+      for (const [profile, goal] of stepGoals)
+        if (!dirtyStepGoals.current.has(profile)) dirtyStepGoals.current.set(profile, goal);
+    };
+
+    void (async () => {
+      try {
+        setSyncState("saving");
+        if (foods.length) await pushFoods(ctx, foods);
+        for (const key of dayKeys) {
+          const [profile, isoDate] = key.split("::") as [ProfileId, string];
+          const day = daysRef.current[profile]?.[isoDate];
+          if (day) await pushDay(ctx, profile, isoDate, day);
+        }
+        for (const profile of weighProfiles) {
+          const pid = profileIdFor(ctx, profile);
+          if (!pid) continue;
+          const remote = await loadWeighIns(pid);
+          const remoteIds = new Set(remote.map((r) => r.id));
+          for (const w of weighRef.current[profile] ?? []) {
+            if (!remoteIds.has(w.id)) await insertWeighIn(ctx.householdId, pid, w);
+          }
+        }
+        // Preferences grouped by profile.
+        const byProfile = new Map<ProfileId, PrefMutation[]>();
+        for (const p of prefs) {
+          const list = byProfile.get(p.profile) ?? [];
+          list.push({ foodId: p.foodId, isFavorite: p.isFavorite, recentAt: p.recentAt });
+          byProfile.set(p.profile, list);
+        }
+        for (const [profile, mutations] of byProfile) {
+          await pushPreferences(ctx, profile, mutations);
+        }
+        for (const [key, report] of steps) {
+          const [profile, isoDate] = key.split("::") as [ProfileId, string];
+          await pushDailySteps(ctx, profile, isoDate, report);
+          inFlightSteps.current.delete(key);
+          for (const mutation of pending()) {
+            if (
+              mutation.entity === "daily_step_logs" &&
+              `${(mutation.payload as { profile?: string }).profile}::${(mutation.payload as { iso?: string }).iso}` ===
+                key
+            )
+              remove(mutation.id);
+          }
+        }
+        for (const [profile, goal] of stepGoals) {
+          await pushStepGoal(ctx, profile, goal);
+          for (const mutation of pending()) {
+            if (mutation.entity === "profile_step_settings" && mutation.profileId === profile)
+              remove(mutation.id);
+          }
+        }
+        for (const k of dayKeys) inFlightDays.current.delete(k);
+        for (const [key] of steps) inFlightSteps.current.delete(key);
+        setSyncState("saved");
+      } catch (err) {
+        console.warn("push failed — re-queued for retry", err);
+        for (const k of dayKeys) inFlightDays.current.delete(k);
+        for (const [key] of steps) inFlightSteps.current.delete(key);
+        requeue();
+        setSyncState("error");
+      }
+    })();
+  }, [setSyncState]);
+
+  const schedule = useCallback(() => {
+    if (pushTimer.current) clearTimeout(pushTimer.current);
+    pushTimer.current = setTimeout(flush, 700);
+  }, [flush]);
+
+  // Flush any re-queued (failed/offline) mutations when connectivity returns.
+  // The "online" event is the fast path; a short interval is the reliable
+  // fallback (some environments don't fire it) and no-ops when nothing pending.
   useEffect(() => {
     if (!active) return;
-    const onOnline = () => {
-      publishState();
-      scheduleDrain();
-    };
-    const onOffline = () => publishState();
+    const hasPending = () =>
+      dirtyDays.current.size > 0 ||
+      dirtyWeigh.current.size > 0 ||
+      dirtyFoods.current.size > 0 ||
+      dirtyPrefs.current.size > 0 ||
+      dirtySteps.current.size > 0 ||
+      dirtyStepGoals.current.size > 0;
+    const onOnline = () => schedule();
     window.addEventListener("online", onOnline);
-    window.addEventListener("offline", onOffline);
     const id = setInterval(() => {
-      if (queue.pending().length > 0 && isOnline()) scheduleDrain();
-    }, RETRY_INTERVAL_MS);
+      if (hasPending()) schedule();
+    }, 3000);
     return () => {
       window.removeEventListener("online", onOnline);
-      window.removeEventListener("offline", onOffline);
       clearInterval(id);
     };
-  }, [active, scheduleDrain, publishState]);
+  }, [active, schedule]);
 
-  // Persist ops whenever Supabase is configured — even during the activation
+  // Record dirty whenever Supabase is configured — even during the activation
   // window before `active` flips true — so a mutation made right after load is
-  // durable immediately, protected from the initial hydrate, and drained once
-  // the context is ready.
-  const enqueue = useCallback(
-    (ops: Operation[]) => {
+  // protected from the initial hydrate and flushed once the context is ready.
+  const markDayDirty = useCallback(
+    (profile: ProfileId, isoDate: string) => {
       if (!isSupabaseConfigured()) return;
-      for (const op of ops) queue.enqueueOperation(op);
-      publishState();
-      scheduleDrain();
+      dirtyDays.current.add(`${profile}::${isoDate}`);
+      schedule();
     },
-    [publishState, scheduleDrain],
+    [schedule],
   );
 
-  const retryFailed = useCallback(() => {
-    queue.retryQuarantined();
-    publishState();
-    scheduleDrain();
-  }, [publishState, scheduleDrain]);
+  const markWeighDirty = useCallback(
+    (profile: ProfileId) => {
+      if (!isSupabaseConfigured()) return;
+      dirtyWeigh.current.add(profile);
+      schedule();
+    },
+    [schedule],
+  );
 
-  const discardFailed = useCallback(() => {
-    queue.discardQuarantined();
-    publishState();
-  }, [publishState]);
+  const markFoodDirty = useCallback(
+    (food: Food) => {
+      // Only custom foods are synced (built-in catalog is a client constant).
+      if (!isSupabaseConfigured() || !isCustomFoodId(food.id)) return;
+      dirtyFoods.current.set(food.id, food);
+      schedule();
+    },
+    [schedule],
+  );
 
-  return { active, enqueue, retryFailed, discardFailed };
+  const markFavoriteDirty = useCallback(
+    (profile: ProfileId, foodId: string, isFavorite: boolean) => {
+      if (!isSupabaseConfigured()) return;
+      const key = `${profile}::${foodId}`;
+      const prev = dirtyPrefs.current.get(key) ?? { profile, foodId };
+      dirtyPrefs.current.set(key, { ...prev, isFavorite });
+      schedule();
+    },
+    [schedule],
+  );
+
+  const markRecentDirty = useCallback(
+    (profile: ProfileId, foodId: string, whenISO: string) => {
+      if (!isSupabaseConfigured()) return;
+      const key = `${profile}::${foodId}`;
+      const prev = dirtyPrefs.current.get(key) ?? { profile, foodId };
+      dirtyPrefs.current.set(key, { ...prev, recentAt: whenISO });
+      schedule();
+    },
+    [schedule],
+  );
+
+  const markStepsDirty = useCallback(
+    (profile: ProfileId, isoDate: string, report: DailySteps) => {
+      if (!isSupabaseConfigured()) return;
+      dirtySteps.current.set(`${profile}::${isoDate}`, report);
+      const ctx = ctxRef.current;
+      enqueueLatest(
+        {
+          id: queueId(),
+          type: "upsert",
+          entity: "daily_step_logs",
+          payload: { profile, iso: isoDate, report },
+          householdId: ctx?.householdId ?? "pending-bootstrap",
+          profileId: profile,
+          createdAt: new Date().toISOString(),
+          retryCount: 0,
+        },
+        `${profile}::${isoDate}`,
+      );
+      schedule();
+    },
+    [schedule],
+  );
+
+  const markStepGoalDirty = useCallback(
+    (profile: ProfileId, goal: number) => {
+      if (!isSupabaseConfigured()) return;
+      dirtyStepGoals.current.set(profile, goal);
+      const ctx = ctxRef.current;
+      enqueueLatest(
+        {
+          id: queueId(),
+          type: "upsert",
+          entity: "profile_step_settings",
+          payload: { profile, goal },
+          householdId: ctx?.householdId ?? "pending-bootstrap",
+          profileId: profile,
+          createdAt: new Date().toISOString(),
+          retryCount: 0,
+        },
+        profile,
+      );
+      schedule();
+    },
+    [schedule],
+  );
+
+  return {
+    active,
+    markDayDirty,
+    markWeighDirty,
+    markFoodDirty,
+    markFavoriteDirty,
+    markRecentDirty,
+    markStepsDirty,
+    markStepGoalDirty,
+  };
 }
 
-/** Finds which in-memory day holds an entry id (for DELETE events without metadata). */
-function findEntryDay(
-  days: PerProfile<Record<string, DayData>>,
-  entryId: string,
-): { profile: ProfileId; isoDate: string } | null {
-  for (const profile of ["me", "elena"] as ProfileId[]) {
-    for (const [isoDate, day] of Object.entries(days[profile] ?? {})) {
-      for (const meal of Object.values(day.meals)) {
-        if (meal.entries.some((e) => e.id === entryId)) return { profile, isoDate };
-      }
-    }
+function queueId(): string {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `queue-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+async function uploadFoodMigration(
+  payload: ReturnType<typeof buildFoodMigrationPayload>,
+): Promise<void> {
+  const sb = requireSupabase();
+  if (payload.foods.length) {
+    await sb.from("foods").upsert(payload.foods, { onConflict: "household_id,normalized_name" });
   }
-  return null;
+  if (payload.preferences.length) {
+    await sb
+      .from("food_preferences")
+      .upsert(payload.preferences, { onConflict: "profile_id,food_id" });
+  }
+}
+
+async function uploadMigration(payload: ReturnType<typeof buildMigrationPayload>): Promise<void> {
+  const sb = requireSupabase();
+  if (payload.mealStatuses.length) {
+    await sb
+      .from("meal_statuses")
+      .upsert(payload.mealStatuses, { onConflict: "profile_id,log_date,slot" });
+  }
+  // DB generates entry ids for the one-time import (legacy ids aren't UUIDs).
+  if (payload.foodEntries.length) {
+    const rows = payload.foodEntries.map(({ id: _id, ...rest }) => rest);
+    await sb.from("food_entries").insert(rows);
+  }
+  if (payload.fasting.length) {
+    await sb.from("fasting_logs").upsert(payload.fasting, { onConflict: "profile_id,log_date" });
+  }
+  if (payload.workouts.length) {
+    await sb.from("workout_logs").upsert(payload.workouts, { onConflict: "profile_id,log_date" });
+  }
+  if (payload.weighIns.length) {
+    await sb.from("weigh_ins").insert(payload.weighIns);
+  }
 }

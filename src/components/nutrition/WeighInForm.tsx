@@ -78,7 +78,7 @@ export function WeighInForm({ open, onClose }: Props) {
         onClick={onClose}
         aria-hidden
       />
-      <div className="relative w-full max-w-md rounded-t-3xl sm:rounded-3xl bg-card border border-border shadow-lg animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200">
+      <div className="relative flex max-h-[min(92dvh,var(--visual-viewport-height,92vh))] w-full max-w-md flex-col rounded-t-3xl sm:rounded-3xl bg-card border border-border shadow-lg animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200">
         <div className="flex items-center gap-3 border-b border-border p-4">
           <div className="font-bold flex-1">הוספת שקילה</div>
           <button
@@ -89,7 +89,7 @@ export function WeighInForm({ open, onClose }: Props) {
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="p-4 space-y-3">
+        <div className="min-h-0 flex-1 overflow-y-auto p-4 space-y-3">
           <Field label="משקל בק״ג" error={errors.weight}>
             <input
               type="number"
@@ -138,7 +138,7 @@ export function WeighInForm({ open, onClose }: Props) {
             </div>
           )}
         </div>
-        <div className="border-t border-border p-3 flex gap-2">
+        <div className="sticky bottom-0 border-t border-border bg-card p-3 pb-[calc(.75rem+env(safe-area-inset-bottom))] flex gap-2">
           <button
             onClick={submit}
             className="flex-1 rounded-2xl bg-primary py-3 font-semibold text-primary-foreground hover:bg-primary/90"

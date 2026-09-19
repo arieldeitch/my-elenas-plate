@@ -13,12 +13,8 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { StoreProvider } from "@/lib/store";
 import { AuthGate } from "@/components/auth/AuthGate";
-import { RuntimeGate } from "@/components/nutrition/RuntimeGate";
 import { Toaster } from "@/components/ui/sonner";
-import { isSupabaseConfigured } from "@/lib/supabase/client";
-
-// The page title must not claim "demo" when the build is a connected cloud build.
-const TITLE = isSupabaseConfigured() ? "מעקב תזונה משותף" : "מעקב תזונה משותף — גרסת הדגמה";
+import { KeyboardSafety } from "@/components/KeyboardSafety";
 
 function NotFoundComponent() {
   return (
@@ -86,12 +82,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { name: "theme-color", content: "#f5f4ef" },
-      { title: TITLE },
+      { title: "מעקב תזונה משותף — גרסת הדגמה" },
       { name: "description", content: "אפליקציית תיעוד תזונה משותפת עם ממשק פשוט, מהיר ורגוע." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { property: "og:title", content: TITLE },
-      { name: "twitter:title", content: TITLE },
+      { property: "og:title", content: "מעקב תזונה משותף — גרסת הדגמה" },
+      { name: "twitter:title", content: "מעקב תזונה משותף — גרסת הדגמה" },
       {
         property: "og:description",
         content: "אפליקציית תיעוד תזונה משותפת עם ממשק פשוט, מהיר ורגוע.",
@@ -148,16 +144,14 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Fail-safe (DEC-024): a shared build without Supabase config never mounts the app. */}
-      <RuntimeGate>
-        <AuthGate>
-          <StoreProvider>
-            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-            <Outlet />
-            <Toaster position="top-center" dir="rtl" richColors visibleToasts={2} />
-          </StoreProvider>
-        </AuthGate>
-      </RuntimeGate>
+      <AuthGate>
+        <StoreProvider>
+          <KeyboardSafety />
+          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+          <Outlet />
+          <Toaster position="top-center" dir="rtl" richColors closeButton />
+        </StoreProvider>
+      </AuthGate>
     </QueryClientProvider>
   );
 }

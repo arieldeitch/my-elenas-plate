@@ -4,7 +4,15 @@
  * require a configured, authenticated client (see requireSupabase()).
  */
 import { requireSupabase } from "./client";
-import type { DayData, Food, MealSlotId, WeighIn, WorkoutFeeling, WorkoutType } from "../domain";
+import type {
+  DailySteps,
+  DayData,
+  Food,
+  MealSlotId,
+  WeighIn,
+  WorkoutFeeling,
+  WorkoutType,
+} from "../domain";
 import { MEAL_SLOTS } from "../domain";
 import type {
   FoodEntryRow,
@@ -49,7 +57,7 @@ export async function bootstrapHousehold(): Promise<HouseholdContext> {
 /** Loads a single day's meals (statuses + entries) for a profile. */
 export async function loadDay(profileId: string, logDate: string): Promise<DayData> {
   const sb = requireSupabase();
-  const [statuses, entries, fasting, workout] = await Promise.all([
+  const [statuses, entries, fasting, workout, steps] = await Promise.all([
     sb.from("meal_statuses").select("*").eq("profile_id", profileId).eq("log_date", logDate),
     sb.from("food_entries").select("*").eq("profile_id", profileId).eq("log_date", logDate),
     sb
@@ -64,9 +72,18 @@ export async function loadDay(profileId: string, logDate: string): Promise<DayDa
       .eq("profile_id", profileId)
       .eq("log_date", logDate)
       .maybeSingle(),
+    sb
+      .from("daily_step_logs")
+      .select("*")
+      .eq("profile_id", profileId)
+      .eq("log_date", logDate)
+      .maybeSingle(),
   ]);
   if (statuses.error) throw statuses.error;
   if (entries.error) throw entries.error;
+  if (fasting.error) throw fasting.error;
+  if (workout.error) throw workout.error;
+  if (steps.error) throw steps.error;
 
   const statusBySlot = new Map<MealSlotId, MealStatusRow>();
   for (const s of (statuses.data ?? []) as MealStatusRow[]) {
@@ -91,6 +108,13 @@ export async function loadDay(profileId: string, logDate: string): Promise<DayDa
       performed: workout.data.performed,
       type: (workout.data.workout_type as WorkoutType | null) ?? undefined,
       feeling: (workout.data.feeling as WorkoutFeeling | null) ?? undefined,
+    };
+  }
+  if (steps.data) {
+    day.steps = {
+      steps: steps.data.steps ?? undefined,
+      completed: steps.data.completed,
+      goal: steps.data.goal,
     };
   }
   return day;
@@ -158,49 +182,6 @@ export async function upsertFasting(
   if (error) throw error;
 }
 
-/** Clears the fasting record for one profile/date (no-op when absent). */
-export async function deleteFasting(profileId: string, logDate: string): Promise<void> {
-  const sb = requireSupabase();
-  const { error } = await sb
-    .from("fasting_logs")
-    .delete()
-    .eq("profile_id", profileId)
-    .eq("log_date", logDate);
-  if (error) throw error;
-}
-
-export async function upsertWorkout(
-  householdId: string,
-  profileId: string,
-  logDate: string,
-  workout: { performed: boolean | null; type?: string; feeling?: string },
-): Promise<void> {
-  const sb = requireSupabase();
-  const { error } = await sb.from("workout_logs").upsert(
-    {
-      household_id: householdId,
-      profile_id: profileId,
-      log_date: logDate,
-      performed: workout.performed,
-      workout_type: workout.type ?? null,
-      feeling: workout.feeling ?? null,
-    },
-    { onConflict: "profile_id,log_date" },
-  );
-  if (error) throw error;
-}
-
-/** Clears the workout record for one profile/date (no-op when absent). */
-export async function deleteWorkout(profileId: string, logDate: string): Promise<void> {
-  const sb = requireSupabase();
-  const { error } = await sb
-    .from("workout_logs")
-    .delete()
-    .eq("profile_id", profileId)
-    .eq("log_date", logDate);
-  if (error) throw error;
-}
-
 export async function loadWeighIns(profileId: string): Promise<WeighIn[]> {
   const sb = requireSupabase();
   const { data, error } = await sb
@@ -235,27 +216,49 @@ export async function insertWeighIn(
   if (error) throw error;
 }
 
-/**
- * Idempotent weigh-in write keyed by the client-generated uuid: a retried
- * operation (offline → reconnect → replay) can never create a second row.
- */
-export async function upsertWeighIn(
+export async function loadStepGoal(profileId: string): Promise<number> {
+  const sb = requireSupabase();
+  const { data, error } = await sb
+    .from("profile_step_settings")
+    .select("daily_goal")
+    .eq("profile_id", profileId)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.daily_goal ?? 10_000;
+}
+
+export async function upsertStepGoal(
   householdId: string,
   profileId: string,
-  w: WeighIn,
+  dailyGoal: number,
 ): Promise<void> {
   const sb = requireSupabase();
-  const { error } = await sb.from("weigh_ins").upsert(
+  const { error } = await sb
+    .from("profile_step_settings")
+    .upsert(
+      { household_id: householdId, profile_id: profileId, daily_goal: dailyGoal },
+      { onConflict: "profile_id" },
+    );
+  if (error) throw error;
+}
+
+export async function upsertDailySteps(
+  householdId: string,
+  profileId: string,
+  logDate: string,
+  report: DailySteps,
+): Promise<void> {
+  const sb = requireSupabase();
+  const { error } = await sb.from("daily_step_logs").upsert(
     {
-      id: w.id,
       household_id: householdId,
       profile_id: profileId,
-      measured_on: w.dateISO,
-      measured_at: w.time ?? null,
-      weight_kg: w.weightKg,
-      body_fat_pct: w.bodyFatPct ?? null,
+      log_date: logDate,
+      steps: report.steps ?? null,
+      completed: report.completed,
+      goal: report.goal,
     },
-    { onConflict: "id" },
+    { onConflict: "profile_id,log_date" },
   );
   if (error) throw error;
 }

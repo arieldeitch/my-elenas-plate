@@ -31,8 +31,8 @@ export const MEAL_ICONS: Record<MealSlotId, LucideIcon> = {
 export const MEAL_TILE_TINT: Record<MealSlotId, string> = {
   breakfast: "bg-[#FFF4E0] text-[#C88A2E]",
   morning_snack: "bg-[#FDECEC] text-[#C85454]",
-  lunch: "bg-[#EDF8F2] text-[#117d52]",
+  lunch: "bg-[#EDF8F2] text-[#17A668]",
   afternoon_snack: "bg-[#FFF0E0] text-[#D18544]",
-  dinner: "bg-[#EDF6FD] text-[#1F6FBD]",
+  dinner: "bg-[#EDF6FD] text-[#2B84D6]",
   late: "bg-[#EEEEFB] text-[#6A6DCB]",
 };

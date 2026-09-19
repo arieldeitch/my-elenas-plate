@@ -1,68 +1,17 @@
 # Deploying to the remote Supabase project
 
-## Access simplification (2026-09-18, DEC-031) — migration APPLIED (controlling GPT, verified); ONE Auth setting still pending
+## PENDING REVIEW (2026-09-19) — daily steps only
 
-`supabase/migrations/20260918160000_anonymous_device_join.sql` replaces `bootstrap_household()` so
-that every device session (Supabase **anonymous** user) joins the one existing household instead of
-creating its own. No table DDL, no policy change, no data change, no privilege for `anon`. Proven on
-the real SQL by `src/lib/supabase/household-join.pg.test.ts`.
+`scripts/migrations/20260919090000_daily_steps.sql` is a reviewed, forward-only candidate containing
+the two steps tables, constraints, indexes, household-member RLS, update triggers and Realtime
+publication changes. It has **not** been applied to production. Because this workspace does not expose
+the registered migration writer, the SQL is staged outside the managed migration directory.
 
-**State 2026-09-18 17:45:** steps 1–3 done and verified externally (1 household, 2 profiles, 390 foods,
-device-join function with the advisory lock, ledger `20260918160000`, RLS on 10, anon cannot execute).
-Step 4 (the Auth switch) was still OFF at 17:39. Apply path, for the record:
+Production action: review the SQL, register it through the controlling environment's migration tool as
+`20260919090000_daily_steps.sql`, apply only that migration, regenerate database types, then verify one
+goal and one dated report for each profile plus cross-client Realtime. Do not run plain `supabase db push`.
 
-1. Run `supabase/verify_anonymous_join.sql` (read-only); keep the output. §1 must show the July
-   household first (seeded catalog, two profiles).
-2. Run `supabase/apply_anonymous_join_production.sql` (idempotent; also records `20260918160000` in
-   `supabase_migrations.schema_migrations`).
-3. Run `supabase/verify_anonymous_join.sql` again: §3 `is_device_join_version = true`,
-   `anon_can_execute = false`; §4 lists `20260918160000`; §5 RLS on all 10.
-4. **Auth setting:** Authentication → Sign In / Providers → **Allow anonymous sign-ins = ON**
-   (Management API: `PATCH /v1/projects/rqgoiuztphkcvbwtbxbj/config/auth` with
-   `{"external_anonymous_users_enabled": true}`). Verified disabled on 2026-09-18 15:50
-   (`POST /auth/v1/signup {}` → `422 anonymous_provider_disabled`). Leave CAPTCHA off (it would
-   break the silent connection); keep the default anonymous sign-in rate limit.
-
-**Still never a plain `supabase db push` against production** (ledger reasons below).
-
-### Post-pilot hardening (2026-09-19) — APPLIED
-
-`supabase/migrations/20260918180000_harden_function_search_path.sql` was applied directly to production on 2026-09-19 and verified: `set_updated_at()` is pinned to `search_path = ''`; EXECUTE on `is_household_member(uuid)` is revoked from `public`/`anon` and retained for `authenticated`/`service_role`; ledger contains `20260918180000`. Supabase Advisor no longer reports the mutable-search-path or anonymous-executable findings. Remaining Auth warning about leaked-password protection is irrelevant to the passwordless DEC-031 product flow. The only release blocker is still **Allow anonymous sign-ins = ON**.
-
-## M1 release (2026-09-18) — applied to production on 2026-09-18 (kept for history)
-
-> Single entrypoint for the whole release (config, publish, this migration, live acceptance):
-> `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md`.
-
-`supabase/migrations/20260916120000_grant_table_privileges.sql` is reviewed (run record
-`docs/claude-tasks/RUN_2026-09-18_M1_PROMOTION.md` §2) and applied to the isolated branch
-`uyroeumwmjhrcbkesmgb`, but **not yet to production `rqgoiuztphkcvbwtbxbj`**. It only GRANTs
-SELECT/INSERT/UPDATE/DELETE to `authenticated`/`service_role` (+ default privileges); nothing is
-revoked, `anon` gets nothing, RLS is untouched. On production it is expected to be a no-op.
-
-**Do not run a plain `supabase db push` against production.** Its ledger records migrations only
-through `20260723090400`; `20260725190000` was applied by SQL-editor paste (below), so `db push` would
-re-run the cleanup/seed migration on real data (DEC-021).
-
-**Runtime configuration (the other half of the release, DEC-025):** the published build
-reads the committed `.env.production`. Add `VITE_SUPABASE_ANON_KEY=<anon/publishable key>`
-there (GitHub web editor or Lovable code mode), commit to `main`, publish from Lovable, then
-`npm run preflight -- --live` must print `PREFLIGHT PASS`. Without the key the published app is
-**blocked** (RuntimeGate), not silently demo.
-
-Apply path (Dashboard, owner account, ~2 minutes, no CLI, no DB password):
-
-1. SQL Editor → run `supabase/verify_privileges.sql` (read-only) and keep the output as BEFORE.
-2. SQL Editor → run `supabase/apply_m1_grants_production.sql` (idempotent; also records both
-   `20260725190000` and `20260916120000` in `supabase_migrations.schema_migrations`).
-3. SQL Editor → run `supabase/verify_privileges.sql` again: §2 returns **zero rows**, §7 lists both
-   versions, §5 shows RLS enabled on all 10 tables.
-
-CLI alternative from a workstation linked to production (never needs Docker):
-`supabase migration repair --status applied 20260725190000` → `supabase db push --dry-run` (must list
-only `20260916120000`) → `supabase db push` → `verify_privileges.sql`.
-
-## APPLIED (2026-07-25) — nothing else is pending
+## APPLIED BASELINE (2026-07-25)
 
 The production bootstrap is **complete**. Applied once, manually, in the SQL Editor of project
 `rqgoiuztphkcvbwtbxbj`:

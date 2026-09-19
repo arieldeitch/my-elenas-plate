@@ -1,121 +1,19 @@
 # Project Status
 
-**Date:** 2026-09-19 (owner reports anonymous sign-ins ON; live verification pending)
-**Branch:** `main` — no-login flow + this run's hardening (auth races, perf, mobile/a11y); served build `fd32a38` (no-login, before the hardening). Release path: Auth switch → publish → preflight → §3b — see `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md`
-**Supabase project:** `rqgoiuztphkcvbwtbxbj` (production) · isolated branch `uyroeumwmjhrcbkesmgb`
-**Stage:** **Feature work paused. M1 = YELLOW only until live verification: DEC-031 + hardening are applied, owner reports Supabase "Allow anonymous sign-ins" = ON, and current main is published. Next: fresh-device smoke + §3b on two phones → M1 CLOSED → M2-7 (`M2_7_PILOT.md`).**
-**Deployment:** <https://my-elenas-plate.lovable.app> serves `main` `fd32a38` (no-login build): `mode=cloud`, `target=shared`, `misconfigured=false`, host `rqgoiuztphkcvbwtbxbj`, no secrets — `PREFLIGHT PASS — 14 checks` (2026-09-18 16:40). Fresh device → one anonymous sign-in request → `422 anonymous_provider_disabled` → retry state until the Auth switch is ON.
+## 2026-09-19 — UX יומי וצעדים
+
+נוסף מעבר חזותי רגוע יותר, ניווט תחתון בן שלוש פעולות ללא יעדים מתים, אזור הקשר יומי 2×2 במובייל, ותשתית VisualViewport משותפת לעורכים. נוספו דיווח צעדים מדויק/“ביצעתי”, יעד פרופיל, תאריך רטרואקטיבי, הפרדת אריאל/אלנה, hydration, Realtime ו-Offline Queue עמיד.
+
+Migration מוצע לבדיקה בלבד: `scripts/migrations/20260919090000_daily_steps.sql`. הוא לא הופעל בפרודקשן. עד החלתו, מסכי הענן החדשים יחזירו שגיאת schema; ה-UI המקומי נשאר פעיל.
+
+**Date:** 2026-08-01
+**Branch:** `main` @ `d5d2ce3` — merged (fast-forward) and synchronized with `origin/main`
+**Supabase project:** `rqgoiuztphkcvbwtbxbj`
+**Stage:** **Production bootstrap complete — T-034 closed as Backend Verified; T-034-UI blocked**
+**Deployment:** none required, none performed (no runtime code changed since `8667b3c`)
 **Pilot-ready code checkpoint:** tag `pilot-ready-2026-07-24` → `29ac1d5`.
 
 > Rule: nothing is listed as "working" unless it was actually run/verified.
-
-## 2026-09-18 (eleventh run) — reliability / hardening before the pilot
-
-Full record: `docs/claude-tasks/RUN_2026-09-18_RELIABILITY_HARDENING.md`. Baseline green (315/16, 8/8).
-Fixed: a stale-activation race (sign-out mid-bootstrap left a realtime channel with the old JWT and the
-new session never activated); the app no longer unmounts when a session is replaced (background
-reconnect); automatic reconnects throttled 5 s after a failure (no anonymous sign-up storms); activation
-read the current day twice (18 → 12 reads) and quick add re-read it four times (→ ≤ 8, coalesced);
-360 px horizontal overflow; AA contrast palette (primary/muted/info tokens); touch targets; toast pile-up;
-landmarks — axe 0 violations on 38 states. Added: PGlite join suite 14 (history wins, 20 joins, no-JWT,
-catalog), multi-device/realtime/offline suite 11, auth-storm 4, post-pilot hardening migration
-`20260918180000` + apply script, regenerated `deploy_all.sql` (was stale/dangerous), threat review.
-Backend: DEC-031 migration applied by the GPT (verified). Production: no-login build `fd32a38` live,
-preflight PASS; **anonymous sign-ins still OFF** (probed 16:40/17:35/17:39). Gate: 336/16, 8/8.
-
-## 2026-09-18 (tenth run) — access simplification (DEC-031): no login, silent device sessions
-
-Full record: `docs/claude-tasks/RUN_2026-09-18_ACCESS_SIMPLIFICATION.md`. Real-device finding: the M1
-email/magic-link screen is a product regression for a private couple app. Now: `AuthGate` reuses a
-session or creates a silent Supabase **anonymous** one (no form ever; one retry state on genuine
-failure); `SignIn` removed; `bootstrap_household()` (migration `20260918160000`) joins every session to
-the ONE existing household (oldest; creates only if none; advisory lock; idempotent); queue ops from a
-previous device identity are adopted; person choice stays per device. RLS/Realtime/M1-R5 unchanged;
-`anon` role gets nothing. Proof: PGlite test on the real SQL (8), AuthGate (5), cloud-path (16), full
-gate green; live suites and e2e ported. **Production pending (GPT):** apply script + "Allow anonymous
-sign-ins" (verified OFF today) + republish; then §3b (two minutes per phone) closes M1.
-
-## 2026-09-18 (ninth run) — M1 live acceptance: release verified, closes on the phones
-
-Full record: `docs/claude-tasks/RUN_2026-09-18_M1_ACCEPTANCE.md`. After the owner's A/B/C: `npm run preflight
--- --live` **PASS (14 checks)** on the served build of `0cd3673` (cloud · shared · correct project · no
-secrets); sign-in screen served, no block page, no console errors, legacy `elenas-plate:v1` snapshot left
-intact; anonymous REST reads `[]` on all 10 tables, anonymous insert rejected by RLS (§3 item 9 PASS). Items
-1–8 and 10 need the signed-in household account on real devices → NOT TESTABLE from a session → new §3a in
-`M1_RELEASE_ACCEPTANCE.md` (10-minute walk-through on both phones; the reply closes M1). Pilot may start
-now. Security-advisor items recorded in `docs/todo.md` for a hardening pass. Docs only; no code.
-
-## 2026-09-18 (eighth run) — M1 closure attempt, pilot prepared
-
-Full record: `docs/claude-tasks/RUN_2026-09-18_M1_CLOSE_ATTEMPT.md`. Evidence: no key line on `origin/main`,
-live deployment still `0c0eb717…` (demo, no manifest, preflight FAIL), no DB access → M1 stays YELLOW; the
-ten live checks are NOT TESTABLE here. Done instead: legacy-phone-data safety proven by test (cloud starts
-from Supabase, snapshot untouched, nothing imported, importer fenced); `M1_RELEASE_ACCEPTANCE.md` now
-carries the evidence and direct links for the three owner steps; `M2_7_PILOT.md` (three-day real-use
-protocol + one-line friction log) ready. No feature work.
-
-## 2026-09-18 (seventh run) — M2-6 direct add from search
-
-Full record: `docs/claude-tasks/RUN_2026-09-18_M2_6_DIRECT_ADD.md`, DEC-030. Typed results with a trusted
-usual quantity (count units) add on tap like chips; weight-first foods, unit-less foods and coffee keep
-their editor; results show "+ 1 יחידה" / "בחירת כמות" before the tap; search clears after an add. Also
-fixed: chips would have logged "1 גרם" for weight-first foods. Gate: typecheck 0 · lint 0/8 · vitest 301 ·
-hermetic Playwright 8/8 · build. Owner actions unchanged. Next: real-device validation, not a new feature.
-
-## 2026-09-18 (sixth run) — M2-5 one-tap quantity
-
-Full record: `docs/claude-tasks/RUN_2026-09-18_M2_5_QUANTITY_STEP.md`, DEC-029. Entry rows in the meal editor
-have a − / + pill for count units (step 1, floor 1, fractions kept); weight/volume and subjective keep
-the full editor; Hebrew plurals; rapid taps coalesce to one write (proven). "2 eggs": 6 taps → 4. Gate:
-typecheck 0 · lint 0/8 · vitest 297 · hermetic Playwright 8/8 · build. Owner actions unchanged.
-
-## 2026-09-18 (fifth run) — M2-4 Day Review
-
-Full record: `docs/claude-tasks/RUN_2026-09-18_M2_4_DAY_REVIEW.md`, DEC-028. `DayReview` sheet: one tap on the
-today card (or the partner card) shows the whole day for me / my partner — six slots in order, entries as
-name · quantity · time, skipped vs empty distinct, edit shortcut only for the active person, explicit
-switch to edit the partner. Store-only rendering, no new reads. Gate: typecheck 0 · lint 0/8 · vitest 286
-· hermetic Playwright 7/7 · build. Owner actions unchanged.
-
-## 2026-09-18 (fourth run) — M2-3 compact daily context row
-
-Full record: `docs/claude-tasks/RUN_2026-09-18_M2_3_CONTEXT_ROW.md`, DEC-027. The fixed weigh-in banner and the
-workout/fasting cards became one `DailyContextRow` under the tiles (values at a glance, inline editors on
-demand); sync status sits in the header. Home height on Pixel 7 1373px → 981px; every primary block
-above the fold in all day states. Gate: typecheck 0 · lint 0/8 · vitest 276 · hermetic Playwright 6/6 ·
-build. `scripts/home-snapshots.mjs` added. Owner actions unchanged.
-
-## 2026-09-18 (third run) — M2 daily couple experience
-
-Full record: `docs/claude-tasks/RUN_2026-09-18_M2_DAILY.md`, decisions DEC-026. Home is now ME (`TodayCard`)
-→ PARTNER (`PartnerGlance` with latest food, slot dots, fasting/workout when present) → ACTION (six
-compact tiles on one screen). One-screen meal editor with one-tap quick add from favourites/recents
-(2 taps + close instead of 5–6). Ownership: personal colours, "<slot> · <person>" editor header,
-`data-owner`. Sync indicator quiet when confirmed. `FoodEntry.loggedAt` read from `created_at`.
-`M1_RELEASE_ACCEPTANCE.md` is the single release entrypoint. Gate: typecheck 0 · lint 0/8 · vitest
-278 · hermetic Playwright 5/5 · build. Owner actions unchanged.
-
-## 2026-09-18 (second run) — fail-safe runtime, release preflight, `.env.production`, M2 partner glance
-
-Full record: `docs/claude-tasks/RUN_2026-09-18_M2_PREP.md`. A production build without Supabase config is
-now **blocked** by `RuntimeGate` (DEC-025); `/build-info.json` + `npm run preflight -- --env|--local|--live`
-are the executable release gate; `.env.production` is committed with the public URL/target and one
-line for the owner's anon key (Lovable delivers frontend env only via a `.env` file in the code);
-the home screen shows the partner's day at a glance (M2 step 1). Gate: typecheck 0 · lint 0/8 ·
-vitest 270 · hermetic Playwright 4/4 · build. Owner actions unchanged (key line + Publish; grants SQL).
-
-## 2026-09-18 — M1 promotion run: merged to `main`, release blocked, live site found in demo mode
-
-Full record: `docs/claude-tasks/RUN_2026-09-18_M1_PROMOTION.md`. Summary:
-
-| Item                                          | Result                                                                                                                                                                                                                                                                                       |
-| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Quality gate on `edc2d54` (second machine)    | typecheck 0 errors · eslint 0 errors / 8 warnings (after a 3-file prettier fix) · vitest **254 passed**, 15 skipped (gated live suites) · `vite build` OK, SHA `edc2d54` embedded · hermetic Playwright **3/3**. Live/branch suites not re-run here (no branch credentials on this machine). |
-| Grants migration `20260916120000`             | **Reviewed GREEN, not applied** — no access path to production from this session. Apply via `supabase/DEPLOY.md` §"M1 release".                                                                                                                                                              |
-| Published build `my-elenas-plate.lovable.app` | **Demo mode** — bundle has empty `VITE_SUPABASE_*`, `isSupabaseConfigured()` ⇒ `false`; no Supabase host in HTML/JS. Client code ≈ `main` ≥ `6768c99`, no build SHA. `x-deployment-id 0c0eb717…`. Nothing users log there reaches Supabase.                                                  |
-| Live M1 acceptance                            | 3 × FAIL by construction (shared visibility, cross-device propagation, local-state-as-truth), 7 × NOT TESTABLE (no authenticated browser). No production data touched.                                                                                                                       |
-| Docker                                        | Not installed on this machine. Repo audit: no script starts Docker; stale `npx supabase start` hint removed from `claude-context.md`; `.claude/settings.json` deny rules added; workstation checklist in `NO_LOCAL_DOCKER_POLICY.md`.                                                        |
-| Git                                           | `recovery/m1-shared-truth` merged into `main` with `--no-ff`; both pushed.                                                                                                                                                                                                                   |
 
 ## 2026-08-01 — Deployment assessment: none required, none performed
 

@@ -1,52 +1,33 @@
 /**
- * Sync manager glue between the store and Supabase.
+ * Sync manager glue between the store and Supabase. Hydrates a day from remote,
+ * reconciles local -> remote writes (upsert present entries, delete removed),
+ * and exposes a realtime subscription for the current household.
  *
- * M1 (shared-truth recovery): the routine write path is `applyOperation`, which
- * executes ONE narrowly scoped, idempotent mutation. The former whole-day
- * reconciliation `pushDay()` is kept ONLY as an explicitly named recovery tool
- * (`pushDaySnapshotUNSAFE`) because it deletes every remote entry absent from
- * the caller's local snapshot — which is exactly how a stale device used to
- * erase its partner's entries. Nothing interactive may call it.
- *
- * Hydration reads a day from Supabase; `subscribeHousehold` exposes realtime
- * change events with their payload metadata so the caller can target the
- * affected profile/date instead of blindly reloading the current view.
+ * The store's synchronous local update is the optimistic step; these functions
+ * mirror it to Supabase. Failures are swallowed here and handled by the caller
+ * via the offline queue + sync state.
  */
-import type { RealtimeChannel, RealtimePostgresChangesPayload } from "@supabase/supabase-js";
-import type { DayData, Food, ProfileId } from "../domain";
+import type { RealtimeChannel } from "@supabase/supabase-js";
+import type { DailySteps, DayData, Food, MealSlotId, ProfileId } from "../domain";
 import { MEAL_SLOTS } from "../domain";
 import { requireSupabase } from "../supabase/client";
 import { entryToRow, slotToSlug, statusToDb, type Preference } from "../supabase/mappers";
 import {
   bumpRecent,
-  deleteEntry,
-  deleteFasting,
-  deleteWorkout,
   loadDay,
   loadFoods,
   loadPreferences,
+  loadStepGoal,
   setFavorite,
-  setMealStatus,
-  upsertFasting,
   upsertFood,
-  upsertWeighIn,
-  upsertWorkout,
+  upsertDailySteps,
+  upsertStepGoal,
   type HouseholdContext,
 } from "../supabase/repositories";
 import { SLUG_BY_LOCAL_PROFILE } from "./migrate-local";
-import { isCustomFoodId } from "./migrate-local";
-import type { Operation } from "./operations";
 
 export function profileIdFor(ctx: HouseholdContext, local: ProfileId): string | undefined {
   return ctx.profileIdBySlug[SLUG_BY_LOCAL_PROFILE[local]];
-}
-
-/** Reverse lookup: DB profile id -> local profile id (for realtime payloads). */
-export function localProfileFor(ctx: HouseholdContext, profileId: string): ProfileId | undefined {
-  for (const local of ["me", "elena"] as ProfileId[]) {
-    if (profileIdFor(ctx, local) === profileId) return local;
-  }
-  return undefined;
 }
 
 /** Which remote entry ids should be deleted given the local set (pure). */
@@ -66,101 +47,11 @@ export async function hydrateDay(
   return loadDay(profileId, iso);
 }
 
-// --- operation execution (routine write path) --------------------------------
-
-export class UnknownProfileError extends Error {
-  constructor(local: ProfileId) {
-    super(`No remote profile for local profile "${local}"`);
-    this.name = "UnknownProfileError";
-  }
-}
-
-function requireProfile(ctx: HouseholdContext, local: ProfileId): string {
-  const id = profileIdFor(ctx, local);
-  if (!id) throw new UnknownProfileError(local);
-  return id;
-}
-
 /**
- * Executes exactly one operation against Supabase. Every branch is idempotent:
- * upserts are keyed by client uuid or the table's natural key; deletes target a
- * single row and succeed when it is already gone. Nothing here reads a whole
- * day or deletes rows the operation does not name.
+ * Reconciles one day's meals to Supabase: upsert every non-empty slot status,
+ * upsert current entries, delete entries removed locally. Also mirrors fasting.
  */
-export async function applyOperation(ctx: HouseholdContext, op: Operation): Promise<void> {
-  const householdId = ctx.householdId;
-  switch (op.kind) {
-    case "entry.upsert": {
-      const profileId = requireProfile(ctx, op.profile);
-      const sb = requireSupabase();
-      const row = entryToRow(op.entry, { householdId, profileId, logDate: op.iso, slot: op.slot });
-      const { error } = await sb.from("food_entries").upsert(row, { onConflict: "id" });
-      if (error) throw error;
-      return;
-    }
-    case "entry.delete": {
-      await deleteEntry(op.entryId);
-      return;
-    }
-    case "status.set": {
-      const profileId = requireProfile(ctx, op.profile);
-      await setMealStatus(householdId, profileId, op.iso, op.slot, op.status);
-      return;
-    }
-    case "fasting.set": {
-      const profileId = requireProfile(ctx, op.profile);
-      await upsertFasting(householdId, profileId, op.iso, op.fasting.start, op.fasting.end);
-      return;
-    }
-    case "fasting.clear": {
-      const profileId = requireProfile(ctx, op.profile);
-      await deleteFasting(profileId, op.iso);
-      return;
-    }
-    case "workout.set": {
-      const profileId = requireProfile(ctx, op.profile);
-      await upsertWorkout(householdId, profileId, op.iso, op.workout);
-      return;
-    }
-    case "workout.clear": {
-      const profileId = requireProfile(ctx, op.profile);
-      await deleteWorkout(profileId, op.iso);
-      return;
-    }
-    case "weighin.insert": {
-      const profileId = requireProfile(ctx, op.profile);
-      await upsertWeighIn(householdId, profileId, op.weighIn);
-      return;
-    }
-    case "food.upsert": {
-      // Built-in catalog foods are a client constant; only custom foods sync.
-      if (!isCustomFoodId(op.food.id)) return;
-      await upsertFood(householdId, op.food);
-      return;
-    }
-    case "pref.favorite": {
-      const profileId = requireProfile(ctx, op.profile);
-      await setFavorite(householdId, profileId, op.foodId, op.isFavorite);
-      return;
-    }
-    case "pref.recent": {
-      const profileId = requireProfile(ctx, op.profile);
-      await bumpRecent(householdId, profileId, op.foodId, op.at);
-      return;
-    }
-  }
-}
-
-// --- recovery-only snapshot reconciliation (NOT a routine write path) -------
-
-/**
- * Whole-day snapshot reconciliation. DESTRUCTIVE: deletes every remote entry
- * for the profile/date that is absent from `day`. Retained solely for a
- * deliberate, human-triggered recovery/migration of one day. Interactive edits
- * must go through `applyOperation`; there is intentionally no caller in the
- * store or the sync hook.
- */
-export async function pushDaySnapshotUNSAFE(
+export async function pushDay(
   ctx: HouseholdContext,
   local: ProfileId,
   iso: string,
@@ -208,10 +99,29 @@ export async function pushDaySnapshotUNSAFE(
   }
 
   if (day.fasting) {
-    await upsertFasting(ctx.householdId, profileId, iso, day.fasting.start, day.fasting.end);
+    await sb.from("fasting_logs").upsert(
+      {
+        household_id: ctx.householdId,
+        profile_id: profileId,
+        log_date: iso,
+        start_time: day.fasting.start,
+        end_time: day.fasting.end,
+      },
+      { onConflict: "profile_id,log_date" },
+    );
   }
   if (day.workout) {
-    await upsertWorkout(ctx.householdId, profileId, iso, day.workout);
+    await sb.from("workout_logs").upsert(
+      {
+        household_id: ctx.householdId,
+        profile_id: profileId,
+        log_date: iso,
+        performed: day.workout.performed,
+        workout_type: day.workout.type ?? null,
+        feeling: day.workout.feeling ?? null,
+      },
+      { onConflict: "profile_id,log_date" },
+    );
   }
 }
 
@@ -229,52 +139,57 @@ export function hydratePreferences(ctx: HouseholdContext, local: ProfileId): Pro
   return loadPreferences(profileId);
 }
 
-// --- realtime ---------------------------------------------------------------
-
-/** All user-visible mutable tables the daily experience depends on. */
-export const REALTIME_TABLES = [
-  "food_entries",
-  "meal_statuses",
-  "fasting_logs",
-  "workout_logs",
-  "weigh_ins",
-  "foods",
-  "food_preferences",
-] as const;
-export type RealtimeTable = (typeof REALTIME_TABLES)[number];
-
-export interface RealtimeChange {
-  table: RealtimeTable;
-  eventType: "INSERT" | "UPDATE" | "DELETE";
-  /** Local profile the row belongs to, when the payload carries `profile_id`. */
-  profile?: ProfileId;
-  /** ISO date the row belongs to, when the payload carries `log_date`. */
-  iso?: string;
-  /** Primary key of the affected row, when present. */
-  rowId?: string;
+export async function hydrateStepGoal(ctx: HouseholdContext, local: ProfileId): Promise<number> {
+  const profileId = profileIdFor(ctx, local);
+  return profileId ? loadStepGoal(profileId) : 10_000;
 }
 
-type RowLike = { profile_id?: string; log_date?: string; id?: string };
-
-/**
- * Extracts the affected profile/date from a postgres_changes payload (pure).
- * DELETE payloads under default replica identity only carry the primary key,
- * so `profile`/`iso` are undefined for them — callers must fall back to a
- * broader refresh in that case.
- */
-export function describeChange(
+export async function pushDailySteps(
   ctx: HouseholdContext,
-  table: RealtimeTable,
-  payload: Pick<RealtimePostgresChangesPayload<RowLike>, "eventType" | "new" | "old">,
-): RealtimeChange {
-  const row = (payload.eventType === "DELETE" ? payload.old : payload.new) as RowLike | undefined;
-  const change: RealtimeChange = { table, eventType: payload.eventType };
-  const profileId = row?.profile_id ?? (payload.old as RowLike | undefined)?.profile_id;
-  if (profileId) change.profile = localProfileFor(ctx, profileId);
-  const iso = row?.log_date ?? (payload.old as RowLike | undefined)?.log_date;
-  if (iso) change.iso = iso;
-  if (row?.id) change.rowId = row.id;
-  return change;
+  local: ProfileId,
+  iso: string,
+  report: DailySteps,
+): Promise<void> {
+  const profileId = profileIdFor(ctx, local);
+  if (profileId) await upsertDailySteps(ctx.householdId, profileId, iso, report);
+}
+
+export async function pushStepGoal(
+  ctx: HouseholdContext,
+  local: ProfileId,
+  goal: number,
+): Promise<void> {
+  const profileId = profileIdFor(ctx, local);
+  if (profileId) await upsertStepGoal(ctx.householdId, profileId, goal);
+}
+
+/** Upserts custom foods (household-scoped). Built-in catalog foods are skipped. */
+export async function pushFoods(ctx: HouseholdContext, foods: Food[]): Promise<void> {
+  for (const food of foods) await upsertFood(ctx.householdId, food);
+}
+
+export interface PrefMutation {
+  foodId: string;
+  isFavorite?: boolean;
+  recentAt?: string;
+}
+
+/** Applies favorite / recency changes for one profile. */
+export async function pushPreferences(
+  ctx: HouseholdContext,
+  local: ProfileId,
+  mutations: PrefMutation[],
+): Promise<void> {
+  const profileId = profileIdFor(ctx, local);
+  if (!profileId) return;
+  for (const m of mutations) {
+    if (m.isFavorite !== undefined) {
+      await setFavorite(ctx.householdId, profileId, m.foodId, m.isFavorite);
+    }
+    if (m.recentAt) {
+      await bumpRecent(ctx.householdId, profileId, m.foodId, m.recentAt);
+    }
+  }
 }
 
 // Unique per subscription so a re-activation never collides with an
@@ -283,46 +198,35 @@ export function describeChange(
 let channelSeq = 0;
 
 /**
- * Subscribes to realtime changes for every table in `REALTIME_TABLES` and calls
- * `onChange` with a described change. Returns an unsubscribe fn.
+ * Subscribes to realtime changes for the household's data tables and calls
+ * `onChange` with the affected table name. Returns an unsubscribe fn.
  */
-export type RealtimeStatus = "connecting" | "subscribed" | "error";
-
 export function subscribeHousehold(
   ctx: HouseholdContext,
-  onChange: (change: RealtimeChange) => void,
+  onChange: (table: string) => void,
   accessToken?: string,
-  onStatus?: (status: RealtimeStatus) => void,
 ): () => void {
   const sb = requireSupabase();
   // Give the realtime socket the auth token so RLS lets this session receive
   // the household's changes (required for postgres_changes over RLS).
   if (accessToken) sb.realtime.setAuth(accessToken);
+  const tables = [
+    "food_entries",
+    "meal_statuses",
+    "weigh_ins",
+    "foods",
+    "food_preferences",
+    "daily_step_logs",
+    "profile_step_settings",
+  ] as const;
   const channel: RealtimeChannel = sb.channel(`household:${ctx.householdId}:${++channelSeq}`);
-  for (const table of REALTIME_TABLES) {
-    channel.on(
-      "postgres_changes",
-      { event: "*", schema: "public", table },
-      (payload: RealtimePostgresChangesPayload<RowLike>) =>
-        onChange(describeChange(ctx, table, payload)),
-    );
+  for (const table of tables) {
+    channel.on("postgres_changes", { event: "*", schema: "public", table }, () => onChange(table));
   }
-  onStatus?.("connecting");
-  channel.subscribe((status, err) => {
-    // Observable channel lifecycle: a silent CHANNEL_ERROR / TIMED_OUT is the
-    // difference between "realtime works" and "the partner never sees it".
-    if (status === "SUBSCRIBED") {
-      console.info("[realtime] subscribed", channel.topic);
-      onStatus?.("subscribed");
-    } else if (status === "CLOSED") {
-      // Socket dropped; supabase-js rejoins automatically once it reconnects.
-      onStatus?.("connecting");
-    } else {
-      console.warn("[realtime]", status, channel.topic, err?.message ?? "");
-      onStatus?.("error");
-    }
-  });
+  channel.subscribe();
   return () => {
     void sb.removeChannel(channel);
   };
 }
+
+export type { MealSlotId };

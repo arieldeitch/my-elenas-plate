@@ -6,10 +6,9 @@ import { StoreProvider } from "@/lib/store";
 import { MealCard } from "./MealCard";
 import { CoffeeSelector } from "./CoffeeSelector";
 import { ProfileSwitcher } from "./ProfileSwitcher";
-import { TodayCard } from "./TodayCard";
-import { PartnerGlance } from "./PartnerGlance";
-import { DailyContextRow } from "./DailyContextRow";
-import { DayReview } from "./DayReview";
+import { DailyCompletionIndicator } from "./DailyCompletionIndicator";
+import { WeightBanner } from "./WeightBanner";
+import { DailyContext } from "./DailyContext";
 import type { DailyMeal } from "@/lib/domain";
 
 const wrapper = ({ children }: { children: ReactNode }) => (
@@ -38,26 +37,22 @@ describe("accessibility (axe)", () => {
     expect(await axe(container, opts)).toHaveNoViolations();
   });
 
-  it("TodayCard + PartnerGlance (M2 home) have no violations", async () => {
+  it("DailyCompletionIndicator has no violations", async () => {
     const { container } = render(
-      <>
-        <TodayCard onOpenCalendar={vi.fn()} />
-        <PartnerGlance />
-      </>,
-      { wrapper },
+      <DailyCompletionIndicator
+        info={{ state: "partial", documented: 2, total: 6, label: "תיעוד חלקי" }}
+      />,
     );
     expect(await axe(container, opts)).toHaveNoViolations();
   });
 
-  it("DayReview (M2-4) has no violations", async () => {
-    const { container } = render(<DayReview person="me" onClose={vi.fn()} onEditSlot={vi.fn()} />, {
-      wrapper,
-    });
+  it("WeightBanner has no violations", async () => {
+    const { container } = render(<WeightBanner onOpen={vi.fn()} />, { wrapper });
     expect(await axe(container, opts)).toHaveNoViolations();
   });
 
-  it("DailyContextRow has no violations", async () => {
-    const { container } = render(<DailyContextRow onOpenWeight={vi.fn()} />, { wrapper });
+  it("DailyContext has no violations", async () => {
+    const { container } = render(<DailyContext onOpenWeight={vi.fn()} />, { wrapper });
     expect(await axe(container, opts)).toHaveNoViolations();
   });
 });

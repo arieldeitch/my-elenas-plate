@@ -1,47 +1,30 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, Star, Clock, Plus, X, Coffee, SlidersHorizontal } from "lucide-react";
+import { Search, Star, Clock, Plus, X, Coffee } from "lucide-react";
 import type { Food } from "@/lib/domain";
 import { useStore } from "@/lib/store";
 import { buildFoodSearchIndex, findFoodByName, searchFoods } from "@/lib/food-search";
 import { normalizeFoodName } from "@/lib/food-normalize";
-import { formatQuantity, usualQuantity } from "@/lib/quantity";
 import { cn } from "@/lib/utils";
 
 /** Results shown per query. The catalog is never rendered in full. */
 const RESULT_LIMIT = 20;
 
 interface Props {
-  /**
-   * A food was chosen — from a favourite / recent chip OR a typed result (one
-   * path since M2-6). The caller adds it immediately when its usual quantity
-   * is trusted and returns "added" (the search box clears so the new row and
-   * the chips are visible again), or opens the quantity / coffee step and
-   * returns "opened".
-   */
-  onChoose: (food: Food) => "added" | "opened";
+  onPick: (food: Food) => void;
   onCreate: (name: string) => void;
   /** Fast path straight into the coffee editor. */
   onAddCoffee?: () => void;
-  /** Focus the search box on mount (default true). Off when the meal already has entries. */
-  autoFocus?: boolean;
 }
 
-export function FoodSearch({ onChoose, onCreate, onAddCoffee, autoFocus = true }: Props) {
-  function choose(food: Food) {
-    if (onChoose(food) === "added") {
-      setRaw("");
-      setQ("");
-      inputRef.current?.focus();
-    }
-  }
+export function FoodSearch({ onPick, onCreate, onAddCoffee }: Props) {
   const { foods, favorites, recents } = useStore();
   const [raw, setRaw] = useState("");
   const [q, setQ] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (autoFocus) inputRef.current?.focus();
-  }, [autoFocus]);
+    inputRef.current?.focus();
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => setQ(raw), 180);
@@ -79,7 +62,7 @@ export function FoodSearch({ onChoose, onCreate, onAddCoffee, autoFocus = true }
           <button
             onClick={() => setRaw("")}
             aria-label="ניקוי חיפוש"
-            className="absolute top-1/2 left-1 -translate-y-1/2 grid h-10 w-10 place-items-center rounded-full hover:bg-muted"
+            className="absolute top-1/2 left-2 -translate-y-1/2 grid h-8 w-8 place-items-center rounded-full hover:bg-muted"
           >
             <X className="h-4 w-4" />
           </button>
@@ -113,7 +96,7 @@ export function FoodSearch({ onChoose, onCreate, onAddCoffee, autoFocus = true }
                     food={f}
                     isFav
                     recent={recents.includes(f.id)}
-                    onChoose={choose}
+                    onPick={onPick}
                   />
                 ))}
               </Grid>
@@ -123,62 +106,29 @@ export function FoodSearch({ onChoose, onCreate, onAddCoffee, autoFocus = true }
             <Section title="אחרונים" icon={<Clock className="h-4 w-4" />}>
               <Grid>
                 {recentList.map((f) => (
-                  <FoodChip key={f.id} food={f} onChoose={choose} />
+                  <FoodChip key={f.id} food={f} onPick={onPick} />
                 ))}
               </Grid>
             </Section>
-          )}
-          {(favList.length > 0 || recentList.length > 0) && (
-            <p className="text-[11px] text-muted-foreground" data-testid="quick-add-hint">
-              הקשה על מאכל מוסיפה אותו בכמות הרגילה — אפשר לתקן אחר כך.
-            </p>
           )}
         </div>
       )}
 
       {nq && (
         <div className="space-y-1">
-          {results.map((f) => {
-            const usual = usualQuantity(f);
-            const hint = usual
-              ? formatQuantity(usual)
-              : f.kind === "coffee"
-                ? "סוג וחלב"
-                : "בחירת כמות";
-            return (
-              <button
-                key={f.id}
-                onClick={() => choose(f)}
-                data-testid="search-result"
-                data-direct={usual ? "true" : "false"}
-                aria-label={
-                  usual
-                    ? `${f.name}, הוספה של ${hint}`
-                    : `${f.name}, ${f.kind === "coffee" ? "פתיחת עורך הקפה" : "פתיחת בחירת כמות"}`
-                }
-                className="flex w-full items-center gap-3 rounded-xl border border-border bg-card px-3 py-3 text-right hover:border-primary/40"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="font-medium truncate">{f.name}</div>
-                  {f.category && <div className="text-xs text-muted-foreground">{f.category}</div>}
-                </div>
-                {favSet.has(f.id) && (
-                  <Star className="h-4 w-4 shrink-0 text-warn fill-warn" aria-hidden />
-                )}
-                {/* What the tap will do: the usual quantity, or a small "choose" cue. */}
-                <span
-                  className={cn(
-                    "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[12px] tabular-nums",
-                    usual ? "bg-primary-soft text-primary" : "bg-secondary text-muted-foreground",
-                  )}
-                  aria-hidden
-                >
-                  {usual ? <Plus className="h-3 w-3" /> : <SlidersHorizontal className="h-3 w-3" />}
-                  {hint}
-                </span>
-              </button>
-            );
-          })}
+          {results.map((f) => (
+            <button
+              key={f.id}
+              onClick={() => onPick(f)}
+              className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-card px-3 py-3 text-right hover:border-primary/40"
+            >
+              <div className="min-w-0">
+                <div className="font-medium truncate">{f.name}</div>
+                {f.category && <div className="text-xs text-muted-foreground">{f.category}</div>}
+              </div>
+              {favSet.has(f.id) && <Star className="h-4 w-4 text-warn fill-warn" />}
+            </button>
+          ))}
           {!exact && (
             <button
               onClick={() => onCreate(raw.trim())}
@@ -227,23 +177,16 @@ function FoodChip({
   food,
   isFav,
   recent,
-  onChoose,
+  onPick,
 }: {
   food: Food;
   isFav?: boolean;
   recent?: boolean;
-  onChoose: (f: Food) => void;
+  onPick: (f: Food) => void;
 }) {
-  const usual = usualQuantity(food);
   return (
     <button
-      onClick={() => onChoose(food)}
-      data-direct={usual ? "true" : "false"}
-      aria-label={
-        usual
-          ? `${food.name}, הוספה של ${formatQuantity(usual)}`
-          : `${food.name}, ${food.kind === "coffee" ? "פתיחת עורך הקפה" : "פתיחת בחירת כמות"}`
-      }
+      onClick={() => onPick(food)}
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-2 text-sm hover:border-primary/40",
       )}

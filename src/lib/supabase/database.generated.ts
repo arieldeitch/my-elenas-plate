@@ -34,6 +34,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      daily_step_logs: {
+        Row: {
+          completed: boolean
+          created_at: string
+          goal: number
+          household_id: string
+          id: string
+          log_date: string
+          profile_id: string
+          steps: number | null
+          updated_at: string
+        }
+        Insert: {
+          completed?: boolean
+          created_at?: string
+          goal: number
+          household_id: string
+          id?: string
+          log_date: string
+          profile_id: string
+          steps?: number | null
+          updated_at?: string
+        }
+        Update: {
+          completed?: boolean
+          created_at?: string
+          goal?: number
+          household_id?: string
+          id?: string
+          log_date?: string
+          profile_id?: string
+          steps?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_step_logs_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_step_logs_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fasting_logs: {
         Row: {
           created_at: string
@@ -388,6 +439,48 @@ export type Database = {
             columns: ["household_id"]
             isOneToOne: false
             referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_step_settings: {
+        Row: {
+          created_at: string
+          daily_goal: number
+          household_id: string
+          id: string
+          profile_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          daily_goal?: number
+          household_id: string
+          id?: string
+          profile_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          daily_goal?: number
+          household_id?: string
+          id?: string
+          profile_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_step_settings_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_step_settings_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

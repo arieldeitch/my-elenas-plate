@@ -1,8 +1,8 @@
 import { test, expect } from "@playwright/test";
-import { openApp, waitForApp } from "./helpers";
+import { signIn, uniqueEmail, waitForApp } from "./helpers";
 
 test("sign in, bootstrap, RTL, profiles and six meal slots", async ({ page }) => {
-  await openApp(page);
+  await signIn(page, uniqueEmail());
 
   // RTL document
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
@@ -28,10 +28,14 @@ test("sign in, bootstrap, RTL, profiles and six meal slots", async ({ page }) =>
 });
 
 test("mobile viewport has no horizontal overflow", async ({ page }) => {
-  await openApp(page);
+  await signIn(page, uniqueEmail());
   await waitForApp(page);
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
   expect(overflow).toBeLessThanOrEqual(1);
+  await expect(page.locator(".context-tile")).toHaveCount(4);
+  await expect(page.getByRole("button", { name: "יומן" })).toBeVisible();
+  await expect(page.getByText("היסטוריה", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("עוד", { exact: true })).toHaveCount(0);
 });

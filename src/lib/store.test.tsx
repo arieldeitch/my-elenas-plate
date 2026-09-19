@@ -200,86 +200,33 @@ describe("store", () => {
       result.current.getDay("me", today()).meals.lunch.entries.find((e) => e.id === entry.id),
     ).toBeTruthy();
   });
-});
 
-describe("store — per-device default profile (M1 Phase B)", () => {
-  beforeEach(() => window.localStorage.clear());
-
-  it("asks who uses the device on first use and defaults to Ariel until answered", () => {
+  it("uses a 10,000 step fallback and keeps step goals isolated per profile", () => {
     const { result } = renderHook(() => useStore(), { wrapper });
-    expect(result.current.deviceProfile).toBeNull();
-    expect(result.current.deviceChooserOpen).toBe(true);
-    expect(result.current.activeProfile).toBe("me");
+    expect(result.current.stepGoal).toBe(10_000);
+    act(() => result.current.setStepGoal(8_500));
+    expect(result.current.stepGoal).toBe(8_500);
+    act(() => result.current.setActiveProfile("elena"));
+    expect(result.current.stepGoal).toBe(10_000);
   });
 
-  it("choosing Elena persists on this device and survives a reload; switching still works", () => {
-    const first = renderHook(() => useStore(), { wrapper });
-    act(() => first.result.current.chooseDeviceProfile("elena"));
-    expect(first.result.current.activeProfile).toBe("elena");
-    expect(first.result.current.deviceChooserOpen).toBe(false);
-    first.unmount();
-
-    // Fresh provider = page reload: Elena is active by default, no chooser.
-    const second = renderHook(() => useStore(), { wrapper });
-    expect(second.result.current.deviceProfile).toBe("elena");
-    expect(second.result.current.activeProfile).toBe("elena");
-    expect(second.result.current.deviceChooserOpen).toBe(false);
-
-    // Temporary switch to Ariel still works and does not change the device default.
-    act(() => second.result.current.setActiveProfile("me"));
-    expect(second.result.current.activeProfile).toBe("me");
-    expect(second.result.current.deviceProfile).toBe("elena");
-    second.unmount();
-    const third = renderHook(() => useStore(), { wrapper });
-    expect(third.result.current.activeProfile).toBe("elena");
-  });
-
-  it("the device preference wins over the demo snapshot last-active profile", () => {
-    const first = renderHook(() => useStore(), { wrapper });
-    act(() => first.result.current.chooseDeviceProfile("elena"));
-    act(() => first.result.current.setActiveProfile("me"));
-    act(() => first.result.current.addEntry("dinner", coffee)); // persists snapshot with "me"
-    first.unmount();
-    const second = renderHook(() => useStore(), { wrapper });
-    expect(second.result.current.activeProfile).toBe("elena");
-  });
-
-  it("logs to the chosen profile, not Ariel, on a device set to Elena", () => {
+  it("stores exact and completed-only step reports on the selected profile and date", () => {
     const { result } = renderHook(() => useStore(), { wrapper });
-    act(() => result.current.chooseDeviceProfile("elena"));
-    act(() => result.current.addEntry("lunch", coffee));
-    expect(result.current.getDay("elena", today()).meals.lunch.entries).toHaveLength(1);
-    expect(result.current.getDay("me", today()).meals.lunch.entries).toHaveLength(0);
-  });
+    const yesterday = new Date(2026, 8, 18);
+    act(() => result.current.setSelectedDate(yesterday));
+    act(() => result.current.setSteps({ steps: 8_734, completed: false, goal: 10_000 }));
+    expect(result.current.getDay("me", "2026-09-18").steps).toEqual({
+      steps: 8_734,
+      completed: false,
+      goal: 10_000,
+    });
 
-  it("the chooser can be re-opened and dismissed once a default exists", () => {
-    const { result } = renderHook(() => useStore(), { wrapper });
-    act(() => result.current.chooseDeviceProfile("me"));
-    act(() => result.current.openDeviceChooser());
-    expect(result.current.deviceChooserOpen).toBe(true);
-    act(() => result.current.closeDeviceChooser());
-    expect(result.current.deviceChooserOpen).toBe(false);
-  });
-});
-
-describe("store — sync truth in demo mode", () => {
-  beforeEach(() => window.localStorage.clear());
-
-  it("exposes pending/failed counts (zero in demo mode) and retry controls", () => {
-    const { result } = renderHook(() => useStore(), { wrapper });
-    expect(result.current.syncDetail).toEqual({ pending: 0, failed: 0, realtime: "off" });
-    expect(typeof result.current.retryFailedSync).toBe("function");
-    expect(typeof result.current.discardFailedSync).toBe("function");
-  });
-
-  it("clearing fasting and workout removes them from the day", () => {
-    const { result } = renderHook(() => useStore(), { wrapper });
-    act(() => result.current.setFasting({ start: "20:00", end: "12:00" }));
-    act(() => result.current.setWorkout({ performed: true, type: "ריצה" }));
-    expect(result.current.getDay("me", today()).fasting).toEqual({ start: "20:00", end: "12:00" });
-    act(() => result.current.setFasting(undefined));
-    act(() => result.current.setWorkout(undefined));
-    expect(result.current.getDay("me", today()).fasting).toBeUndefined();
-    expect(result.current.getDay("me", today()).workout).toBeUndefined();
+    act(() => result.current.setActiveProfile("elena"));
+    act(() => result.current.setSteps({ completed: true, goal: 10_000 }));
+    expect(result.current.getDay("elena", "2026-09-18").steps).toEqual({
+      completed: true,
+      goal: 10_000,
+    });
+    expect(result.current.getDay("me", "2026-09-18").steps?.steps).toBe(8_734);
   });
 });

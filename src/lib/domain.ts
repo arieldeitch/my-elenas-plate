@@ -1,18 +1,9 @@
 export type ProfileId = "me" | "elena";
 
-/** The other member of the two-person household. */
-export function partnerOf(profile: ProfileId): ProfileId {
-  return profile === "me" ? "elena" : "me";
-}
-
 export interface Profile {
   id: ProfileId;
   name: string;
   initials: string;
-  /** Personal accent colour — the one visual cue of ownership everywhere (avatar, editor header). */
-  color: string;
-  /** Soft tint of `color` for backgrounds. */
-  tint: string;
 }
 
 export type MealSlotId =
@@ -163,12 +154,6 @@ export interface FoodEntry {
   subjective?: SubjectiveAmount;
   /** Present only for coffee entries. */
   coffee?: CoffeeMeta;
-  /**
-   * When the entry was logged (ISO). Set locally at creation and read back from
-   * the row's `created_at`; never sent on writes (the database owns it). Used
-   * for "latest activity" only — not part of any equality / sync decision.
-   */
-  loggedAt?: string;
 }
 
 export interface DailyMeal {
@@ -201,6 +186,14 @@ export interface WorkoutLog {
   feeling?: WorkoutFeeling;
 }
 
+export interface DailySteps {
+  /** Omitted when the person used the quick "completed" report. */
+  steps?: number;
+  completed: boolean;
+  /** Snapshot of the profile goal when this day was reported. */
+  goal: number;
+}
+
 export interface WeighIn {
   id: string;
   dateISO: string; // yyyy-mm-dd
@@ -213,6 +206,7 @@ export interface DayData {
   meals: Record<MealSlotId, DailyMeal>;
   fasting?: FastingLog;
   workout?: WorkoutLog;
+  steps?: DailySteps;
 }
 
 export type SyncState = "saved" | "saving" | "offline" | "pending" | "error";
