@@ -44,7 +44,7 @@ export function TodayCard({ onOpenCalendar, onOpenReview }: Props) {
       aria-label={`היום של ${profile.name}`}
       data-testid="today-card"
       data-owner={profile.id}
-      className="rounded-2xl bg-white border border-[#E9EEF3] p-4 shadow-soft"
+      className="rounded-2xl bg-card border border-border p-4 shadow-soft"
       style={{ borderInlineStartColor: profile.color, borderInlineStartWidth: 4 }}
     >
       {/* Row 1: who + which day */}
@@ -72,21 +72,21 @@ export function TodayCard({ onOpenCalendar, onOpenReview }: Props) {
           <button
             onClick={() => setSelectedDate(addDays(selectedDate, -1))}
             aria-label="יום קודם"
-            className="grid h-10 w-10 place-items-center rounded-xl text-muted-foreground hover:bg-[#F1F5F9] transition-colors"
+            className="grid h-10 w-10 place-items-center rounded-xl text-muted-foreground hover:bg-muted transition-colors"
           >
             <ChevronRight className="h-5 w-5" strokeWidth={1.75} />
           </button>
           <button
             onClick={onOpenCalendar}
             aria-label="פתיחת לוח שנה"
-            className="grid h-10 w-10 place-items-center rounded-xl text-info hover:bg-[#EDF6FD] transition-colors"
+            className="grid h-10 w-10 place-items-center rounded-xl text-info hover:bg-info-soft transition-colors"
           >
             <Calendar className="h-5 w-5" strokeWidth={1.75} />
           </button>
           <button
             onClick={() => setSelectedDate(addDays(selectedDate, 1))}
             aria-label="יום הבא"
-            className="grid h-10 w-10 place-items-center rounded-xl text-muted-foreground hover:bg-[#F1F5F9] transition-colors"
+            className="grid h-10 w-10 place-items-center rounded-xl text-muted-foreground hover:bg-muted transition-colors"
           >
             <ChevronLeft className="h-5 w-5" strokeWidth={1.75} />
           </button>
@@ -100,11 +100,11 @@ export function TodayCard({ onOpenCalendar, onOpenReview }: Props) {
         disabled={!onOpenReview}
         data-testid="today-review"
         aria-label={reviewLabel}
-        className="-mx-2 mt-2 block w-[calc(100%+16px)] rounded-xl px-2 py-1.5 text-right transition-colors hover:bg-[#F8FAFC] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none"
+        className="-mx-2 mt-2 block w-[calc(100%+16px)] rounded-xl px-2 py-1.5 text-right transition-colors hover:bg-muted/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none"
       >
         <div className="flex items-center gap-3">
           <div
-            className="h-2 flex-1 overflow-hidden rounded-full bg-[#EEF2F6]"
+            className="h-2 flex-1 overflow-hidden rounded-full bg-secondary"
             role="progressbar"
             aria-valuenow={completion.documented}
             aria-valuemin={0}
