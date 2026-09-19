@@ -3,6 +3,7 @@ import type { Food, FoodEntry, QuantityMode, SubjectiveAmount, Unit } from "@/li
 import { ALL_UNITS } from "@/lib/domain";
 import { parseAmount, validateMeasured } from "@/lib/quantity";
 import { formatPoints } from "@/lib/points";
+import { formatPoints } from "@/lib/points";
 import { cn } from "@/lib/utils";
 
 interface Props {
