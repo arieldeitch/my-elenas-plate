@@ -62,7 +62,7 @@
 :root {
   --background: #eef3f6;
   --foreground: #182a42;
-  --muted-fg: #5f6f86; /* ≥ 4.5:1 on white and on the soft surfaces (AA) */
+  --muted-fg: #5b6a80; /* ≥ 4.5:1 on card/background/secondary surfaces (AA) */
 
   --card: #fbfcfd;
   --surface-2: #e7edf2;
