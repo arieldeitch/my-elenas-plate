@@ -37,7 +37,7 @@ import {
 export interface HouseholdContext {
   householdId: string;
   profileIdBySlug: Record<string, string>;
-  pointsBudgetBySlug: Record<string, number>;
+  pointsBudgetBySlug?: Record<string, number>;
 }
 
 /** Ensures the household + two profiles exist and returns the mapping. */
