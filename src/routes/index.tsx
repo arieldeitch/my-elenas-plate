@@ -111,7 +111,8 @@ function Home() {
       <WeighInForm open={weighOpen} onClose={closeWeigh} />
       <DayReview person={reviewPerson} onClose={closeReview} onEditSlot={editFromReview} />
       <BottomNav
-        active="home"
+        active={calendarOpen ? "calendar" : "home"}
+        onHome={() => setCalendarOpen(false)}
         onCalendar={() => setCalendarOpen(true)}
         onAdd={() => setOpenSlot(nextSlot)}
       />
