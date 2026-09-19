@@ -1,18 +1,8 @@
 # Deploying to the remote Supabase project
 
-## Points v2-il (2026-09-19, DEC-034) — ONE migration pending on production, apply BEFORE publishing
+## Points v2-il (2026-09-19, DEC-034) — APPLIED + VERIFIED; publish triggered
 
-`supabase/migrations/20260919100000_points_v2_profile_facts.sql` adds the personalised-budget facts to
-`profiles` (`sex_at_birth`, `birth_date`, `height_cm`, `goal_mode`, `points_budget_override`; all
-nullable except `goal_mode` default `'lose'`) and copies a deliberately changed v1 budget
-(`daily_points_budget <> 30`) into the override once. No policy/grant/realtime change, no snapshot
-rewrite. PGlite-proven (`household-join.pg.test.ts`).
-
-1. Run `supabase/verify_points_v2.sql` (read-only); keep the output.
-2. Run `supabase/apply_points_v2_production.sql` (idempotent; records `20260919100000` in the ledger).
-3. Run `supabase/verify_points_v2.sql` again: §1 lists 5 columns, §4 lists `20260919100000`, §5 RLS on.
-4. Only then publish `main` from Lovable — the v2 client writes these columns when the person fills the
-   budget sheet (reads tolerate their absence; writes would fail).
+`supabase/migrations/20260919100000_points_v2_profile_facts.sql` was applied directly to production on 2026-09-19 and verified. The five profile columns are present; `goal_mode` defaults to `'lose'`; Ariel and Elena remain with null sex/birth/height/override (no guessed data); both legacy v1 budgets remain 30 and therefore were not converted into overrides; existing food-entry snapshots remain one `v1` row and one legacy row without a snapshot; RLS remains enabled on `profiles` and `food_entries`; migration ledger includes `20260919100000 points_v2_profile_facts`. Lovable publish of current `main` was triggered after verification. Live/device acceptance remains.
 
 Never a plain `supabase db push`.
 
