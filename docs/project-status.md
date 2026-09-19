@@ -1,9 +1,9 @@
 # Project Status
 
-**Date:** 2026-09-18 (eleventh run — reliability/hardening window; Auth switch still OFF)
+**Date:** 2026-09-19 (owner reports anonymous sign-ins ON; live verification pending)
 **Branch:** `main` — no-login flow + this run's hardening (auth races, perf, mobile/a11y); served build `fd32a38` (no-login, before the hardening). Release path: Auth switch → publish → preflight → §3b — see `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md`
 **Supabase project:** `rqgoiuztphkcvbwtbxbj` (production) · isolated branch `uyroeumwmjhrcbkesmgb`
-**Stage:** **Feature work paused. M1 = YELLOW: DEC-031 migration applied and the no-login build is live, but Supabase "Allow anonymous sign-ins" is OFF, so every fresh device sees the retry state; switch ON → republish → §3b on two phones → M1 CLOSED → M2-7 (`M2_7_PILOT.md`)**
+**Stage:** **Feature work paused. M1 = YELLOW only until live verification: DEC-031 + hardening are applied, owner reports Supabase "Allow anonymous sign-ins" = ON, and current main is published. Next: fresh-device smoke + §3b on two phones → M1 CLOSED → M2-7 (`M2_7_PILOT.md`).**
 **Deployment:** <https://my-elenas-plate.lovable.app> serves `main` `fd32a38` (no-login build): `mode=cloud`, `target=shared`, `misconfigured=false`, host `rqgoiuztphkcvbwtbxbj`, no secrets — `PREFLIGHT PASS — 14 checks` (2026-09-18 16:40). Fresh device → one anonymous sign-in request → `422 anonymous_provider_disabled` → retry state until the Auth switch is ON.
 **Pilot-ready code checkpoint:** tag `pilot-ready-2026-07-24` → `29ac1d5`.
 
