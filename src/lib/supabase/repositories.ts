@@ -4,12 +4,13 @@
  * require a configured, authenticated client (see requireSupabase()).
  */
 import { requireSupabase } from "./client";
-import type { DayData, Food, MealSlotId, WeighIn, WorkoutFeeling, WorkoutType } from "../domain";
+import type { DayData, Food, MealSlotId, StepLog, WeighIn, WorkoutFeeling, WorkoutType } from "../domain";
 import { MEAL_SLOTS } from "../domain";
 import type {
   FoodEntryRow,
   FoodPreferenceRow,
   FoodRow,
+  DailyStepRow,
   MealStatusRow,
   ProfileRow,
 } from "./database.types";
@@ -49,7 +50,7 @@ export async function bootstrapHousehold(): Promise<HouseholdContext> {
 /** Loads a single day's meals (statuses + entries) for a profile. */
 export async function loadDay(profileId: string, logDate: string): Promise<DayData> {
   const sb = requireSupabase();
-  const [statuses, entries, fasting, workout] = await Promise.all([
+  const [statuses, entries, fasting, workout, steps, latestGoal] = await Promise.all([
     sb.from("meal_statuses").select("*").eq("profile_id", profileId).eq("log_date", logDate),
     sb.from("food_entries").select("*").eq("profile_id", profileId).eq("log_date", logDate),
     sb
@@ -64,9 +65,26 @@ export async function loadDay(profileId: string, logDate: string): Promise<DayDa
       .eq("profile_id", profileId)
       .eq("log_date", logDate)
       .maybeSingle(),
+    sb
+      .from("daily_steps")
+      .select("*")
+      .eq("profile_id", profileId)
+      .eq("log_date", logDate)
+      .maybeSingle(),
+    sb
+      .from("daily_steps")
+      .select("goal_steps")
+      .eq("profile_id", profileId)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
   if (statuses.error) throw statuses.error;
   if (entries.error) throw entries.error;
+  if (fasting.error) throw fasting.error;
+  if (workout.error) throw workout.error;
+  if (steps.error) throw steps.error;
+  if (latestGoal.error) throw latestGoal.error;
 
   const statusBySlot = new Map<MealSlotId, MealStatusRow>();
   for (const s of (statuses.data ?? []) as MealStatusRow[]) {
@@ -93,6 +111,17 @@ export async function loadDay(profileId: string, logDate: string): Promise<DayDa
       feeling: (workout.data.feeling as WorkoutFeeling | null) ?? undefined,
     };
   }
+  const stepRow = steps.data as DailyStepRow | null;
+  day.steps = stepRow
+    ? {
+        goalSteps: stepRow.goal_steps,
+        steps: stepRow.steps ?? undefined,
+        completed: stepRow.completed,
+      }
+    : {
+        goalSteps: latestGoal.data?.goal_steps ?? 10_000,
+        completed: false,
+      };
   return day;
 }
 
@@ -198,6 +227,29 @@ export async function deleteWorkout(profileId: string, logDate: string): Promise
     .delete()
     .eq("profile_id", profileId)
     .eq("log_date", logDate);
+  if (error) throw error;
+}
+
+
+
+export async function upsertDailySteps(
+  householdId: string,
+  profileId: string,
+  logDate: string,
+  steps: StepLog,
+): Promise<void> {
+  const sb = requireSupabase();
+  const { error } = await sb.from("daily_steps").upsert(
+    {
+      household_id: householdId,
+      profile_id: profileId,
+      log_date: logDate,
+      goal_steps: steps.goalSteps,
+      steps: steps.steps ?? null,
+      completed: steps.completed,
+    },
+    { onConflict: "profile_id,log_date" },
+  );
   if (error) throw error;
 }
 
