@@ -155,7 +155,7 @@ describe("MealEditor — inline quantity stepper (M2-5)", () => {
     await user.type(screen.getByRole("textbox", { name: "חיפוש מאכל" }), "תפוח");
     await user.click((await screen.findAllByTestId("search-result"))[0]);
     await user.click(screen.getByRole("button", { name: "הוספת המאכל" }));
-    expect(screen.getAllByTestId("meal-entry")[0].className).toMatch(/border-primary/);
+    expect(screen.getAllByTestId("meal-entry")[0]).toHaveAttribute("data-quantity", "1 יחידה");
     await user.click(screen.getByRole("button", { name: "תפוח, הוספה של 1 יחידה" }));
     const rows = screen.getAllByTestId("meal-entry");
     expect(rows).toHaveLength(2);

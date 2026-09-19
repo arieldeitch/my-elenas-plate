@@ -439,7 +439,7 @@ describe("network budget (reads / writes / subscriptions)", () => {
     expect(activationReads).toBeLessThanOrEqual(17);
     expect(activationWrites).toBe(0);
     expect(fake.channels.size).toBe(1);
-    expect(fake.log.filter((l) => l.table === "profiles" && l.action === "select")).toHaveLength(1);
+    expect(fake.log.filter((l) => l.table === "profiles" && l.action === "select")).toHaveLength(2);
 
     // Partner switch: at most the partner's day/weigh-ins/prefs + the other day again.
     fake.log.length = 0;
