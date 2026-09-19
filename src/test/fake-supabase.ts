@@ -15,6 +15,7 @@ const UNIQUE_KEYS: Record<string, string[][]> = {
   meal_statuses: [["id"], ["profile_id", "log_date", "slot"]],
   fasting_logs: [["id"], ["profile_id", "log_date"]],
   workout_logs: [["id"], ["profile_id", "log_date"]],
+  daily_steps: [["id"], ["profile_id", "log_date"]],
   weigh_ins: [["id"]],
   foods: [["id"], ["household_id", "normalized_name"]],
   food_preferences: [["id"], ["profile_id", "food_id"]],
@@ -243,6 +244,8 @@ class Query implements PromiseLike<Result> {
   private filters: Filter[] = [];
   private mode: "many" | "single" | "maybe" = "many";
   private throwing = false;
+  private orderSpec?: { col: string; ascending: boolean };
+  private limitCount?: number;
 
   constructor(
     private db: FakeSupabase,
@@ -281,7 +284,12 @@ class Query implements PromiseLike<Result> {
     this.filters.push({ col, op: "in", val });
     return this;
   }
-  order() {
+  order(col: string, opts?: { ascending?: boolean }) {
+    this.orderSpec = { col, ascending: opts?.ascending ?? true };
+    return this;
+  }
+  limit(n: number) {
+    this.limitCount = n;
     return this;
   }
   maybeSingle() {
@@ -303,7 +311,34 @@ class Query implements PromiseLike<Result> {
   ): PromiseLike<R1 | R2> {
     const run = async (): Promise<Result> => {
       if (this.db.offline) throw new TypeError("Failed to fetch");
-      const res = this.db.execute(this.table, this.action, this.filters, this.mode);
+      let res: Result;
+      if (this.action.type === "select" && (this.orderSpec || this.limitCount != null)) {
+        const raw = this.db.execute(this.table, this.action, this.filters, "many");
+        if (raw.error) res = raw;
+        else {
+          let rows = [...(raw.data as Row[])];
+          if (this.orderSpec) {
+            const { col, ascending } = this.orderSpec;
+            rows.sort((a, b) => {
+              const av = a[col];
+              const bv = b[col];
+              if (av === bv) return 0;
+              if (av == null) return ascending ? -1 : 1;
+              if (bv == null) return ascending ? 1 : -1;
+              return (av < bv ? -1 : 1) * (ascending ? 1 : -1);
+            });
+          }
+          if (this.limitCount != null) rows = rows.slice(0, this.limitCount);
+          if (this.mode === "many") res = { data: rows, error: null };
+          else if (this.mode === "single" && rows.length !== 1) {
+            res = { data: null, error: { code: "PGRST116", message: "expected one row" } };
+          } else {
+            res = { data: rows[0] ?? null, error: null };
+          }
+        }
+      } else {
+        res = this.db.execute(this.table, this.action, this.filters, this.mode);
+      }
       if (this.throwing && res.error) throw res.error;
       return res;
     };
