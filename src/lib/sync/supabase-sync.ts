@@ -8,7 +8,7 @@
  * via the offline queue + sync state.
  */
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import type { DayData, Food, MealSlotId, ProfileId } from "../domain";
+import type { DailySteps, DayData, Food, MealSlotId, ProfileId } from "../domain";
 import { MEAL_SLOTS } from "../domain";
 import { requireSupabase } from "../supabase/client";
 import { entryToRow, slotToSlug, statusToDb, type Preference } from "../supabase/mappers";
@@ -17,8 +17,11 @@ import {
   loadDay,
   loadFoods,
   loadPreferences,
+  loadStepGoal,
   setFavorite,
   upsertFood,
+  upsertDailySteps,
+  upsertStepGoal,
   type HouseholdContext,
 } from "../supabase/repositories";
 import { SLUG_BY_LOCAL_PROFILE } from "./migrate-local";
@@ -136,6 +139,30 @@ export function hydratePreferences(ctx: HouseholdContext, local: ProfileId): Pro
   return loadPreferences(profileId);
 }
 
+export async function hydrateStepGoal(ctx: HouseholdContext, local: ProfileId): Promise<number> {
+  const profileId = profileIdFor(ctx, local);
+  return profileId ? loadStepGoal(profileId) : 10_000;
+}
+
+export async function pushDailySteps(
+  ctx: HouseholdContext,
+  local: ProfileId,
+  iso: string,
+  report: DailySteps,
+): Promise<void> {
+  const profileId = profileIdFor(ctx, local);
+  if (profileId) await upsertDailySteps(ctx.householdId, profileId, iso, report);
+}
+
+export async function pushStepGoal(
+  ctx: HouseholdContext,
+  local: ProfileId,
+  goal: number,
+): Promise<void> {
+  const profileId = profileIdFor(ctx, local);
+  if (profileId) await upsertStepGoal(ctx.householdId, profileId, goal);
+}
+
 /** Upserts custom foods (household-scoped). Built-in catalog foods are skipped. */
 export async function pushFoods(ctx: HouseholdContext, foods: Food[]): Promise<void> {
   for (const food of foods) await upsertFood(ctx.householdId, food);
@@ -189,6 +216,8 @@ export function subscribeHousehold(
     "weigh_ins",
     "foods",
     "food_preferences",
+    "daily_step_logs",
+    "profile_step_settings",
   ] as const;
   const channel: RealtimeChannel = sb.channel(`household:${ctx.householdId}:${++channelSeq}`);
   for (const table of tables) {

@@ -4,7 +4,7 @@
  * require a configured, authenticated client (see requireSupabase()).
  */
 import { requireSupabase } from "./client";
-import type { DayData, Food, MealSlotId, WeighIn, WorkoutFeeling, WorkoutType } from "../domain";
+import type { DailySteps, DayData, Food, MealSlotId, WeighIn, WorkoutFeeling, WorkoutType } from "../domain";
 import { MEAL_SLOTS } from "../domain";
 import type {
   FoodEntryRow,
@@ -49,7 +49,7 @@ export async function bootstrapHousehold(): Promise<HouseholdContext> {
 /** Loads a single day's meals (statuses + entries) for a profile. */
 export async function loadDay(profileId: string, logDate: string): Promise<DayData> {
   const sb = requireSupabase();
-  const [statuses, entries, fasting, workout] = await Promise.all([
+  const [statuses, entries, fasting, workout, steps] = await Promise.all([
     sb.from("meal_statuses").select("*").eq("profile_id", profileId).eq("log_date", logDate),
     sb.from("food_entries").select("*").eq("profile_id", profileId).eq("log_date", logDate),
     sb
@@ -64,9 +64,18 @@ export async function loadDay(profileId: string, logDate: string): Promise<DayDa
       .eq("profile_id", profileId)
       .eq("log_date", logDate)
       .maybeSingle(),
+    sb
+      .from("daily_step_logs")
+      .select("*")
+      .eq("profile_id", profileId)
+      .eq("log_date", logDate)
+      .maybeSingle(),
   ]);
   if (statuses.error) throw statuses.error;
   if (entries.error) throw entries.error;
+  if (fasting.error) throw fasting.error;
+  if (workout.error) throw workout.error;
+  if (steps.error) throw steps.error;
 
   const statusBySlot = new Map<MealSlotId, MealStatusRow>();
   for (const s of (statuses.data ?? []) as MealStatusRow[]) {
@@ -91,6 +100,13 @@ export async function loadDay(profileId: string, logDate: string): Promise<DayDa
       performed: workout.data.performed,
       type: (workout.data.workout_type as WorkoutType | null) ?? undefined,
       feeling: (workout.data.feeling as WorkoutFeeling | null) ?? undefined,
+    };
+  }
+  if (steps.data) {
+    day.steps = {
+      steps: steps.data.steps ?? undefined,
+      completed: steps.data.completed,
+      goal: steps.data.goal,
     };
   }
   return day;
@@ -189,6 +205,51 @@ export async function insertWeighIn(
     weight_kg: w.weightKg,
     body_fat_pct: w.bodyFatPct ?? null,
   });
+  if (error) throw error;
+}
+
+export async function loadStepGoal(profileId: string): Promise<number> {
+  const sb = requireSupabase();
+  const { data, error } = await sb
+    .from("profile_step_settings")
+    .select("daily_goal")
+    .eq("profile_id", profileId)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.daily_goal ?? 10_000;
+}
+
+export async function upsertStepGoal(
+  householdId: string,
+  profileId: string,
+  dailyGoal: number,
+): Promise<void> {
+  const sb = requireSupabase();
+  const { error } = await sb.from("profile_step_settings").upsert(
+    { household_id: householdId, profile_id: profileId, daily_goal: dailyGoal },
+    { onConflict: "profile_id" },
+  );
+  if (error) throw error;
+}
+
+export async function upsertDailySteps(
+  householdId: string,
+  profileId: string,
+  logDate: string,
+  report: DailySteps,
+): Promise<void> {
+  const sb = requireSupabase();
+  const { error } = await sb.from("daily_step_logs").upsert(
+    {
+      household_id: householdId,
+      profile_id: profileId,
+      log_date: logDate,
+      steps: report.steps ?? null,
+      completed: report.completed,
+      goal: report.goal,
+    },
+    { onConflict: "profile_id,log_date" },
+  );
   if (error) throw error;
 }
 

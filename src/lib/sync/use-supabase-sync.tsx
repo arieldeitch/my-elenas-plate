@@ -15,7 +15,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
-import type { DayData, Food, ProfileId, SyncState, WeighIn } from "../domain";
+import type { DailySteps, DayData, Food, ProfileId, SyncState, WeighIn } from "../domain";
 import { isSupabaseConfigured, requireSupabase } from "../supabase/client";
 import { getSession, onAuthChange } from "../supabase/auth";
 import {
@@ -30,10 +30,13 @@ import {
   hydrateDay,
   hydrateFoods,
   hydratePreferences,
+  hydrateStepGoal,
   profileIdFor,
   pushDay,
   pushFoods,
   pushPreferences,
+  pushDailySteps,
+  pushStepGoal,
   subscribeHousehold,
   type PrefMutation,
 } from "./supabase-sync";
@@ -73,6 +76,8 @@ interface Args {
   setFoods: Dispatch<SetStateAction<Food[]>>;
   setFavoritesMap: Dispatch<SetStateAction<PerProfile<string[]>>>;
   setRecentsMap: Dispatch<SetStateAction<PerProfile<string[]>>>;
+  stepGoals: PerProfile<number>;
+  setStepGoals: Dispatch<SetStateAction<PerProfile<number>>>;
   activeProfile: ProfileId;
   iso: string;
   setSyncState: (s: SyncState) => void;
@@ -95,6 +100,7 @@ export function useSupabaseSync(args: Args): SyncControls {
     setFoods,
     setFavoritesMap,
     setRecentsMap,
+    setStepGoals,
     activeProfile,
     iso,
     setSyncState,
@@ -106,6 +112,8 @@ export function useSupabaseSync(args: Args): SyncControls {
   const dirtyWeigh = useRef<Set<ProfileId>>(new Set());
   const dirtyFoods = useRef<Map<string, Food>>(new Map());
   const dirtyPrefs = useRef<Map<string, PrefMutation & { profile: ProfileId }>>(new Map());
+  const dirtySteps = useRef<Map<string, DailySteps>>(new Map());
+  const dirtyStepGoals = useRef<Map<ProfileId, number>>(new Map());
   const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Latest state + current view, readable from async callbacks without re-subscribing.
@@ -169,12 +177,16 @@ export function useSupabaseSync(args: Args): SyncControls {
           setWeighInsMap((prev) => ({ ...prev, [profile]: w }));
         }
         await hydratePrefsFor(profile);
+        if (!dirtyStepGoals.current.has(profile)) {
+          const goal = await hydrateStepGoal(ctx, profile);
+          setStepGoals((prev) => ({ ...prev, [profile]: goal }));
+        }
       } catch (err) {
         console.warn("hydrate failed", err);
         setSyncState("error");
       }
     },
-    [setDays, setWeighInsMap, setSyncState, hydratePrefsFor],
+    [setDays, setWeighInsMap, setSyncState, hydratePrefsFor, setStepGoals],
   );
 
   // Activation: session -> bootstrap -> migration -> initial hydrate -> realtime.
@@ -280,6 +292,10 @@ export function useSupabaseSync(args: Args): SyncControls {
     dirtyFoods.current.clear();
     const prefs = [...dirtyPrefs.current.values()];
     dirtyPrefs.current.clear();
+    const steps = [...dirtySteps.current.entries()];
+    dirtySteps.current.clear();
+    const stepGoals = [...dirtyStepGoals.current.entries()];
+    dirtyStepGoals.current.clear();
 
     const requeue = () => {
       for (const k of dayKeys) dirtyDays.current.add(k);
@@ -289,6 +305,8 @@ export function useSupabaseSync(args: Args): SyncControls {
         const key = `${p.profile}::${p.foodId}`;
         if (!dirtyPrefs.current.has(key)) dirtyPrefs.current.set(key, p);
       }
+      for (const [key, report] of steps) if (!dirtySteps.current.has(key)) dirtySteps.current.set(key, report);
+      for (const [profile, goal] of stepGoals) if (!dirtyStepGoals.current.has(profile)) dirtyStepGoals.current.set(profile, goal);
     };
 
     void (async () => {
@@ -319,6 +337,11 @@ export function useSupabaseSync(args: Args): SyncControls {
         for (const [profile, mutations] of byProfile) {
           await pushPreferences(ctx, profile, mutations);
         }
+        for (const [key, report] of steps) {
+          const [profile, isoDate] = key.split("::") as [ProfileId, string];
+          await pushDailySteps(ctx, profile, isoDate, report);
+        }
+        for (const [profile, goal] of stepGoals) await pushStepGoal(ctx, profile, goal);
         for (const k of dayKeys) inFlightDays.current.delete(k);
         setSyncState("saved");
       } catch (err) {
@@ -345,6 +368,9 @@ export function useSupabaseSync(args: Args): SyncControls {
       dirtyWeigh.current.size > 0 ||
       dirtyFoods.current.size > 0 ||
       dirtyPrefs.current.size > 0;
+      dirtyPrefs.current.size > 0 ||
+      dirtySteps.current.size > 0 ||
+      dirtyStepGoals.current.size > 0;
     const onOnline = () => schedule();
     window.addEventListener("online", onOnline);
     const id = setInterval(() => {
@@ -409,6 +435,18 @@ export function useSupabaseSync(args: Args): SyncControls {
     [schedule],
   );
 
+  const markStepsDirty = useCallback((profile: ProfileId, isoDate: string, report: DailySteps) => {
+    if (!isSupabaseConfigured()) return;
+    dirtySteps.current.set(`${profile}::${isoDate}`, report);
+    schedule();
+  }, [schedule]);
+
+  const markStepGoalDirty = useCallback((profile: ProfileId, goal: number) => {
+    if (!isSupabaseConfigured()) return;
+    dirtyStepGoals.current.set(profile, goal);
+    schedule();
+  }, [schedule]);
+
   return {
     active,
     markDayDirty,
@@ -416,6 +454,8 @@ export function useSupabaseSync(args: Args): SyncControls {
     markFoodDirty,
     markFavoriteDirty,
     markRecentDirty,
+    markStepsDirty,
+    markStepGoalDirty,
   };
 }
 
