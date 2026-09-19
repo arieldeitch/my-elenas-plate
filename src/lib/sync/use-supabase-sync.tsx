@@ -478,20 +478,19 @@ export function useSupabaseSync(args: Args): SyncControls {
       if (!isSupabaseConfigured()) return;
       dirtySteps.current.set(`${profile}::${isoDate}`, report);
       const ctx = ctxRef.current;
-      if (ctx)
-        enqueueLatest(
-          {
-            id: crypto.randomUUID(),
-            type: "upsert",
-            entity: "daily_step_logs",
-            payload: { profile, iso: isoDate, report },
-            householdId: ctx.householdId,
-            profileId: profile,
-            createdAt: new Date().toISOString(),
-            retryCount: 0,
-          },
-          `${profile}::${isoDate}`,
-        );
+      enqueueLatest(
+        {
+          id: crypto.randomUUID(),
+          type: "upsert",
+          entity: "daily_step_logs",
+          payload: { profile, iso: isoDate, report },
+          householdId: ctx?.householdId ?? "pending-bootstrap",
+          profileId: profile,
+          createdAt: new Date().toISOString(),
+          retryCount: 0,
+        },
+        `${profile}::${isoDate}`,
+      );
       schedule();
     },
     [schedule],
@@ -502,20 +501,19 @@ export function useSupabaseSync(args: Args): SyncControls {
       if (!isSupabaseConfigured()) return;
       dirtyStepGoals.current.set(profile, goal);
       const ctx = ctxRef.current;
-      if (ctx)
-        enqueueLatest(
-          {
-            id: crypto.randomUUID(),
-            type: "upsert",
-            entity: "profile_step_settings",
-            payload: { profile, goal },
-            householdId: ctx.householdId,
-            profileId: profile,
-            createdAt: new Date().toISOString(),
-            retryCount: 0,
-          },
-          profile,
-        );
+      enqueueLatest(
+        {
+          id: crypto.randomUUID(),
+          type: "upsert",
+          entity: "profile_step_settings",
+          payload: { profile, goal },
+          householdId: ctx?.householdId ?? "pending-bootstrap",
+          profileId: profile,
+          createdAt: new Date().toISOString(),
+          retryCount: 0,
+        },
+        profile,
+      );
       schedule();
     },
     [schedule],
