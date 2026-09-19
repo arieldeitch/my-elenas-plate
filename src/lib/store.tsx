@@ -43,6 +43,7 @@ import type {
 import { MEAL_SLOTS } from "./domain";
 import { FOOD_CATALOG, mergeCatalog } from "./food-catalog";
 import { normalizeFoodName } from "./food-normalize";
+import { calculatePointsV1, DEFAULT_POINTS_BUDGET, POINTS_MODEL_VERSION } from "./points";
 import { toISODate } from "./format";
 import { loadState, saveState } from "./persistence";
 import { loadDeviceProfile, saveDeviceProfile } from "./device-profile";
@@ -102,6 +103,9 @@ interface StoreValue {
   setWorkout: (w: WorkoutLog | undefined) => void;
   setSteps: (s: StepLog) => void;
 
+  getPointsBudget: (profile: ProfileId) => number;
+  setPointsBudget: (budget: number) => void;
+
   weighIns: WeighIn[];
   addWeighIn: (w: Omit<WeighIn, "id">) => void;
 }
@@ -151,6 +155,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [weighInsMap, setWeighInsMap] = useState<PerProfile<WeighIn[]>>({ me: [], elena: [] });
   const [favoritesMap, setFavoritesMap] = useState<PerProfile<string[]>>({ me: [], elena: [] });
   const [recentsMap, setRecentsMap] = useState<PerProfile<string[]>>({ me: [], elena: [] });
+  const [pointsBudgetsMap, setPointsBudgetsMap] = useState<PerProfile<number>>({
+    me: DEFAULT_POINTS_BUDGET,
+    elena: DEFAULT_POINTS_BUDGET,
+  });
   // The built-in catalog is the pre-hydration fallback; Supabase supersedes it
   // by normalized name once loaded (see `mergeCatalog`).
   const [foods, setFoods] = useState<Food[]>(FOOD_CATALOG);
@@ -168,6 +176,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setFoods,
     setFavoritesMap,
     setRecentsMap,
+    setPointsBudgetsMap,
     activeProfile,
     iso,
     setSyncState,
@@ -294,7 +303,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const dayCtx = { profile: activeProfile, iso };
 
   const addEntry: StoreValue["addEntry"] = (slot, entry) => {
-    const withId: FoodEntry = { ...entry, id: genId("e"), loggedAt: new Date().toISOString() };
+    const base: FoodEntry = { ...entry, id: genId("e"), loggedAt: new Date().toISOString() };
+    const food = foods.find((f) => f.id === base.foodId);
+    const withId: FoodEntry = {
+      ...base,
+      pointsValue: calculatePointsV1(base, food),
+      pointsModelVersion: POINTS_MODEL_VERSION,
+    };
     mutateDay(activeProfile, iso, (d) => {
       const meal = d.meals[slot];
       meal.entries.push(withId);
@@ -307,12 +322,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const updateEntry: StoreValue["updateEntry"] = (slot, entry) => {
+    const food = foods.find((f) => f.id === entry.foodId);
+    const scored: FoodEntry = {
+      ...entry,
+      pointsValue: calculatePointsV1(entry, food),
+      pointsModelVersion: POINTS_MODEL_VERSION,
+    };
     mutateDay(activeProfile, iso, (d) => {
       const meal = d.meals[slot];
-      meal.entries = meal.entries.map((e) => (e.id === entry.id ? entry : e));
+      meal.entries = meal.entries.map((e) => (e.id === scored.id ? scored : e));
       return d;
     });
-    sync.enqueue(opsForUpdateEntry(dayCtx, slot, entry));
+    sync.enqueue(opsForUpdateEntry(dayCtx, slot, scored));
   };
 
   const removeEntry: StoreValue["removeEntry"] = (slot, entryId) => {
@@ -388,6 +409,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return d;
     });
     sync.enqueue(opsForSetSteps(dayCtx, normalized));
+  };
+
+  const getPointsBudget = useCallback(
+    (profile: ProfileId) => pointsBudgetsMap[profile] ?? DEFAULT_POINTS_BUDGET,
+    [pointsBudgetsMap],
+  );
+
+  const setPointsBudget: StoreValue["setPointsBudget"] = (budget) => {
+    const normalized = Math.max(1, Math.round(budget));
+    setPointsBudgetsMap((prev) => ({ ...prev, [activeProfile]: normalized }));
+    sync.enqueue([{ kind: "profile.points-budget.set", profile: activeProfile, budget: normalized }]);
   };
 
   const addFood: StoreValue["addFood"] = (name, category) => {
@@ -467,6 +499,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setFasting,
       setWorkout,
       setSteps,
+      getPointsBudget,
+      setPointsBudget,
       weighIns: weighInsMap[activeProfile],
       addWeighIn,
     }),
@@ -482,6 +516,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       weighInsMap,
       favoritesMap,
       recentsMap,
+      pointsBudgetsMap,
       foods,
     ],
   );
