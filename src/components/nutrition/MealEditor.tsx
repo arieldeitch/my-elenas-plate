@@ -147,7 +147,7 @@ export function MealEditor({ slot, onClose }: Props) {
         tabIndex={-1}
         className={cn(
           "relative flex flex-col w-full max-w-lg bg-card border border-border shadow-lg outline-none",
-          "rounded-t-3xl sm:rounded-3xl max-h-[92vh] sm:max-h-[85vh] sm:my-8",
+          "keyboard-safe-sheet rounded-t-3xl sm:rounded-3xl sm:max-h-[85vh] sm:my-8",
           "animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200",
         )}
         style={{ borderTopColor: profile.color, borderTopWidth: 3 }}
@@ -186,7 +186,7 @@ export function MealEditor({ slot, onClose }: Props) {
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="keyboard-safe-scroll flex-1 overflow-y-auto p-4">
           {view.kind === "meal" &&
             (meal.status === "skipped" ? (
               <SkippedState onUndo={() => store.setMealSkipped(slot, false)} />
