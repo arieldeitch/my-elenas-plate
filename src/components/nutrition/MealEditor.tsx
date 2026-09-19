@@ -202,6 +202,7 @@ export function MealEditor({ slot, onClose }: Props) {
                       <EntryRow
                         key={e.id}
                         entry={e}
+                        food={store.foods.find((food) => food.id === e.foodId || food.name === e.foodName)}
                         isFavorite={store.favorites.includes(e.foodId)}
                         onToggleFavorite={() => store.toggleFavorite(e.foodId)}
                         onEdit={() => {
@@ -238,6 +239,7 @@ export function MealEditor({ slot, onClose }: Props) {
                 else handleAdd(entry);
               }}
               onCancel={() => setView({ kind: "meal" })}
+              pointsPreview={(entry) => pointsForEntry(entry, view.food)}
             />
           )}
 
@@ -308,6 +310,7 @@ function SkippedState({ onUndo }: { onUndo: () => void }) {
 
 function EntryRow({
   entry,
+  food,
   isFavorite,
   highlighted,
   onToggleFavorite,
@@ -316,6 +319,7 @@ function EntryRow({
   onStep,
 }: {
   entry: FoodEntry;
+  food?: Food;
   isFavorite: boolean;
   highlighted?: boolean;
   onToggleFavorite: () => void;
@@ -343,7 +347,10 @@ function EntryRow({
       {/* Line 1: the food + the rare actions */}
       <div className="flex items-center gap-1">
         <div className="min-w-0 flex-1">
-          <div className="truncate font-medium text-foreground">{entry.foodName}</div>
+          <div className="flex min-w-0 items-baseline gap-2">
+            <span className="truncate font-medium text-foreground">{entry.foodName}</span>
+            <span className="shrink-0 text-xs text-muted-foreground">{formatPoints(resolvedEntryPoints(entry, food))} נק׳</span>
+          </div>
           {entry.coffee && <div className="truncate text-xs text-muted-foreground">{detail}</div>}
           {entry.coffee?.note && (
             <div className="truncate text-xs text-muted-foreground/80">{entry.coffee.note}</div>
