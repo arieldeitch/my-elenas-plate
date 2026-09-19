@@ -17,6 +17,7 @@ import { BottomNav } from "@/components/nutrition/BottomNav";
 import { BrandMark } from "@/components/nutrition/BrandMark";
 import { RuntimeModeNotice } from "@/components/nutrition/RuntimeModeNotice";
 import { DeviceProfileChooser } from "@/components/nutrition/DeviceProfileChooser";
+import { PointsBudgetEditor } from "@/components/nutrition/PointsBudgetEditor";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { useKeyboardSafeViewport } from "@/lib/use-keyboard-safe-viewport";
 
@@ -46,6 +47,7 @@ function Home() {
   const [openSlot, setOpenSlot] = useState<MealSlotId | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [weighOpen, setWeighOpen] = useState(false);
+  const [pointsOpen, setPointsOpen] = useState(false);
   // M2-4 Day Review: which person's day is being reviewed (null = closed).
   const [reviewPerson, setReviewPerson] = useState<ProfileId | null>(null);
 
@@ -84,6 +86,7 @@ function Home() {
         <TodayCard
           onOpenCalendar={() => setCalendarOpen(true)}
           onOpenReview={() => setReviewPerson(store.activeProfile)}
+          onOpenPoints={() => setPointsOpen(true)}
         />
         <PartnerGlance onOpen={setReviewPerson} />
 
@@ -109,6 +112,7 @@ function Home() {
       <MealEditor slot={openSlot} onClose={closeSlot} />
       <CalendarView open={calendarOpen} onClose={closeCalendar} />
       <WeighInForm open={weighOpen} onClose={closeWeigh} />
+      <PointsBudgetEditor open={pointsOpen} onClose={() => setPointsOpen(false)} />
       <DayReview person={reviewPerson} onClose={closeReview} onEditSlot={editFromReview} />
       <BottomNav
         active="home"
