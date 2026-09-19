@@ -22,7 +22,10 @@ export default defineConfig({
     locale: "he-IL",
     trace: "retain-on-failure",
   },
-  projects: [{ name: "mobile-chrome", use: { ...devices["Pixel 7"] } }],
+  projects: [
+    { name: "mobile-360", use: { ...devices["Pixel 7"], viewport: { width: 360, height: 740 } } },
+    { name: "mobile-412", use: { ...devices["Pixel 7"], viewport: { width: 412, height: 915 } } },
+  ],
   webServer: {
     // `--mode e2e` loads `.env.e2e` when present (point it at a local Supabase
     // stack for reliable runs); otherwise it falls back to `.env` (remote).

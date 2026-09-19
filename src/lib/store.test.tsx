@@ -200,4 +200,26 @@ describe("store", () => {
       result.current.getDay("me", today()).meals.lunch.entries.find((e) => e.id === entry.id),
     ).toBeTruthy();
   });
+
+  it("uses a 10,000 step fallback and keeps step goals isolated per profile", () => {
+    const { result } = renderHook(() => useStore(), { wrapper });
+    expect(result.current.stepGoal).toBe(10_000);
+    act(() => result.current.setStepGoal(8_500));
+    expect(result.current.stepGoal).toBe(8_500);
+    act(() => result.current.setActiveProfile("elena"));
+    expect(result.current.stepGoal).toBe(10_000);
+  });
+
+  it("stores exact and completed-only step reports on the selected profile and date", () => {
+    const { result } = renderHook(() => useStore(), { wrapper });
+    const yesterday = new Date(2026, 8, 18);
+    act(() => result.current.setSelectedDate(yesterday));
+    act(() => result.current.setSteps({ steps: 8_734, completed: false, goal: 10_000 }));
+    expect(result.current.getDay("me", "2026-09-18").steps).toEqual({ steps: 8_734, completed: false, goal: 10_000 });
+
+    act(() => result.current.setActiveProfile("elena"));
+    act(() => result.current.setSteps({ completed: true, goal: 10_000 }));
+    expect(result.current.getDay("elena", "2026-09-18").steps).toEqual({ completed: true, goal: 10_000 });
+    expect(result.current.getDay("me", "2026-09-18").steps?.steps).toBe(8_734);
+  });
 });

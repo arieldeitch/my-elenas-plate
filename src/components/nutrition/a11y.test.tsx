@@ -8,6 +8,7 @@ import { CoffeeSelector } from "./CoffeeSelector";
 import { ProfileSwitcher } from "./ProfileSwitcher";
 import { DailyCompletionIndicator } from "./DailyCompletionIndicator";
 import { WeightBanner } from "./WeightBanner";
+import { DailyContext } from "./DailyContext";
 import type { DailyMeal } from "@/lib/domain";
 
 const wrapper = ({ children }: { children: ReactNode }) => (
@@ -47,6 +48,11 @@ describe("accessibility (axe)", () => {
 
   it("WeightBanner has no violations", async () => {
     const { container } = render(<WeightBanner onOpen={vi.fn()} />, { wrapper });
+    expect(await axe(container, opts)).toHaveNoViolations();
+  });
+
+  it("DailyContext has no violations", async () => {
+    const { container } = render(<DailyContext onOpenWeight={vi.fn()} />, { wrapper });
     expect(await axe(container, opts)).toHaveNoViolations();
   });
 });
