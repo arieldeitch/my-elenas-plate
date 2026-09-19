@@ -26,19 +26,21 @@ function renderRow(onOpenWeight = vi.fn()) {
   return onOpenWeight;
 }
 
-describe("DailyContextRow (M2-3 — weight · workout · fasting in one row)", () => {
+describe("DailyContextRow (weight · workout · fasting · steps)", () => {
   beforeEach(() => {
     window.localStorage.clear();
     window.localStorage.setItem(DEVICE_PROFILE_KEY, "me");
     store = null;
   });
 
-  it("states all three as not documented on an empty day, with no panel open", () => {
+  it("states the four daily context tiles clearly on an empty day, with no panel open", () => {
     renderRow();
     expect(screen.getByTestId("context-weight")).toHaveAttribute("data-value", "—");
     expect(screen.getByTestId("context-weight")).toHaveTextContent("הוספת שקילה");
     expect(screen.getByTestId("context-workout")).toHaveAttribute("data-value", "לא תועד");
     expect(screen.getByTestId("context-fasting")).toHaveAttribute("data-value", "לא תועד");
+    expect(screen.getByTestId("context-steps")).toHaveAttribute("data-value", "לא דווח");
+    expect(screen.getByTestId("context-steps")).toHaveTextContent("יעד 10,000");
     expect(screen.queryByTestId("daily-context-panel")).toBeNull();
     // Accessible names carry the state, not just an icon.
     expect(screen.getByRole("button", { name: /שקילה: לא תועדה שקילה/ })).toBeInTheDocument();
@@ -108,6 +110,44 @@ describe("DailyContextRow (M2-3 — weight · workout · fasting in one row)", (
     await user.click(cell);
     await user.click(screen.getByRole("button", { name: "ניקוי" }));
     expect(cell).toHaveAttribute("data-value", "לא תועד");
+  });
+
+  it("steps: exact number and quick 'ביצעתי' are distinct, fast paths", async () => {
+    const user = userEvent.setup();
+    renderRow();
+    const cell = screen.getByTestId("context-steps");
+
+    await user.click(cell);
+    const count = screen.getByLabelText("מספר צעדים");
+    await user.type(count, "8734");
+    await user.click(screen.getByRole("button", { name: "שמירה" }));
+    expect(cell).toHaveAttribute("data-value", "8,734");
+
+    await user.click(cell);
+    await user.click(screen.getByRole("button", { name: "ביצעתי את יעד הצעדים" }));
+    expect(cell).toHaveAttribute("data-value", "בוצע");
+  });
+
+  it("steps use the selected date and stay isolated per person", () => {
+    renderRow();
+    const today = toISODate(store!.selectedDate);
+    act(() => store!.setSteps({ goalSteps: 10_000, steps: 9_000, completed: false }));
+    expect(store!.getDay("me", today).steps?.steps).toBe(9_000);
+
+    const yesterday = new Date(store!.selectedDate);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayISO = toISODate(yesterday);
+    act(() => store!.setSelectedDate(yesterday));
+    act(() => store!.setSteps({ goalSteps: 12_000, completed: true }));
+    expect(store!.getDay("me", yesterdayISO).steps).toEqual({
+      goalSteps: 12_000,
+      steps: undefined,
+      completed: true,
+    });
+    expect(store!.getDay("me", today).steps?.steps).toBe(9_000);
+
+    act(() => store!.setActiveProfile("elena"));
+    expect(store!.getDay("elena", yesterdayISO).steps?.completed).toBe(false);
   });
 
   it("only one panel at a time, and panels fold when the person changes", async () => {
