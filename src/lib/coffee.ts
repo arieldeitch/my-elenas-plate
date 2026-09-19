@@ -29,7 +29,11 @@ export function normalizeCoffee(meta: CoffeeMeta): CoffeeMeta {
 }
 
 export type CoffeeValidationError =
-  "type" | "milk" | "milkTypeWithoutMilk" | "invalidType" | "invalidMilkType";
+  | "type"
+  | "milk"
+  | "milkTypeWithoutMilk"
+  | "invalidType"
+  | "invalidMilkType";
 
 /**
  * Validates a coffee meta object. Returns the list of problems (empty = valid).

@@ -116,6 +116,7 @@ export function useSupabaseSync(args: Args): SyncControls {
   const dirtyFoods = useRef<Map<string, Food>>(new Map());
   const dirtyPrefs = useRef<Map<string, PrefMutation & { profile: ProfileId }>>(new Map());
   const dirtySteps = useRef<Map<string, DailySteps>>(new Map());
+  const inFlightSteps = useRef<Set<string>>(new Set());
   const dirtyStepGoals = useRef<Map<ProfileId, number>>(new Map());
   const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -171,7 +172,13 @@ export function useSupabaseSync(args: Args): SyncControls {
         // Never overwrite a day/weigh-in that has a pending or in-flight local
         // push — the optimistic state is newer than what Supabase returns.
         const dayKey = `${profile}::${isoDate}`;
-        if (day && !dirtyDays.current.has(dayKey) && !inFlightDays.current.has(dayKey)) {
+        if (
+          day &&
+          !dirtyDays.current.has(dayKey) &&
+          !inFlightDays.current.has(dayKey) &&
+          !dirtySteps.current.has(dayKey) &&
+          !inFlightSteps.current.has(dayKey)
+        ) {
           setDays((prev) => ({ ...prev, [profile]: { ...prev[profile], [isoDate]: day } }));
         } else if (day && dirtySteps.current.has(dayKey)) {
           setDays((prev) => ({
@@ -318,6 +325,7 @@ export function useSupabaseSync(args: Args): SyncControls {
     dirtyPrefs.current.clear();
     const steps = [...dirtySteps.current.entries()];
     dirtySteps.current.clear();
+    for (const [key] of steps) inFlightSteps.current.add(key);
     const stepGoals = [...dirtyStepGoals.current.entries()];
     dirtyStepGoals.current.clear();
 
@@ -366,6 +374,7 @@ export function useSupabaseSync(args: Args): SyncControls {
         for (const [key, report] of steps) {
           const [profile, isoDate] = key.split("::") as [ProfileId, string];
           await pushDailySteps(ctx, profile, isoDate, report);
+          inFlightSteps.current.delete(key);
           for (const mutation of pending()) {
             if (
               mutation.entity === "daily_step_logs" &&
@@ -382,10 +391,12 @@ export function useSupabaseSync(args: Args): SyncControls {
           }
         }
         for (const k of dayKeys) inFlightDays.current.delete(k);
+        for (const [key] of steps) inFlightSteps.current.delete(key);
         setSyncState("saved");
       } catch (err) {
         console.warn("push failed — re-queued for retry", err);
         for (const k of dayKeys) inFlightDays.current.delete(k);
+        for (const [key] of steps) inFlightSteps.current.delete(key);
         requeue();
         setSyncState("error");
       }

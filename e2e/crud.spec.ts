@@ -93,18 +93,19 @@ test("fasting, workout and weigh-in persist", async ({ page }) => {
   await signIn(page, uniqueEmail());
 
   // Fasting 20:00 → 12:00 = 16h (crosses midnight)
-  await page.getByRole("button", { name: "הוספת שעות" }).click();
+  await page.getByRole("button", { name: /^צום:/ }).click();
   await page.getByLabel("תחילת הצום").fill("20:00");
   await page.getByLabel("סיום הצום").fill("12:00");
   await page.getByRole("button", { name: "שמירה" }).click();
   await expect(page.getByText("16 שעות")).toBeVisible();
 
   // Workout performed
+  await page.getByRole("button", { name: /^אימון:/ }).click();
   await page.getByRole("button", { name: "כן", exact: true }).click();
   await expect(page.getByText("סוג האימון")).toBeVisible();
 
   // Weigh-in
-  await page.getByRole("button", { name: "פתיחת טופס שקילה" }).click();
+  await page.getByRole("button", { name: /^שקילה:/ }).click();
   await page.getByLabel("משקל בק״ג").fill("80");
   await page.getByRole("button", { name: "שמירת השקילה" }).click();
   await expect(page.getByText(/80 ק״ג/)).toBeVisible();

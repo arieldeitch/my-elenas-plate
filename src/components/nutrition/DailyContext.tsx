@@ -78,6 +78,7 @@ export function DailyContext({ onOpenWeight }: { onOpenWeight: () => void }) {
             type="button"
             onClick={action}
             aria-expanded={key === editor}
+            aria-label={`${label}: ${value}`}
             className="context-tile"
           >
             <span className={`grid h-11 w-11 place-items-center rounded-full ${tone}`}>
