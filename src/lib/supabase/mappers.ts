@@ -123,6 +123,8 @@ export function entryToRow(entry: FoodEntry, ctx: EntryContext): FoodEntryInsert
       entry.mode === "subjective" && entry.subjective ? subjectiveToDb(entry.subjective) : null,
     coffee: entry.coffee ? coffeeToJson(entry.coffee) : null,
     note: entry.coffee?.note ?? null,
+    points_value: entry.pointsValue ?? null,
+    points_model_version: entry.pointsModelVersion ?? null,
   };
 }
 
@@ -143,6 +145,8 @@ export function entryFromRow(row: FoodEntryRow): FoodEntry {
   }
   const coffee = coffeeFromJson(row.coffee);
   if (coffee) entry.coffee = coffee;
+  if (row.points_value != null) entry.pointsValue = Number(row.points_value);
+  if (row.points_model_version === "v1") entry.pointsModelVersion = "v1";
   if (row.created_at) entry.loggedAt = row.created_at;
   return entry;
 }

@@ -9,7 +9,11 @@
 
 > Rule: nothing is listed as "working" unless it was actually run/verified.
 
-## 2026-09-19 — calmer daily UX, keyboard safety, and shared daily steps (DEC-032)
+## 2026-09-19 — internal points v1 and input UX
+
+Added a transparent independent points budget: per-profile budget defaults to 30, current budget applies to past dates, entries snapshot v1 points on add/edit, and historical null snapshots calculate at read time without backfill. Typed results require quantity selection; trusted chips retain editable quick-add. VisualViewport correction is immediate, nearest, and only when obscured. Migration `20260919053000_daily_points_v1` and apply/verify scripts are pending review and were not run. Evidence: `docs/claude-tasks/RUN_2026-09-19_POINTS_V1.md`.
+
+, keyboard safety, and shared daily steps (DEC-032)
 
 Implemented a calmer light palette and clearer card boundaries; a balanced four-tile context module
 (weight, workout, fasting, steps); bottom navigation reduced to Home / Quick Add / Journal; and reusable

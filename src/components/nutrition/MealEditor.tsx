@@ -7,8 +7,9 @@ import { useStore, PROFILES } from "@/lib/store";
 import { formatShortDate } from "@/lib/format";
 import { coffeeSummary } from "@/lib/coffee";
 import { canStep, formatQuantity, stepAmount, usualQuantity } from "@/lib/quantity";
+import { formatPoints, pointsForEntry, resolvedEntryPoints } from "@/lib/points";
 import { cn } from "@/lib/utils";
-import { FoodSearch } from "./FoodSearch";
+import { FoodSearch, type FoodSelectionSource } from "./FoodSearch";
 import { QuantitySelector } from "./QuantitySelector";
 import { CoffeeSelector } from "./CoffeeSelector";
 
@@ -84,19 +85,28 @@ export function MealEditor({ slot, onClose }: Props) {
    * its editor; a food without a trusted default opens the quantity screen.
    * Returns what happened so the search box can clear itself after an add.
    */
-  function handleChoose(food: Food): "added" | "opened" {
+  function handleChoose(food: Food, source: FoodSelectionSource): "added" | "opened" {
     if (food.kind === "coffee") {
       setView({ kind: "coffee" });
       return "opened";
     }
     const usual = usualQuantity(food);
-    if (!usual) {
+    if (source === "typed" || !usual) {
       setView({ kind: "quantity", food });
       return "opened";
     }
     const added = store.addEntry(slot!, { foodId: food.id, foodName: food.name, ...usual });
     setJustAdded(added.id);
-    toast(`נוסף: ${food.name} · ${formatQuantity(added)}`, { duration: 2500 });
+    toast(
+      `נוסף: ${food.name} · ${formatQuantity(added)} · ${formatPoints(added.pointsValue ?? 0)} נק׳`,
+      {
+        duration: 3000,
+        action: {
+          label: "עריכת כמות",
+          onClick: () => setView({ kind: "quantity", food, editing: added }),
+        },
+      },
+    );
     return "added";
   }
 
@@ -148,7 +158,6 @@ export function MealEditor({ slot, onClose }: Props) {
         className={cn(
           "relative flex flex-col w-full max-w-lg bg-card border border-border shadow-lg outline-none",
           "keyboard-safe-sheet rounded-t-3xl sm:rounded-3xl sm:max-h-[85vh] sm:my-8",
-          "animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200",
         )}
         style={{ borderTopColor: profile.color, borderTopWidth: 3 }}
       >
@@ -198,6 +207,9 @@ export function MealEditor({ slot, onClose }: Props) {
                       <EntryRow
                         key={e.id}
                         entry={e}
+                        food={store.foods.find(
+                          (food) => food.id === e.foodId || food.name === e.foodName,
+                        )}
                         isFavorite={store.favorites.includes(e.foodId)}
                         onToggleFavorite={() => store.toggleFavorite(e.foodId)}
                         onEdit={() => {
@@ -234,6 +246,7 @@ export function MealEditor({ slot, onClose }: Props) {
                 else handleAdd(entry);
               }}
               onCancel={() => setView({ kind: "meal" })}
+              pointsPreview={(entry) => pointsForEntry(entry, view.food)}
             />
           )}
 
@@ -304,6 +317,7 @@ function SkippedState({ onUndo }: { onUndo: () => void }) {
 
 function EntryRow({
   entry,
+  food,
   isFavorite,
   highlighted,
   onToggleFavorite,
@@ -312,6 +326,7 @@ function EntryRow({
   onStep,
 }: {
   entry: FoodEntry;
+  food?: Food;
   isFavorite: boolean;
   highlighted?: boolean;
   onToggleFavorite: () => void;
@@ -339,7 +354,12 @@ function EntryRow({
       {/* Line 1: the food + the rare actions */}
       <div className="flex items-center gap-1">
         <div className="min-w-0 flex-1">
-          <div className="truncate font-medium text-foreground">{entry.foodName}</div>
+          <div className="flex min-w-0 items-baseline gap-2">
+            <span className="truncate font-medium text-foreground">{entry.foodName}</span>
+            <span className="shrink-0 text-xs text-muted-foreground">
+              {formatPoints(resolvedEntryPoints(entry, food))} נק׳
+            </span>
+          </div>
           {entry.coffee && <div className="truncate text-xs text-muted-foreground">{detail}</div>}
           {entry.coffee?.note && (
             <div className="truncate text-xs text-muted-foreground/80">{entry.coffee.note}</div>

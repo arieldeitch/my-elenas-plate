@@ -64,7 +64,7 @@ describe("MealEditor (M2 one-screen logging loop)", () => {
     expect(screen.getByRole("button", { name: "סיום" })).toBeInTheDocument();
   });
 
-  it("adds a searched food directly (type → tap result), then can delete it", async () => {
+  it("opens quantity for a typed food, adds it, then can delete it", async () => {
     const user = userEvent.setup();
     renderEditor();
 
@@ -72,12 +72,11 @@ describe("MealEditor (M2 one-screen logging loop)", () => {
     // Search results appear after the 180ms debounce — findAllBy waits for them.
     // "תפוח" also prefixes תפוח אדמה / תפוחי אדמה, and the exact match ranks first.
     const results = await screen.findAllByTestId("search-result");
-    expect(results[0]).toHaveAccessibleName("תפוח, הוספה של 1 יחידה");
-    expect(results[0]).toHaveAttribute("data-direct", "true");
+    expect(results[0]).toHaveAccessibleName("תפוח, פתיחת בחירת כמות");
+    expect(results[0]).toHaveAttribute("data-direct", "false");
     await user.click(results[0]);
-
-    // No confirmation screen: the row is there, the search box cleared for the next item.
-    expect(screen.queryByRole("button", { name: "הוספת המאכל" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "הוספת המאכל" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "הוספת המאכל" }));
     const row = within(screen.getByTestId("meal-entries")).getByTestId("meal-entry");
     expect(within(row).getByText("תפוח")).toBeInTheDocument();
     expect(row).toHaveAttribute("data-quantity", "1 יחידה");
@@ -94,6 +93,7 @@ describe("MealEditor (M2 one-screen logging loop)", () => {
 
     await user.type(search(), "תפוח");
     await user.click((await screen.findAllByTestId("search-result"))[0]);
+    await user.click(screen.getByRole("button", { name: "הוספת המאכל" }));
 
     // Now a chip exists under "אחרונים" — one tap adds it too, no quantity step.
     expect(screen.getByText("אחרונים")).toBeInTheDocument();
@@ -131,16 +131,15 @@ describe("MealEditor (M2 one-screen logging loop)", () => {
     expect(store!.getDay("me", isoToday()).meals.dinner.entries).toHaveLength(0);
   });
 
-  it("the subjective mode is reached through the row's pencil after a direct add", async () => {
+  it("typed food supports the exact subjective amount labels", async () => {
     const user = userEvent.setup();
     renderEditor();
 
     await user.type(search(), "סלט ירקות");
-    await user.click((await screen.findAllByTestId("search-result"))[0]); // 1 קערה, direct
-    await user.click(screen.getByRole("button", { name: "עריכה: סלט ירקות" }));
-    await user.click(screen.getByRole("tab", { name: "תחושה" }));
+    await user.click((await screen.findAllByTestId("search-result"))[0]);
+    await user.click(screen.getByRole("tab", { name: "לפי תחושה" }));
     await user.click(screen.getByRole("button", { name: "הרבה" }));
-    await user.click(screen.getByRole("button", { name: "עדכון" }));
+    await user.click(screen.getByRole("button", { name: "הוספת המאכל" }));
 
     const entries = screen.getByTestId("meal-entries");
     expect(within(entries).getByText("סלט ירקות")).toBeInTheDocument();
@@ -152,9 +151,7 @@ describe("MealEditor (M2 one-screen logging loop)", () => {
     renderEditor();
 
     await user.type(search(), "גבינה צהובה");
-    await user.click((await screen.findAllByTestId("search-result"))[0]); // 1 פרוסה, direct
-    expect(screen.getByTestId("meal-entry")).toHaveAttribute("data-quantity", "1 פרוסה");
-    await user.click(screen.getByRole("button", { name: "עריכה: גבינה צהובה" }));
+    await user.click((await screen.findAllByTestId("search-result"))[0]);
 
     // גבינה צהובה is logged by the slice, not by the piece.
     expect(screen.getByRole("button", { name: "פרוסה" })).toBeInTheDocument();

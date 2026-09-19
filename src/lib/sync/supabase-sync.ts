@@ -25,6 +25,7 @@ import {
   loadDay,
   loadFoods,
   loadPreferences,
+  loadProfilePointsBudget,
   setFavorite,
   setMealStatus,
   upsertFasting,
@@ -32,6 +33,7 @@ import {
   upsertFood,
   upsertWeighIn,
   upsertWorkout,
+  updateProfilePointsBudget,
   type HouseholdContext,
 } from "../supabase/repositories";
 import { SLUG_BY_LOCAL_PROFILE } from "./migrate-local";
@@ -133,6 +135,11 @@ export async function applyOperation(ctx: HouseholdContext, op: Operation): Prom
       await upsertDailySteps(householdId, profileId, op.iso, op.steps);
       return;
     }
+    case "profile.points-budget.set": {
+      const profileId = requireProfile(ctx, op.profile);
+      await updateProfilePointsBudget(profileId, op.budget);
+      return;
+    }
     case "weighin.insert": {
       const profileId = requireProfile(ctx, op.profile);
       await upsertWeighIn(householdId, profileId, op.weighIn);
@@ -232,6 +239,15 @@ export function hydrateFoods(ctx: HouseholdContext): Promise<Food[]> {
 }
 
 /** Loads a profile's preference rows (favorites + recents). */
+export function hydrateProfilePointsBudget(
+  ctx: HouseholdContext,
+  local: ProfileId,
+): Promise<number> {
+  const profileId = profileIdFor(ctx, local);
+  if (!profileId) return Promise.resolve(30);
+  return loadProfilePointsBudget(profileId);
+}
+
 export function hydratePreferences(ctx: HouseholdContext, local: ProfileId): Promise<Preference[]> {
   const profileId = profileIdFor(ctx, local);
   if (!profileId) return Promise.resolve([]);
@@ -242,6 +258,7 @@ export function hydratePreferences(ctx: HouseholdContext, local: ProfileId): Pro
 
 /** All user-visible mutable tables the daily experience depends on. */
 export const REALTIME_TABLES = [
+  "profiles",
   "food_entries",
   "meal_statuses",
   "fasting_logs",
@@ -279,7 +296,10 @@ export function describeChange(
 ): RealtimeChange {
   const row = (payload.eventType === "DELETE" ? payload.old : payload.new) as RowLike | undefined;
   const change: RealtimeChange = { table, eventType: payload.eventType };
-  const profileId = row?.profile_id ?? (payload.old as RowLike | undefined)?.profile_id;
+  const profileId =
+    table === "profiles"
+      ? (row?.id ?? (payload.old as RowLike | undefined)?.id)
+      : (row?.profile_id ?? (payload.old as RowLike | undefined)?.profile_id);
   if (profileId) change.profile = localProfileFor(ctx, profileId);
   const iso = row?.log_date ?? (payload.old as RowLike | undefined)?.log_date;
   if (iso) change.iso = iso;

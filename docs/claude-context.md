@@ -5,6 +5,9 @@ Updated 2026-09-19 (DEC-032 daily steps and focused mobile UX; steps migration n
 
 ## Start state
 
+- **DEC-033 points v1:** independent transparent daily budget, default 30 per profile; v1 snapshots on add/edit and historical fallback without backfill. Typed results open quantity selection; trusted quick chips can add directly. Migration `20260919053000_daily_points_v1` is pending and must use the dedicated apply/verify scripts, never plain `db push`.
+
+
 - **Project:** shared Nutrition Tracker for **אריאל (Ariel)** and **אלנה (Elena)** — Hebrew, RTL,
   mobile-first daily logging.
 - **Branch:** `main` (M1 merged; fail-safe runtime + preflight; M2 steps 1–6 — all 2026-09-18).

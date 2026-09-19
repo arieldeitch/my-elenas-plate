@@ -8,7 +8,14 @@ holds 1 household, 2 profiles (אריאל/אלנה), 6 meal slots, RLS on 10 tab
 **T-034 was split on 2026-08-01** (DEC-023): the backend half is **Done**, the browser-dependent half
 (**T-034-UI**) is **Blocked** until a browser automation capability exists.
 
-## DEC-032 — daily steps and focused mobile UX
+## DEC-033 — transparent daily points v1
+
+- [x] Per-profile synced budget, default 30; no weekly bank.
+- [x] v1 snapshots on add/edit and historical null fallback without backfill.
+- [x] Typed quantity flow, live preview, entry/day summaries, instant keyboard safety.
+- [ ] Production action: review/apply `supabase/apply_daily_points_production.sql`, then run `supabase/verify_daily_points.sql`.
+
+ — daily steps and focused mobile UX
 
 - [x] Calmer light tokens, clearer card boundaries, and AA-safe green/blue identity.
 - [x] Bottom navigation reduced to Home / Quick Add / Journal; no duplicate or dead actions.

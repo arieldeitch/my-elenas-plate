@@ -163,6 +163,9 @@ export interface FoodEntry {
   subjective?: SubjectiveAmount;
   /** Present only for coffee entries. */
   coffee?: CoffeeMeta;
+  /** Snapshot produced by the transparent internal points model when logged/edited. */
+  pointsValue?: number;
+  pointsModelVersion?: "v1";
   /**
    * When the entry was logged (ISO). Set locally at creation and read back from
    * the row's `created_at`; never sent on writes (the database owns it). Used

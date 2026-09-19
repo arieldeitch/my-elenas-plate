@@ -38,6 +38,7 @@ export type Operation =
   | { kind: "workout.set"; profile: ProfileId; iso: string; workout: WorkoutLog }
   | { kind: "workout.clear"; profile: ProfileId; iso: string }
   | { kind: "steps.set"; profile: ProfileId; iso: string; steps: StepLog }
+  | { kind: "profile.points-budget.set"; profile: ProfileId; budget: number }
   | { kind: "weighin.insert"; profile: ProfileId; weighIn: WeighIn }
   | { kind: "food.upsert"; food: Food }
   | { kind: "pref.favorite"; profile: ProfileId; foodId: string; isFavorite: boolean }
@@ -65,6 +66,8 @@ export function coalesceKey(op: Operation): string {
       return `workout:${op.profile}:${op.iso}`;
     case "steps.set":
       return `steps:${op.profile}:${op.iso}`;
+    case "profile.points-budget.set":
+      return `profile.points-budget:${op.profile}`;
     case "weighin.insert":
       return `weighin:${op.weighIn.id}`;
     case "food.upsert":

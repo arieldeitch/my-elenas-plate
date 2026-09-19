@@ -124,6 +124,8 @@ export type Database = {
           id: string
           log_date: string
           note: string | null
+          points_model_version: string | null
+          points_value: number | null
           profile_id: string
           quantity_mode: string
           slot: string
@@ -141,6 +143,8 @@ export type Database = {
           id?: string
           log_date: string
           note?: string | null
+          points_model_version?: string | null
+          points_value?: number | null
           profile_id: string
           quantity_mode: string
           slot: string
@@ -158,6 +162,8 @@ export type Database = {
           id?: string
           log_date?: string
           note?: string | null
+          points_model_version?: string | null
+          points_value?: number | null
           profile_id?: string
           quantity_mode?: string
           slot?: string
@@ -388,6 +394,7 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          daily_points_budget: number
           display_name: string
           household_id: string
           id: string
@@ -397,6 +404,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          daily_points_budget?: number
           display_name: string
           household_id: string
           id?: string
@@ -406,6 +414,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          daily_points_budget?: number
           display_name?: string
           household_id?: string
           id?: string
