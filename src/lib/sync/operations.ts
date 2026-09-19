@@ -24,6 +24,7 @@ import type {
   MealSlotId,
   MealStatus,
   ProfileId,
+  StepLog,
   WeighIn,
   WorkoutLog,
 } from "../domain";
@@ -36,6 +37,7 @@ export type Operation =
   | { kind: "fasting.clear"; profile: ProfileId; iso: string }
   | { kind: "workout.set"; profile: ProfileId; iso: string; workout: WorkoutLog }
   | { kind: "workout.clear"; profile: ProfileId; iso: string }
+  | { kind: "steps.set"; profile: ProfileId; iso: string; steps: StepLog }
   | { kind: "weighin.insert"; profile: ProfileId; weighIn: WeighIn }
   | { kind: "food.upsert"; food: Food }
   | { kind: "pref.favorite"; profile: ProfileId; foodId: string; isFavorite: boolean }
@@ -61,6 +63,8 @@ export function coalesceKey(op: Operation): string {
     case "workout.set":
     case "workout.clear":
       return `workout:${op.profile}:${op.iso}`;
+    case "steps.set":
+      return `steps:${op.profile}:${op.iso}`;
     case "weighin.insert":
       return `weighin:${op.weighIn.id}`;
     case "food.upsert":
@@ -82,6 +86,7 @@ export function dayKeyOf(op: Operation): string | null {
     case "fasting.clear":
     case "workout.set":
     case "workout.clear":
+    case "steps.set":
       return `${op.profile}::${op.iso}`;
     default:
       return null;
@@ -191,4 +196,9 @@ export function opsForSetFasting(ctx: DayOpsContext, fasting: FastingLog | undef
 
 export function opsForSetWorkout(ctx: DayOpsContext, workout: WorkoutLog | undefined): Operation[] {
   return workout ? [{ kind: "workout.set", ...ctx, workout }] : [{ kind: "workout.clear", ...ctx }];
+}
+
+
+export function opsForSetSteps(ctx: DayOpsContext, steps: StepLog): Operation[] {
+  return [{ kind: "steps.set", ...ctx, steps }];
 }
