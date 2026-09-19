@@ -25,14 +25,9 @@ Step 4 (the Auth switch) was still OFF at 17:39. Apply path, for the record:
 
 **Still never a plain `supabase db push` against production** (ledger reasons below).
 
-### Post-pilot hardening (2026-09-18) — ONE more migration, NOT a blocker
+### Post-pilot hardening (2026-09-19) — APPLIED
 
-`supabase/migrations/20260918180000_harden_function_search_path.sql` pins `set_updated_at()` to
-`search_path = ''` and revokes EXECUTE on `is_household_member(uuid)` from `public`/`anon`
-(advisor findings; behaviour unchanged, proven in PGlite). Apply after the M2-7 pilot with
-`supabase/apply_hardening_post_pilot.sql` (records `20260918180000` in the ledger; prints a
-post-check). Leaked-password protection (Auth setting) may be switched on at the same time — the
-product has no passwords, so it changes nothing for users.
+`supabase/migrations/20260918180000_harden_function_search_path.sql` was applied directly to production on 2026-09-19 and verified: `set_updated_at()` is pinned to `search_path = ''`; EXECUTE on `is_household_member(uuid)` is revoked from `public`/`anon` and retained for `authenticated`/`service_role`; ledger contains `20260918180000`. Supabase Advisor no longer reports the mutable-search-path or anonymous-executable findings. Remaining Auth warning about leaked-password protection is irrelevant to the passwordless DEC-031 product flow. The only release blocker is still **Allow anonymous sign-ins = ON**.
 
 ## M1 release (2026-09-18) — applied to production on 2026-09-18 (kept for history)
 
