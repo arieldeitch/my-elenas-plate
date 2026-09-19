@@ -1,12 +1,24 @@
 # TODO
 
 Status legend: Done / In Progress / Blocked / Deferred / Not Started.
-Updated 2026-09-18. **Production bootstrap is complete** — Supabase project `rqgoiuztphkcvbwtbxbj`
+Updated 2026-09-19. **Production bootstrap is complete** — Supabase project `rqgoiuztphkcvbwtbxbj`
 holds 1 household, 2 profiles (אריאל/אלנה), 6 meal slots, RLS on 10 tables and 390 active foods
 (status `READY`). Rollback code checkpoint: tag `pilot-ready-2026-07-24` (`29ac1d5`).
 **M1 code is Done and merged to `main`; owner release actions A/B/C are complete; live preflight PASS on the served `0cd3673` (2026-09-18). DEC-031 (2026-09-18) removed the login: production now needs the device-join migration + "Allow anonymous sign-ins" + a republish (`supabase/DEPLOY.md`), then the two-minute path §3b on both phones (`M1_RELEASE_ACCEPTANCE.md`).**
 **T-034 was split on 2026-08-01** (DEC-023): the backend half is **Done**, the browser-dependent half
 (**T-034-UI**) is **Blocked** until a browser automation capability exists.
+
+## DEC-032 — daily steps and focused mobile UX
+
+- [x] Calmer light tokens, clearer card boundaries, and AA-safe green/blue identity.
+- [x] Bottom navigation reduced to Home / Quick Add / Journal; no duplicate or dead actions.
+- [x] Four equal context tiles, 2×2 on narrow screens and 4×1 when space permits.
+- [x] Reusable VisualViewport/dvh keyboard safety applied to meal, weight, fasting, and steps inputs.
+- [x] Daily steps: exact or completed-only, editable remembered goal, selected-date backfill, person isolation.
+- [x] Narrow `steps.set` queue operation, hydration/reconnect guards, cloud repository, and Realtime table.
+- [ ] **Production action:** review and apply only `supabase/apply_daily_steps_production.sql`, then run
+      `supabase/verify_daily_steps.sql`; do not use plain `supabase db push`.
+- [ ] Publish the verified revision after the migration is confirmed.
 
 ## M1 — Shared-truth recovery (P0) — **Code Done · Release Blocked (2026-09-18)**
 

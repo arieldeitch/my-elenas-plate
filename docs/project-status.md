@@ -1,13 +1,24 @@
 # Project Status
 
 **Date:** 2026-09-19 (owner reports anonymous sign-ins ON; live verification pending)
-**Branch:** `main` — no-login flow + this run's hardening (auth races, perf, mobile/a11y); served build `fd32a38` (no-login, before the hardening). Release path: Auth switch → publish → preflight → §3b — see `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md`
+**Branch:** current synced working branch — DEC-032 steps/UX pass implemented; production migration remains unapplied. Release path: review/apply only `20260919044237_daily_steps`, verify, then publish.
 **Supabase project:** `rqgoiuztphkcvbwtbxbj` (production) · isolated branch `uyroeumwmjhrcbkesmgb`
 **Stage:** **Feature work paused. M1 = YELLOW only until live verification: DEC-031 + hardening are applied, owner reports Supabase "Allow anonymous sign-ins" = ON, and current main is published. Next: fresh-device smoke + §3b on two phones → M1 CLOSED → M2-7 (`M2_7_PILOT.md`).**
 **Deployment:** <https://my-elenas-plate.lovable.app> serves `main` `fd32a38` (no-login build): `mode=cloud`, `target=shared`, `misconfigured=false`, host `rqgoiuztphkcvbwtbxbj`, no secrets — `PREFLIGHT PASS — 14 checks` (2026-09-18 16:40). Fresh device → one anonymous sign-in request → `422 anonymous_provider_disabled` → retry state until the Auth switch is ON.
 **Pilot-ready code checkpoint:** tag `pilot-ready-2026-07-24` → `29ac1d5`.
 
 > Rule: nothing is listed as "working" unless it was actually run/verified.
+
+## 2026-09-19 — calmer daily UX, keyboard safety, and shared daily steps (DEC-032)
+
+Implemented a calmer light palette and clearer card boundaries; a balanced four-tile context module
+(weight, workout, fasting, steps); bottom navigation reduced to Home / Quick Add / Journal; and reusable
+VisualViewport/dvh keyboard protection for input editors. Daily steps support exact counts or a truthful
+completed-only report, selected-date backfill, per-profile goals with a 10,000 first-run fallback,
+historical goal snapshots, narrow durable queue writes, hydration guards, Realtime, and partner visibility.
+Migration `supabase/migrations/20260919044237_daily_steps.sql` plus the production apply/verify scripts
+are reviewed artifacts only: **production SQL was not applied**. Current verification is recorded in
+`docs/claude-tasks/RUN_2026-09-19_STEPS_UX.md`.
 
 ## 2026-09-18 (eleventh run) — reliability / hardening before the pilot
 

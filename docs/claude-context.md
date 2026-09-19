@@ -1,7 +1,7 @@
 # Claude Context
 
 Fast-start context for Claude Code. The latest user instruction always overrides older docs.
-Updated 2026-09-18 (eleventh run: reliability/hardening; Auth "Allow anonymous sign-ins" still OFF on production).
+Updated 2026-09-19 (DEC-032 daily steps and focused mobile UX; steps migration not applied to production).
 
 ## Start state
 
@@ -11,7 +11,13 @@ Updated 2026-09-18 (eleventh run: reliability/hardening; Auth "Allow anonymous s
   M1 status: `docs/claude-tasks/M1_STATUS.md`; **M1 release entrypoint:**
   `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md`; latest run record:
   `docs/claude-tasks/RUN_2026-09-18_RELIABILITY_HARDENING.md` (previous: `RUN_2026-09-18_ACCESS_SIMPLIFICATION.md`).
-- **Feature work is paused (2026-09-18).** The daily loop is considered ready for first real use. Do
+- **DEC-032 is implemented (2026-09-19).** The daily loop now uses a calmer palette, three-action bottom
+  navigation, a four-tile context grid (weight/workout/fasting/steps), and shared daily steps with exact
+  or completed-only reporting. The steps row is keyed by profile/date, carries a goal snapshot, uses the
+  durable narrow-operation queue and Realtime, and always follows `selectedDate`. The reviewed migration
+  is `supabase/migrations/20260919044237_daily_steps.sql`; production still requires the dedicated apply
+  wrapper and read-only verification in `supabase/DEPLOY.md`. Never run plain `supabase db push`.
+- **Feature work was paused (2026-09-18).** The daily loop is considered ready for first real use. Do
   not build M2-8; it will be selected from the pilot's friction log (`docs/claude-tasks/M2_7_PILOT.md`).
   **Owner actions A/B/C are complete; §2 PASSED on the served `0cd3673`; §3 item 9 PASSES — but that
   build shows a login screen, which DEC-031 (2026-09-18) removed as a product regression.** Access
@@ -25,8 +31,8 @@ Updated 2026-09-18 (eleventh run: reliability/hardening; Auth "Allow anonymous s
   one membership) → `npm run preflight -- --live` on the republished sha → §3b reply → mark M1 CLOSED,
   start the pilot. If a §3b item fails, fix only that. No M2-8. Never ask Ariel for
   Supabase/GitHub/Lovable actions. Post-pilot: `apply_hardening_post_pilot.sql` (M1-R8).
-- **Home (M2, DEC-026/027):** `TodayCard` (me) → `PartnerGlance` (partner) → six compact `MealCard`s →
-  `DailyContextRow` (weight · workout · fasting, inline editors). `DayReview` sheet (DEC-028) opens from
+- **Home (M2, DEC-026/027/032):** `TodayCard` (me) → `PartnerGlance` (partner) → six compact `MealCard`s →
+  `DailyContextRow` (weight · workout · fasting · steps, inline editors). `DayReview` sheet (DEC-028) opens from
   the today card / partner card: read-only day per slot for either person; edit only for the active
   person; looking never switches person or date. Meal-editor rows have a − / + pill for count units only
   (DEC-029; `lib/quantity.ts` `COUNT_UNITS`, `stepAmount`, `formatQuantity`). Chips AND typed results add
