@@ -52,10 +52,7 @@ export function WorkoutCard({ onDone }: { onDone?: () => void }) {
   const isEmpty = !workout || workout.performed === null;
 
   return (
-    <section
-      aria-labelledby="workout-title"
-      className="context-editor"
-    >
+    <section aria-labelledby="workout-title" className="context-editor">
       <div className="flex items-center gap-3">
         <div
           className="grid h-12 w-12 place-items-center rounded-full bg-primary-soft text-primary"

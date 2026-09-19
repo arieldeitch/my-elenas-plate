@@ -34,10 +34,7 @@ export function FastingCard({ onDone }: { onDone?: () => void }) {
   const hours = day.fasting ? calcHours(day.fasting.start, day.fasting.end) : null;
 
   return (
-    <section
-      aria-labelledby="fasting-title"
-      className="context-editor"
-    >
+    <section aria-labelledby="fasting-title" className="context-editor">
       <div className="flex items-center gap-3">
         <div
           className="grid h-12 w-12 place-items-center rounded-full bg-info-soft text-info"

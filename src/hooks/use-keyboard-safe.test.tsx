@@ -28,7 +28,9 @@ describe("keyboard-safe viewport", () => {
       listeners.get("resize")?.(new Event("resize"));
       vi.advanceTimersByTime(100);
     });
-    expect(document.documentElement.style.getPropertyValue("--visual-viewport-height")).toBe("420px");
+    expect(document.documentElement.style.getPropertyValue("--visual-viewport-height")).toBe(
+      "420px",
+    );
     expect(reveal).toHaveBeenCalled();
     vi.useRealTimers();
   });

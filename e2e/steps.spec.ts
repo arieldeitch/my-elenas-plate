@@ -1,7 +1,9 @@
 import { test, expect } from "@playwright/test";
 import { signIn, uniqueEmail, waitForApp, waitSaved } from "./helpers";
 
-test("steps support exact, completed-only, goal editing and profile/date isolation", async ({ page }) => {
+test("steps support exact, completed-only, goal editing and profile/date isolation", async ({
+  page,
+}) => {
   await signIn(page, uniqueEmail());
   await page.getByRole("button", { name: /^צעדים:/ }).click();
   await expect(page.getByText(/יעד 10,000/)).toBeVisible();
