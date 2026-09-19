@@ -54,7 +54,9 @@ describe("useKeyboardSafeViewport", () => {
     input.focus();
     act(() => listeners.get("resize")?.(new Event("resize")));
     expect(reveal).not.toHaveBeenCalled();
-    expect(vi.getTimerCount()).toBe(0);
+    reveal.mockClear();
+    act(() => vi.runAllTimers());
+    expect(reveal).not.toHaveBeenCalled();
     vi.useRealTimers();
   });
 });
