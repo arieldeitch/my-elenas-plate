@@ -152,7 +152,6 @@ export function MealEditor({ slot, onClose }: Props) {
         className={cn(
           "relative flex flex-col w-full max-w-lg bg-card border border-border shadow-lg outline-none",
           "keyboard-safe-sheet rounded-t-3xl sm:rounded-3xl sm:max-h-[85vh] sm:my-8",
-          "animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200",
         )}
         style={{ borderTopColor: profile.color, borderTopWidth: 3 }}
       >

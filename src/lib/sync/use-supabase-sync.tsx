@@ -91,6 +91,7 @@ export interface SyncControls {
 const WEIGH_KINDS = new Set(["weighin.insert"]);
 const PREF_KINDS = new Set(["pref.favorite", "pref.recent"]);
 const POINTS_BUDGET_KINDS = new Set(["profile.points-budget.set"]);
+const POINTS_BUDGET_KINDS = new Set(["profile.points-budget.set"]);
 const DRAIN_DEBOUNCE_MS = 400;
 /**
  * Converging a day from the cloud after our own drain and after each realtime
@@ -200,6 +201,21 @@ export function useSupabaseSync(args: Args): SyncControls {
     [setDailyPointsBudgets],
   );
 
+  const hydratePointsBudgetFor = useCallback(
+    async (profile: ProfileId) => {
+      const ctx = ctxRef.current;
+      if (!ctx || queue.hasPendingForProfile(profile, POINTS_BUDGET_KINDS)) return;
+      try {
+        const budget = await hydrateProfilePointsBudget(ctx, profile);
+        if (queue.hasPendingForProfile(profile, POINTS_BUDGET_KINDS)) return;
+        setDailyPointsBudgets((prev) => ({ ...prev, [profile]: budget }));
+      } catch (err) {
+        console.warn("hydrate points budget failed", err);
+      }
+    },
+    [setDailyPointsBudgets],
+  );
+
   const hydrateWeighInsFor = useCallback(
     async (profile: ProfileId) => {
       const ctx = ctxRef.current;
@@ -273,12 +289,13 @@ export function useSupabaseSync(args: Args): SyncControls {
         await hydrateDayOnly(profile, isoDate);
         await hydrateWeighInsFor(profile);
         await hydratePrefsFor(profile);
+        await hydratePointsBudgetFor(profile);
       } catch (err) {
         console.warn("hydrate failed", err);
         publishState("error");
       }
     },
-    [hydrateDayOnly, hydrateWeighInsFor, hydratePrefsFor, publishState],
+    [hydrateDayOnly, hydrateWeighInsFor, hydratePrefsFor, hydratePointsBudgetFor, publishState],
   );
 
   // --- durable queue drain ---------------------------------------------------------
@@ -443,6 +460,9 @@ export function useSupabaseSync(args: Args): SyncControls {
     function onRealtime(change: RealtimeChange) {
       const view = viewRef.current;
       switch (change.table) {
+        case "profiles":
+          void hydratePointsBudgetFor(change.profile ?? view.profile);
+          return;
         case "foods":
           void hydrateFoodsList();
           return;
@@ -507,6 +527,7 @@ export function useSupabaseSync(args: Args): SyncControls {
     hydrateDayOnly,
     hydrateFoodsList,
     hydratePrefsFor,
+    hydratePointsBudgetFor,
     hydrateWeighInsFor,
     publishState,
     scheduleDayConverge,
