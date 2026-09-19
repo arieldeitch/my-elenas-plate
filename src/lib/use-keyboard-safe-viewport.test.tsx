@@ -1,4 +1,4 @@
-import { act, render } from "@testing-library/react";
+import { act, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useKeyboardSafeViewport } from "./use-keyboard-safe-viewport";
 
@@ -9,15 +9,16 @@ function Harness() {
 
 describe("useKeyboardSafeViewport", () => {
   afterEach(() => {
-    vi.useRealTimers();
     document.documentElement.style.removeProperty("--app-viewport-height");
+    document.documentElement.style.removeProperty("--app-viewport-offset-top");
+    delete document.documentElement.dataset.keyboardOpen;
   });
 
-  it("tracks a keyboard-sized visual viewport and reveals the focused field", () => {
-    vi.useFakeTimers();
+  it("tracks the visual viewport and never smooth-scrolls after the keyboard opens", () => {
     const listeners = new Map<string, EventListener>();
     const viewport = {
       height: 420,
+      offsetTop: 0,
       addEventListener: vi.fn((name: string, fn: EventListener) => listeners.set(name, fn)),
       removeEventListener: vi.fn(),
     };
@@ -26,13 +27,39 @@ describe("useKeyboardSafeViewport", () => {
     HTMLElement.prototype.scrollIntoView = reveal;
 
     const { getByLabelText } = render(<Harness />);
-    getByLabelText("מספר צעדים").focus();
-    act(() => {
-      listeners.get("resize")?.(new Event("resize"));
-      vi.runOnlyPendingTimers();
-    });
+    const input = getByLabelText("מספר צעדים");
+    fireEvent.pointerDown(input);
+    input.focus();
+    act(() => listeners.get("resize")?.(new Event("resize")));
 
     expect(document.documentElement.style.getPropertyValue("--app-viewport-height")).toBe("420px");
     expect(reveal).toHaveBeenCalled();
+    for (const call of reveal.mock.calls) {
+      expect(call[0]).toMatchObject({ behavior: "auto" });
+      expect(call[0]).not.toMatchObject({ behavior: "smooth" });
+    }
+  });
+
+  it("does not move a focused field that is already inside the visible viewport", () => {
+    const listeners = new Map<string, EventListener>();
+    const viewport = {
+      height: 700,
+      offsetTop: 0,
+      addEventListener: vi.fn((name: string, fn: EventListener) => listeners.set(name, fn)),
+      removeEventListener: vi.fn(),
+    };
+    Object.defineProperty(window, "visualViewport", { configurable: true, value: viewport });
+    const reveal = vi.fn();
+    HTMLElement.prototype.scrollIntoView = reveal;
+    const rect = { top: 120, bottom: 165, left: 0, right: 200, width: 200, height: 45, x: 0, y: 120, toJSON: () => ({}) };
+
+    const { getByLabelText } = render(<Harness />);
+    const input = getByLabelText("מספר צעדים");
+    vi.spyOn(input, "getBoundingClientRect").mockReturnValue(rect as DOMRect);
+    input.focus();
+    reveal.mockClear();
+    act(() => listeners.get("resize")?.(new Event("resize")));
+
+    expect(reveal).not.toHaveBeenCalled();
   });
 });
