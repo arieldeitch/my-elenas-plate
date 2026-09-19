@@ -417,8 +417,8 @@ export function useSupabaseSync(args: Args): SyncControls {
         if (disposed || gen !== generation) return; // session replaced meanwhile
         ctxRef.current = ctx;
         setPointsBudgetsMap({
-          me: ctx.pointsBudgetBySlug.ariel ?? 30,
-          elena: ctx.pointsBudgetBySlug.alena ?? 30,
+          me: ctx.pointsBudgetBySlug?.ariel ?? 30,
+          elena: ctx.pointsBudgetBySlug?.alena ?? 30,
         });
 
         // The one-time localStorage -> cloud import (T-023) is retired; markers
