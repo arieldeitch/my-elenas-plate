@@ -1,13 +1,25 @@
 # Project Status
 
-**Date:** 2026-09-19 (owner reports anonymous sign-ins ON; live verification pending)
-**Branch:** `main` — no-login flow + this run's hardening (auth races, perf, mobile/a11y); served build `fd32a38` (no-login, before the hardening). Release path: Auth switch → publish → preflight → §3b — see `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md`
-**Supabase project:** `rqgoiuztphkcvbwtbxbj` (production) · isolated branch `uyroeumwmjhrcbkesmgb`
-**Stage:** **Feature work paused. M1 = YELLOW only until live verification: DEC-031 + hardening are applied, owner reports Supabase "Allow anonymous sign-ins" = ON, and current main is published. Next: fresh-device smoke + §3b on two phones → M1 CLOSED → M2-7 (`M2_7_PILOT.md`).**
-**Deployment:** <https://my-elenas-plate.lovable.app> serves `main` `fd32a38` (no-login build): `mode=cloud`, `target=shared`, `misconfigured=false`, host `rqgoiuztphkcvbwtbxbj`, no secrets — `PREFLIGHT PASS — 14 checks` (2026-09-18 16:40). Fresh device → one anonymous sign-in request → `422 anonymous_provider_disabled` → retry state until the Auth switch is ON.
+**Date:** 2026-09-19 (real-device UX feedback pass — DEC-032)
+**Branch:** `main` — silent anonymous access + calmer UI/nav + daily steps implementation.
+**Supabase project:** `rqgoiuztphkcvbwtbxbj` (production) · Anonymous sign-ins **ON**.
+**Stage:** **M1 remains YELLOW only until the complete two-phone §3b report. Ariel confirmed the no-login experience works much better. DEC-032 is implemented on `main`; Supabase migration `20260919044237_daily_steps` is already applied and verified. Production UI publish is still pending because Lovable has not yet synced the newest GitHub HEAD.**
+**Database:** 11 public tables with RLS; `daily_steps` has authenticated CRUD, no unauthenticated anon access, Realtime enabled, unique profile/date rows.
+**Deployment:** <https://my-elenas-plate.lovable.app> is still the last Lovable-synced build until Lovable catches up with `main`; do not claim DEC-032 live until `latest_commit_sha` matches GitHub and a publish/preflight succeeds.
 **Pilot-ready code checkpoint:** tag `pilot-ready-2026-07-24` → `29ac1d5`.
 
 > Rule: nothing is listed as "working" unless it was actually run/verified.
+
+## 2026-09-19 — DEC-032 real-device UX feedback pass
+
+Ariel's first live use confirmed the anonymous/no-login path is materially better and produced the next concrete product feedback. Implemented on `main`:
+- calmer light palette (not dark mode), clearer card/tile boundaries;
+- bottom nav reduced to **בית · הוספה מהירה · יומן**; duplicate History and dead More removed;
+- reusable VisualViewport/dvh keyboard-safety for sheets/forms;
+- `DailyContextRow` redesigned as 4 balanced tiles, 2×2 on narrow phones;
+- daily steps: per-person/per-date exact count or **ביצעתי**, editable remembered goal, retroactive logging through `selectedDate`, durable queue + Realtime + partner glance;
+- production migration `20260919044237_daily_steps` applied and verified (RLS/authenticated CRUD/no anon/Reatime).
+Deterministic tests were added/extended for nav, steps operations, retroactive/person isolation and cross-device Realtime. Full typecheck/lint/Vitest/Playwright/build gate is **not yet claimed** in this session because Lovable has not synced the new HEAD and the GitHub Actions workflow has not produced a run yet.
 
 ## 2026-09-18 (eleventh run) — reliability / hardening before the pilot
 
