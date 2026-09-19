@@ -84,9 +84,16 @@ export function MealEditor({ slot, onClose }: Props) {
    * its editor; a food without a trusted default opens the quantity screen.
    * Returns what happened so the search box can clear itself after an add.
    */
-  function handleChoose(food: Food): "added" | "opened" {
+  function handleChoose(food: Food, source: "typed" | "quick"): "added" | "opened" {
     if (food.kind === "coffee") {
       setView({ kind: "coffee" });
+      return "opened";
+    }
+    // A typed search is deliberate: always ask how much was eaten so the
+    // measured/subjective choice and the unit picker never disappear behind
+    // the quick-add optimisation. Trusted favourite/recent chips keep one-tap.
+    if (source === "typed") {
+      setView({ kind: "quantity", food });
       return "opened";
     }
     const usual = usualQuantity(food);
@@ -96,7 +103,7 @@ export function MealEditor({ slot, onClose }: Props) {
     }
     const added = store.addEntry(slot!, { foodId: food.id, foodName: food.name, ...usual });
     setJustAdded(added.id);
-    toast(`נוסף: ${food.name} · ${formatQuantity(added)}`, { duration: 2500 });
+    toast(`נוסף: ${food.name} · ${formatQuantity(added)} · אפשר לערוך כמות מיד`, { duration: 2500 });
     return "added";
   }
 
