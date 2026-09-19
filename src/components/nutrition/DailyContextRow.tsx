@@ -79,15 +79,7 @@ export function DailyContextRow({ onOpenWeight }: Props) {
       data-testid="daily-context"
       className="mt-3 overflow-hidden rounded-2xl border border-border bg-card shadow-soft"
     >
-      <div
-        className={cn(
-          "grid grid-cols-2 sm:grid-cols-4",
-          "[&>*]:border-border",
-          "[&>*:nth-child(odd)]:border-e sm:[&>*:nth-child(odd)]:border-e-0",
-          "[&>*:nth-child(-n+2)]:border-b sm:[&>*:nth-child(-n+2)]:border-b-0",
-          "sm:[&>*+*]:border-s",
-        )}
-      >
+      <div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4">
         <Cell
           icon={<Scale className="h-4 w-4" />}
           label="שקילה"
@@ -195,7 +187,7 @@ function Cell({
       data-testid={testId}
       data-value={value}
       className={cn(
-        "flex min-h-[82px] flex-col items-center justify-center gap-1 px-2 py-3 text-center transition-colors hover:bg-muted/65 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+        "flex min-h-[82px] flex-col items-center justify-center gap-1 bg-card px-2 py-3 text-center transition-colors hover:bg-muted/65 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
         expanded && "bg-muted/65",
       )}
     >
