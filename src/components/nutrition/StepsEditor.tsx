@@ -72,7 +72,7 @@ export function StepsEditor({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <div className="space-y-4" data-testid="steps-editor">
+    <div className="keyboard-safe-scroll max-h-[calc(var(--app-viewport-height)-12rem)] space-y-4 overflow-y-auto pb-[max(0.5rem,env(safe-area-inset-bottom))]" data-testid="steps-editor">
       <div>
         <label className="mb-1 block text-sm font-medium" htmlFor="steps-goal">
           יעד יומי

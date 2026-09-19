@@ -1,5 +1,17 @@
 # Deploying to the remote Supabase project
 
+## Daily steps (2026-09-19, DEC-032) — PENDING REVIEW, NOT APPLIED
+
+Review `supabase/migrations/20260919044237_daily_steps.sql`, then apply only
+`supabase/apply_daily_steps_production.sql` through the approved SQL Editor or controlling migration
+tool. The wrapper creates `daily_steps`, grants authenticated/service access before enabling RLS,
+adds household-member policies, the update trigger, index, Realtime publication, and the migration
+ledger row. Afterwards run `supabase/verify_daily_steps.sql` read-only.
+
+Expected verification: RLS/authenticated CRUD/service-role CRUD/Realtime are true, anon SELECT is
+false, constraints and all four policies exist, and ledger version `20260919044237` is present. Do not
+run plain `supabase db push`.
+
 ## Access simplification (2026-09-18, DEC-031) — migration APPLIED (controlling GPT, verified); ONE Auth setting still pending
 
 `supabase/migrations/20260918160000_anonymous_device_join.sql` replaces `bootstrap_household()` so
