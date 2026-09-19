@@ -139,6 +139,12 @@ export interface FoodDef {
   units: UnitSetKey;
   /** Only `f_coffee` uses `coffee` (opens the structured coffee editor). */
   kind?: FoodKind;
+  /**
+   * Calibrated points per standard portion (DEC-034 hierarchy step 1). Used
+   * where the category fallback is obviously wrong for this food — e.g. a
+   * plain vegetable salad filed under "dishes" is still vegetables (0).
+   */
+  pointsPerPortion?: number;
 }
 
 /** Builds the `Food` objects for one category module. */
@@ -154,6 +160,7 @@ export function defineFoods(category: FoodCategory, defs: FoodDef[]): Food[] {
       suggestedUnits: [...units],
     };
     if (def.kind) food.kind = def.kind;
+    if (def.pointsPerPortion != null) food.pointsPerPortion = def.pointsPerPortion;
     return food;
   });
 }

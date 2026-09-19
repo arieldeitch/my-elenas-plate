@@ -68,7 +68,10 @@ describe("catalog integrity", () => {
     expect(used.size).toBe(FOOD_CATEGORIES.length);
   });
 
-  it("carries no nutrition, scoring, favorite or usage data", () => {
+  it("carries no nutrition facts, favorite or usage data (calibrated points allowed, DEC-034)", () => {
+    // `pointsPerPortion` is a deliberate per-food calibration of the points
+    // model (never calories/macros); `nutrition` facts must never be fabricated
+    // into the built-in catalog.
     const allowed = new Set([
       "id",
       "name",
@@ -77,6 +80,7 @@ describe("catalog integrity", () => {
       "suggestedUnits",
       "kind",
       "isActive",
+      "pointsPerPortion",
     ]);
     for (const food of BUILT_IN_FOODS) {
       for (const key of Object.keys(food)) {

@@ -59,6 +59,10 @@ export function mergeCatalog(builtIn: Food[], remote: Food[]): Food[] {
       kind: match.kind ?? food.kind,
       suggestedUnits: match.suggestedUnits ?? food.suggestedUnits,
       defaultUnit: match.defaultUnit ?? food.defaultUnit,
+      // Points calibration lives in the built-in catalog (DEC-034); a seeded
+      // cloud row of the same food must not silently drop it.
+      pointsPerPortion: match.pointsPerPortion ?? food.pointsPerPortion,
+      nutrition: match.nutrition ?? food.nutrition,
     });
   }
 

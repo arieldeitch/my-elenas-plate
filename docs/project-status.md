@@ -1,13 +1,26 @@
 # Project Status
 
-**Date:** 2026-09-19 (DEC-033 quantity restoration + internal points v1)
-**Branch:** `main` — anonymous access ON, DEC-032 daily steps applied, DEC-033 points/quantity/keyboard refinement ready for publish.
+**Date:** 2026-09-19 (twelfth run — points model v2-il + personalised budget, DEC-034; migration prepared, not applied)
+**Branch:** `main` — points v2-il (vegetables 0, fruit positive, calibrated/nutrition/category hierarchy) + personalised daily budget (Mifflin-St Jeor backbone) + keyboard/quantity fixes. **Publish only after `supabase/apply_points_v2_production.sql` is applied** (the client writes the new profile columns).
 **Supabase project:** `rqgoiuztphkcvbwtbxbj` (production) · isolated branch `uyroeumwmjhrcbkesmgb`
 **Stage:** **Feature work paused. M1 = YELLOW only until live verification: DEC-031 + hardening are applied, owner reports Supabase "Allow anonymous sign-ins" = ON, and current main is published. Next: fresh-device smoke + §3b on two phones → M1 CLOSED → M2-7 (`M2_7_PILOT.md`).**
 **Deployment:** <https://my-elenas-plate.lovable.app> serves `main` `fd32a38` (no-login build): `mode=cloud`, `target=shared`, `misconfigured=false`, host `rqgoiuztphkcvbwtbxbj`, no secrets — `PREFLIGHT PASS — 14 checks` (2026-09-18 16:40). Fresh device → one anonymous sign-in request → `422 anonymous_provider_disabled` → retry state until the Auth switch is ON.
 **Pilot-ready code checkpoint:** tag `pilot-ready-2026-07-24` → `29ac1d5`.
 
 > Rule: nothing is listed as "working" unless it was actually run/verified.
+
+## 2026-09-19 (twelfth run) — points v2-il, personalised budget, keyboard/quantity hardening (DEC-034)
+
+Full record: `docs/claude-tasks/RUN_2026-09-19_POINTS_V2_HARDENING.md`. Baseline had 5 prettier errors and
+3 stale test expectations from the DEC-033 work (fixed at the root). Model v2-il: new/edited snapshots
+`points_model_version = "v2-il"`, v1 snapshots never reinterpreted; hierarchy calibrated → real
+nutrition facts → category; vegetables 0 at any quantity (incl. plain salads filed under "dishes" —
+found via the calibration table); fruit 1/portion; weight/volume vs count units centralised; subjective
+0.5/1/1.5/2. Personalised budget: Mifflin-St Jeor → 23 × BMR/1400, clamp 14–45, maintenance ×1.2, override,
+fallback 23 + quiet prompt; facts on `profiles` (migration `20260919100000`, **prepared + PGlite-proven,
+NOT applied**). Fixed: keyboard pre-focus jump for visible controls; quantity edit leaking fields across
+a mode switch; `mergeCatalog` dropping per-food calibration in cloud mode. Gate: typecheck 0 · lint 0/8 ·
+vitest 397/16 · hermetic 8/8 · build · preflight env PASS · axe 0 on the new screens.
 
 ## 2026-09-19 — calmer daily UX, keyboard safety, and shared daily steps (DEC-032)
 

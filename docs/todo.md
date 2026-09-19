@@ -28,8 +28,21 @@ holds 1 household, 2 profiles (אריאל/אלנה), 6 meal slots, RLS on 10 tab
 - [x] New/edited entries persist points snapshot + model version; old rows remain untouched and use fallback calculation.
 - [x] Per-profile daily points budget is cloud-synced, durable-queue backed and Realtime-updated; default 30 is a technical placeholder, not a health recommendation.
 - [x] Supabase migration `20260919082000_internal_points_v1` applied/verified in production with RLS intact.
-- [ ] Publish current `main` and run real-phone check for keyboard, quantity modes/units, points add/edit/delete, and budget sync.
-- [ ] Calibrate points v1 from real-use feedback; no weekly bank in v1.
+- [x] Superseded by DEC-034 (points v2-il) on 2026-09-19 — see below.
+
+## DEC-034 — points v2-il + personalised daily budget (2026-09-19)
+
+- [x] Model v2-il on `main`: vegetables 0 at any quantity, fruit positive, calibrated → nutrition → category
+      hierarchy, centralised units/subjective multipliers, v1 snapshots immutable, `mergeCatalog` keeps
+      calibration (`RUN_2026-09-19_POINTS_V2_HARDENING.md`).
+- [x] Personalised budget (Mifflin-St Jeor backbone, override, fallback 23 + quiet prompt), profile setup
+      sheet, isolation + realtime proven.
+- [ ] **Apply `supabase/apply_points_v2_production.sql` to production (controlling GPT) and run
+      `supabase/verify_points_v2.sql`** — BEFORE publishing (the v2 client writes the new columns).
+- [ ] Lovable publish of `main`; then the three phone checks (budget personalisation, quantity mode edit,
+      keyboard) and M1 §3b.
+- [ ] Elena calibration of the table in the run record ("נמוך / נכון / גבוה"); results change only
+      `points-config.ts` / `pointsPerPortion`. No weekly bank yet (schema does not preclude it).
 
 ## M1 — Shared-truth recovery (P0) — **Code Done · Release Blocked (2026-09-18)**
 

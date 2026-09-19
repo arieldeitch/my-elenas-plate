@@ -6,22 +6,25 @@ import { defineFoods } from "./types";
  */
 export const DISHES = defineFoods("מנות ותבשילים", [
   // Salads
-  { key: "veg_salad", name: "סלט ירקות", units: "salad" },
-  { key: "israeli_salad", name: "סלט ישראלי", units: "salad" },
-  { key: "lettuce_salad", name: "סלט חסה", units: "salad" },
-  { key: "cabbage_salad", name: "סלט כרוב", units: "salad" },
-  { key: "greek_salad", name: "סלט יווני", units: "salad" },
+  // Plain vegetable salads are vegetables (0 points at any quantity, DEC-034),
+  // not "dishes"; the dressing is not modelled. Greek salad carries cheese.
+  { key: "veg_salad", name: "סלט ירקות", units: "salad", pointsPerPortion: 0 },
+  { key: "israeli_salad", name: "סלט ישראלי", units: "salad", pointsPerPortion: 0 },
+  { key: "lettuce_salad", name: "סלט חסה", units: "salad", pointsPerPortion: 0 },
+  { key: "cabbage_salad", name: "סלט כרוב", units: "salad", pointsPerPortion: 0 },
+  { key: "greek_salad", name: "סלט יווני", units: "salad", pointsPerPortion: 2 },
   { key: "tuna_salad", name: "סלט טונה", units: "salad" },
   { key: "egg_salad", name: "סלט ביצים", units: "salad" },
   { key: "quinoa_salad", name: "סלט קינואה", units: "salad" },
   { key: "pasta_salad", name: "סלט פסטה", units: "salad" },
   // Soups
-  { key: "veg_soup", name: "מרק ירקות", units: "soup" },
+  // Light vegetable soups: low, not the generic dish value.
+  { key: "veg_soup", name: "מרק ירקות", units: "soup", pointsPerPortion: 1 },
   { key: "chicken_soup", name: "מרק עוף", units: "soup" },
   { key: "lentil_soup", name: "מרק עדשים", units: "soup" },
   { key: "orange_soup", name: "מרק כתום", units: "soup" },
-  { key: "tomato_soup", name: "מרק עגבניות", units: "soup" },
-  { key: "mushroom_soup", name: "מרק פטריות", units: "soup" },
+  { key: "tomato_soup", name: "מרק עגבניות", units: "soup", pointsPerPortion: 1 },
+  { key: "mushroom_soup", name: "מרק פטריות", units: "soup", pointsPerPortion: 1 },
   { key: "pea_soup", name: "מרק אפונה", units: "soup" },
   // Grain / pasta mains
   { key: "couscous_veg", name: "קוסקוס עם ירקות", units: "dish" },
@@ -48,7 +51,7 @@ export const DISHES = defineFoods("מנות ותבשילים", [
   { key: "quiche", name: "קיש", units: "dish" },
   { key: "chamin", name: "חמין", units: "dish" },
   { key: "goulash", name: "גולאש", units: "dish" },
-  { key: "stirfry_veg", name: "מוקפץ ירקות", units: "dish" },
+  { key: "stirfry_veg", name: "מוקפץ ירקות", units: "dish", pointsPerPortion: 2 },
   { key: "stirfry_chicken", name: "מוקפץ עוף", units: "dish" },
   { key: "stirfry_noodles", name: "נודלס מוקפץ", units: "dish" },
   // Street food + sandwiches

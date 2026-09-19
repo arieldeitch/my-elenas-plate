@@ -1,7 +1,7 @@
 # Claude Context
 
 Fast-start context for Claude Code. The latest user instruction always overrides older docs.
-Updated 2026-09-19 (DEC-033 quantity restoration + internal points v1; production schema applied, publish pending).
+Updated 2026-09-19 (twelfth run: DEC-034 points v2-il + personalised budget; migration 20260919100000 prepared, NOT applied; publish after apply).
 
 ## Start state
 
@@ -10,7 +10,16 @@ Updated 2026-09-19 (DEC-033 quantity restoration + internal points v1; productio
 - **Branch:** `main` (M1 merged; fail-safe runtime + preflight; M2 steps 1–6 — all 2026-09-18).
   M1 status: `docs/claude-tasks/M1_STATUS.md`; **M1 release entrypoint:**
   `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md`; latest run record:
-  `docs/claude-tasks/RUN_2026-09-18_RELIABILITY_HARDENING.md` (previous: `RUN_2026-09-18_ACCESS_SIMPLIFICATION.md`).
+  `docs/claude-tasks/RUN_2026-09-19_POINTS_V2_HARDENING.md` (previous: `RUN_2026-09-19_STEPS_UX.md`, `RUN_2026-09-18_RELIABILITY_HARDENING.md`).
+- **DEC-034 (2026-09-19) supersedes the v1 model.** `src/lib/points-config.ts` holds EVERY constant
+  (category table, subjective multipliers, unit families/portions, nutrition weights, budget: Mifflin-St
+  Jeor → 23 × BMR/1400, clamp 14–45, maintenance ×1.2, fallback 23, override 10–60); `src/lib/points.ts`
+  is the pure engine (`calculatePointsV2`, `scoreEntry`, `pointsForEntry` = persisted snapshot wins,
+  `resolvePointsBudget`, `ageFromBirthDate`, `latestWeightKg`). Vegetables 0 always (plain salads are
+  calibrated 0 via `FoodDef.pointsPerPortion`), fruit 1/portion. Profile facts (sex/birth date/height/
+  goal/override) live on `profiles` — migration `20260919100000` **prepared, not applied**; apply script
+  `supabase/apply_points_v2_production.sql`, verify `supabase/verify_points_v2.sql`. Publish only after
+  the apply. Elena calibrates via the table in the run record; never ask for proprietary formulas.
 - **DEC-033 is implemented on main (2026-09-19).** Typed search opens QuantitySelector; favourite/recent chips keep trusted quick add. Quantity UI is measured or subjective with explicit units. Keyboard safety has no smooth/delayed post-open recenter. Internal points v1 uses transparent category×portion rules, persists entry snapshots, and has a synced per-profile daily budget. Production migration `20260919082000_internal_points_v1` is applied and verified; publish + phone acceptance remain. It is NOT Weight Watchers' formula and adds no calories/macros.
 - **DEC-032 is implemented (2026-09-19).** The daily loop now uses a calmer palette, three-action bottom
   navigation, a four-tile context grid (weight/workout/fasting/steps), and shared daily steps with exact
@@ -119,7 +128,7 @@ seeded. Nothing was ever broken in the migration.
 Not a repository audit, and not a migration:
 
 1. Read `docs/claude-context.md`.
-2. Read `docs/claude-tasks/RUN_2026-09-18_RELIABILITY_HARDENING.md` (latest run record) and
+2. Read `docs/claude-tasks/RUN_2026-09-19_POINTS_V2_HARDENING.md` (latest run record) and
    `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md` (release state).
 3. Read `docs/project-status.md` and `docs/todo.md`.
 4. Check the current branch, HEAD and `git status` (read-only).

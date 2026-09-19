@@ -103,6 +103,38 @@ describe("fruit is a low POSITIVE value, never free", () => {
   });
 });
 
+describe("obvious vegetable dishes are calibrated, not charged as generic dishes", () => {
+  it("plain vegetable salads are 0 at any quantity; light vegetable soups are low", () => {
+    const byId = new Map(FOOD_CATALOG.map((f) => [f.id, f]));
+    for (const id of ["f_veg_salad", "f_israeli_salad", "f_lettuce_salad", "f_cabbage_salad"]) {
+      expect(portionPointsForFood(byId.get(id)!).basis).toBe("calibrated");
+      expect(calculatePointsV2(measured(3, "קערה"), byId.get(id)!)).toBe(0);
+      expect(calculatePointsV2(subjective("מוגזם"), byId.get(id)!)).toBe(0);
+    }
+    expect(calculatePointsV2(measured(1, "קערה"), byId.get("f_veg_soup")!)).toBe(1.5);
+    expect(calculatePointsV2(measured(1, "קערה"), byId.get("f_greek_salad")!)).toBe(3);
+    // Generic dishes keep the category value.
+    expect(portionPointsForFood(byId.get("f_lasagna")!)).toEqual({ points: 5, basis: "category" });
+  });
+});
+
+describe("cloud catalog merge keeps the calibration (production path)", () => {
+  it("a seeded cloud row of the same food does not drop pointsPerPortion", async () => {
+    const { mergeCatalog } = await import("./food-catalog");
+    const remote: Food = {
+      id: "cloud-1",
+      name: "סלט ירקות",
+      category: "מנות ותבשילים",
+      defaultUnit: "קערה",
+    };
+    const merged = mergeCatalog(FOOD_CATALOG, [remote]);
+    const salad = merged.find((f) => f.name === "סלט ירקות")!;
+    expect(salad.id).toBe("f_veg_salad");
+    expect(salad.pointsPerPortion).toBe(0);
+    expect(calculatePointsV2(measured(2, "קערה"), salad)).toBe(0);
+  });
+});
+
 describe("calculation hierarchy", () => {
   it("calibrated > nutrition > category > unknown; coffee and vegetables are zero", () => {
     expect(portionPointsForFood(food("קטניות", { pointsPerPortion: 1 })).basis).toBe("calibrated");
