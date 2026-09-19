@@ -1,10 +1,7 @@
 # TODO
 
 Status legend: Done / In Progress / Blocked / Deferred / Not Started.
-Updated 2026-09-18. **Production bootstrap is complete** — Supabase project `rqgoiuztphkcvbwtbxbj`
-holds 1 household, 2 profiles (אריאל/אלנה), 6 meal slots, RLS on 10 tables and 390 active foods
-(status `READY`). Rollback code checkpoint: tag `pilot-ready-2026-07-24` (`29ac1d5`).
-**M1 code is Done and merged to `main`; owner release actions A/B/C are complete; live preflight PASS on the served `0cd3673` (2026-09-18). DEC-031 (2026-09-18) removed the login: production now needs the device-join migration + "Allow anonymous sign-ins" + a republish (`supabase/DEPLOY.md`), then the two-minute path §3b on both phones (`M1_RELEASE_ACCEPTANCE.md`).**
+Updated 2026-09-19. Production has one household, Ariel/Elena profiles, 390 active foods, **11** RLS-enabled public tables, Anonymous Auth ON, DEC-031 device join + hardening applied, and migration `20260919044237_daily_steps` applied/verified.
 **T-034 was split on 2026-08-01** (DEC-023): the backend half is **Done**, the browser-dependent half
 (**T-034-UI**) is **Blocked** until a browser automation capability exists.
 
@@ -30,9 +27,7 @@ Spec `docs/claude-tasks/M1_SHARED_TRUTH_RECOVERY.md`, status `M1_STATUS.md`, run
       queue ops, tests (PGlite SQL proof, AuthGate, cloud-path, live suites ported). State 2026-09-18
       17:45: (1) migration **applied + verified** by the controlling GPT; (3) Lovable published
       `fd32a38` (preflight PASS) — the eleventh-run hardening commits still need a publish; **(2)
-      Auth → "Allow anonymous sign-ins" = ON is still pending** (OFF at 17:39:
-      `422 anonymous_provider_disabled`); then (4) `npm run preflight -- --live` and (5) §3b on two
-      phones. Reliability run: `RUN_2026-09-18_RELIABILITY_HARDENING.md`.
+      Auth → "Allow anonymous sign-ins" is **ON** (confirmed 2026-09-19 by owner and Supabase Advisor). Ariel reports the no-login app works much better. Remaining M1 closure evidence: complete §3b on both phones and record it. Reliability run: `RUN_2026-09-18_RELIABILITY_HARDENING.md`.
 - [x] **M1-R8 — production hardening applied (2026-09-19).** `20260918180000` is in the production ledger; `set_updated_at` has pinned `search_path`, and `is_household_member` EXECUTE is revoked from `public`/`anon` while retained for authenticated/service_role. Advisor findings for mutable search_path and anonymous SECURITY DEFINER execution are cleared. Gated live suites remain for later branch validation once anonymous sign-ins are ON.
 - [ ] M1-R4 — housekeeping: reset the leaked branch DB password or delete branch `uyroeumwmjhrcbkesmgb`
       once M1 is closed.
@@ -84,6 +79,8 @@ Spec `docs/claude-tasks/M1_SHARED_TRUTH_RECOVERY.md`, status `M1_STATUS.md`, run
       cloud data first to be worth it).
 - [ ] M2-5 — run the ported hosted-branch e2e (`npm run e2e` against `uyroeumwmjhrcbkesmgb`) on a
       machine with `.env.e2e`.
+
+- [ ] **M2-8 — real-device UX feedback / DEC-032 (2026-09-19).** Direct user feedback selected this scope: calmer light palette + clearer borders; keyboard-safe mobile viewport; bottom nav simplified to Home/Quick Add/Journal; DailyContext 4-tile 2×2 mobile layout; cloud-synced daily steps with exact count or "ביצעתי", editable remembered goal, retroactive selected-date reporting, partner visibility and Realtime/offline queue. Backend migration is applied and verified; code/tests are on main; **full build gate + Lovable sync/publish remain before marking Done.**
 
 ## T-034 (P1) — Backend verification — **Done (2026-08-01)**
 
