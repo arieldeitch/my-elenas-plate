@@ -12,7 +12,7 @@ export function DateNavigator({ onOpenCalendar }: Props) {
   const isToday = isSameDay(selectedDate, today);
 
   return (
-    <div className="flex items-center gap-2 rounded-2xl bg-white border border-[#E9EEF3] px-3 py-3 shadow-soft">
+    <div className="flex items-center gap-2 rounded-2xl bg-card border border-border px-3 py-3 shadow-soft">
       <button
         onClick={onOpenCalendar}
         aria-label="פתיחת לוח שנה"

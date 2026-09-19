@@ -26,6 +26,8 @@ test("steps support exact, completed-only, goal editing and profile/date isolati
 
   await page.reload();
   await waitForApp(page);
+  await page.getByRole("tab", { name: /אלנה/ }).click();
+  await page.getByRole("button", { name: "יום קודם" }).click();
   await expect(page.getByRole("button", { name: /צעדים: 9,000/ })).toBeVisible();
 });
 

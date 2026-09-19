@@ -378,7 +378,8 @@ export function useSupabaseSync(args: Args): SyncControls {
           for (const mutation of pending()) {
             if (
               mutation.entity === "daily_step_logs" &&
-              (mutation.payload as { key?: string }).key === key
+              `${(mutation.payload as { profile?: string }).profile}::${(mutation.payload as { iso?: string }).iso}` ===
+                key
             )
               remove(mutation.id);
           }
@@ -491,7 +492,7 @@ export function useSupabaseSync(args: Args): SyncControls {
       const ctx = ctxRef.current;
       enqueueLatest(
         {
-          id: crypto.randomUUID(),
+          id: queueId(),
           type: "upsert",
           entity: "daily_step_logs",
           payload: { profile, iso: isoDate, report },
@@ -514,7 +515,7 @@ export function useSupabaseSync(args: Args): SyncControls {
       const ctx = ctxRef.current;
       enqueueLatest(
         {
-          id: crypto.randomUUID(),
+          id: queueId(),
           type: "upsert",
           entity: "profile_step_settings",
           payload: { profile, goal },
@@ -540,6 +541,12 @@ export function useSupabaseSync(args: Args): SyncControls {
     markStepsDirty,
     markStepGoalDirty,
   };
+}
+
+function queueId(): string {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `queue-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 async function uploadFoodMigration(

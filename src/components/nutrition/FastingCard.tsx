@@ -36,11 +36,11 @@ export function FastingCard({ onDone }: { onDone?: () => void }) {
   return (
     <section
       aria-labelledby="fasting-title"
-      className="rounded-3xl bg-white border border-[#E9EEF3] p-6 shadow-soft"
+      className="context-editor"
     >
       <div className="flex items-center gap-3">
         <div
-          className="grid h-12 w-12 place-items-center rounded-full bg-[#EDF6FD] text-[#2B84D6]"
+          className="grid h-12 w-12 place-items-center rounded-full bg-info-soft text-info"
           aria-hidden
         >
           <Hourglass className="h-5 w-5" strokeWidth={1.75} />

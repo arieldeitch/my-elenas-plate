@@ -54,11 +54,11 @@ export function WorkoutCard({ onDone }: { onDone?: () => void }) {
   return (
     <section
       aria-labelledby="workout-title"
-      className="rounded-3xl bg-white border border-[#E9EEF3] p-6 shadow-soft"
+      className="context-editor"
     >
       <div className="flex items-center gap-3">
         <div
-          className="grid h-12 w-12 place-items-center rounded-full bg-[#EDF8F2] text-[#17A668]"
+          className="grid h-12 w-12 place-items-center rounded-full bg-primary-soft text-primary"
           aria-hidden
         >
           <Dumbbell className="h-5 w-5" strokeWidth={1.75} />
