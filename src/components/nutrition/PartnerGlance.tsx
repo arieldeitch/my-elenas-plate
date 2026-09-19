@@ -56,7 +56,7 @@ export function PartnerGlance({ onOpen }: Props = {}) {
       aria-label={`${partner.name}: ${summary}${latestText ? `. ${latestText}` : ""}. ${
         onOpen ? `סקירת היום של ${partner.name}` : `מעבר לפרופיל של ${partner.name}`
       }`}
-      className="mt-3 flex w-full items-center gap-3 rounded-2xl border border-[#E9EEF3] bg-white px-4 py-3 text-right shadow-soft transition-all duration-200 hover:shadow-[0_4px_14px_rgba(20,40,70,0.06)] active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="mt-3 flex w-full items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-right shadow-soft transition-all duration-200 hover:shadow-[0_4px_14px_rgba(20,40,70,0.06)] active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <span
         className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-semibold text-white"
@@ -83,7 +83,7 @@ export function PartnerGlance({ onOpen }: Props = {}) {
                       ? "bg-primary text-white"
                       : status === "skipped"
                         ? "bg-[#94A3B4] text-white"
-                        : "border border-[#D5DEE8] bg-[#F5F8FB]",
+                        : "border border-border bg-secondary",
                   )}
                 >
                   {status === "logged" && <Check className="h-2 w-2" strokeWidth={4} />}
