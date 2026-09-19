@@ -5,8 +5,13 @@ import { DailyContext } from "./DailyContext";
 
 describe("DailyContext", () => {
   it("renders four equal-purpose context tiles and exposes both step modes", () => {
-    const { container } = render(<StoreProvider><DailyContext onOpenWeight={() => {}} /></StoreProvider>);
-    for (const label of ["שקילה", "אימון", "צום", "צעדים"]) expect(screen.getByText(label)).toBeInTheDocument();
+    const { container } = render(
+      <StoreProvider>
+        <DailyContext onOpenWeight={() => {}} />
+      </StoreProvider>,
+    );
+    for (const label of ["שקילה", "אימון", "צום", "צעדים"])
+      expect(screen.getByText(label)).toBeInTheDocument();
     expect(container.querySelectorAll(".context-tile")).toHaveLength(4);
     fireEvent.click(screen.getByRole("button", { name: /צעדים/ }));
     expect(screen.getByLabelText("מספר מדויק")).toBeInTheDocument();

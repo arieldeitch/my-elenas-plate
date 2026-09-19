@@ -8,12 +8,7 @@ interface Props {
   onAdd?: () => void;
 }
 
-export function BottomNav({
-  active = "home",
-  onHome,
-  onCalendar,
-  onAdd,
-}: Props) {
+export function BottomNav({ active = "home", onHome, onCalendar, onAdd }: Props) {
   return (
     <nav
       dir="rtl"

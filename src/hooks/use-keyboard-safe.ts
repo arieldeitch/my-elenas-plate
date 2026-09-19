@@ -16,7 +16,10 @@ export function useKeyboardSafeViewport() {
     };
 
     const update = () => {
-      root.style.setProperty("--visual-viewport-height", `${viewport?.height ?? window.innerHeight}px`);
+      root.style.setProperty(
+        "--visual-viewport-height",
+        `${viewport?.height ?? window.innerHeight}px`,
+      );
       revealFocused();
     };
 

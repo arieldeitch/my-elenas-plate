@@ -389,7 +389,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addWeighIn,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeProfile, selectedDate, syncState, days, weighInsMap, favoritesMap, recentsMap, foods, stepGoals],
+    [
+      activeProfile,
+      selectedDate,
+      syncState,
+      days,
+      weighInsMap,
+      favoritesMap,
+      recentsMap,
+      foods,
+      stepGoals,
+    ],
   );
 
   return <StoreCtx.Provider value={value}>{children}</StoreCtx.Provider>;

@@ -7,7 +7,12 @@ export interface Profile {
 }
 
 export type MealSlotId =
-  "breakfast" | "morning_snack" | "lunch" | "afternoon_snack" | "dinner" | "late";
+  | "breakfast"
+  | "morning_snack"
+  | "lunch"
+  | "afternoon_snack"
+  | "dinner"
+  | "late";
 
 export const MEAL_SLOTS: MealSlotId[] = [
   "breakfast",
@@ -113,7 +118,13 @@ export type MilkChoice = "ללא חלב" | "עם חלב";
 export const MILK_CHOICES: MilkChoice[] = ["ללא חלב", "עם חלב"];
 
 export type MilkType =
-  "חלב רגיל" | "חלב דל שומן" | "חלב ללא לקטוז" | "סויה" | "שקדים" | "שיבולת שועל" | "אחר";
+  | "חלב רגיל"
+  | "חלב דל שומן"
+  | "חלב ללא לקטוז"
+  | "סויה"
+  | "שקדים"
+  | "שיבולת שועל"
+  | "אחר";
 
 export const MILK_TYPES: MilkType[] = [
   "חלב רגיל",

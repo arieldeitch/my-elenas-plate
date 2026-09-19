@@ -174,7 +174,9 @@
     outline: none;
   }
 
-  .form-input:focus { box-shadow: 0 0 0 2px var(--primary); }
+  .form-input:focus {
+    box-shadow: 0 0 0 2px var(--primary);
+  }
 
   .icon-action {
     display: grid;
@@ -185,7 +187,9 @@
   }
 
   @media (min-width: 640px) {
-    .daily-context-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .daily-context-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
   }
 }
 

@@ -215,11 +215,18 @@ describe("store", () => {
     const yesterday = new Date(2026, 8, 18);
     act(() => result.current.setSelectedDate(yesterday));
     act(() => result.current.setSteps({ steps: 8_734, completed: false, goal: 10_000 }));
-    expect(result.current.getDay("me", "2026-09-18").steps).toEqual({ steps: 8_734, completed: false, goal: 10_000 });
+    expect(result.current.getDay("me", "2026-09-18").steps).toEqual({
+      steps: 8_734,
+      completed: false,
+      goal: 10_000,
+    });
 
     act(() => result.current.setActiveProfile("elena"));
     act(() => result.current.setSteps({ completed: true, goal: 10_000 }));
-    expect(result.current.getDay("elena", "2026-09-18").steps).toEqual({ completed: true, goal: 10_000 });
+    expect(result.current.getDay("elena", "2026-09-18").steps).toEqual({
+      completed: true,
+      goal: 10_000,
+    });
     expect(result.current.getDay("me", "2026-09-18").steps?.steps).toBe(8_734);
   });
 });

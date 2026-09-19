@@ -216,7 +216,11 @@ export function useSupabaseSync(args: Args): SyncControls {
         ctxRef.current = ctx;
         for (const mutation of pending()) {
           if (mutation.entity === "daily_step_logs") {
-            const payload = mutation.payload as { profile: ProfileId; iso: string; report: DailySteps };
+            const payload = mutation.payload as {
+              profile: ProfileId;
+              iso: string;
+              report: DailySteps;
+            };
             dirtySteps.current.set(`${payload.profile}::${payload.iso}`, payload.report);
           } else if (mutation.entity === "profile_step_settings") {
             const payload = mutation.payload as { profile: ProfileId; goal: number };
@@ -325,8 +329,10 @@ export function useSupabaseSync(args: Args): SyncControls {
         const key = `${p.profile}::${p.foodId}`;
         if (!dirtyPrefs.current.has(key)) dirtyPrefs.current.set(key, p);
       }
-      for (const [key, report] of steps) if (!dirtySteps.current.has(key)) dirtySteps.current.set(key, report);
-      for (const [profile, goal] of stepGoals) if (!dirtyStepGoals.current.has(profile)) dirtyStepGoals.current.set(profile, goal);
+      for (const [key, report] of steps)
+        if (!dirtySteps.current.has(key)) dirtySteps.current.set(key, report);
+      for (const [profile, goal] of stepGoals)
+        if (!dirtyStepGoals.current.has(profile)) dirtyStepGoals.current.set(profile, goal);
     };
 
     void (async () => {
@@ -361,13 +367,18 @@ export function useSupabaseSync(args: Args): SyncControls {
           const [profile, isoDate] = key.split("::") as [ProfileId, string];
           await pushDailySteps(ctx, profile, isoDate, report);
           for (const mutation of pending()) {
-            if (mutation.entity === "daily_step_logs" && (mutation.payload as { key?: string }).key === key) remove(mutation.id);
+            if (
+              mutation.entity === "daily_step_logs" &&
+              (mutation.payload as { key?: string }).key === key
+            )
+              remove(mutation.id);
           }
         }
         for (const [profile, goal] of stepGoals) {
           await pushStepGoal(ctx, profile, goal);
           for (const mutation of pending()) {
-            if (mutation.entity === "profile_step_settings" && mutation.profileId === profile) remove(mutation.id);
+            if (mutation.entity === "profile_step_settings" && mutation.profileId === profile)
+              remove(mutation.id);
           }
         }
         for (const k of dayKeys) inFlightDays.current.delete(k);
@@ -462,21 +473,53 @@ export function useSupabaseSync(args: Args): SyncControls {
     [schedule],
   );
 
-  const markStepsDirty = useCallback((profile: ProfileId, isoDate: string, report: DailySteps) => {
-    if (!isSupabaseConfigured()) return;
-    dirtySteps.current.set(`${profile}::${isoDate}`, report);
-    const ctx = ctxRef.current;
-    if (ctx) enqueueLatest({ id: crypto.randomUUID(), type: "upsert", entity: "daily_step_logs", payload: { profile, iso: isoDate, report }, householdId: ctx.householdId, profileId: profile, createdAt: new Date().toISOString(), retryCount: 0 }, `${profile}::${isoDate}`);
-    schedule();
-  }, [schedule]);
+  const markStepsDirty = useCallback(
+    (profile: ProfileId, isoDate: string, report: DailySteps) => {
+      if (!isSupabaseConfigured()) return;
+      dirtySteps.current.set(`${profile}::${isoDate}`, report);
+      const ctx = ctxRef.current;
+      if (ctx)
+        enqueueLatest(
+          {
+            id: crypto.randomUUID(),
+            type: "upsert",
+            entity: "daily_step_logs",
+            payload: { profile, iso: isoDate, report },
+            householdId: ctx.householdId,
+            profileId: profile,
+            createdAt: new Date().toISOString(),
+            retryCount: 0,
+          },
+          `${profile}::${isoDate}`,
+        );
+      schedule();
+    },
+    [schedule],
+  );
 
-  const markStepGoalDirty = useCallback((profile: ProfileId, goal: number) => {
-    if (!isSupabaseConfigured()) return;
-    dirtyStepGoals.current.set(profile, goal);
-    const ctx = ctxRef.current;
-    if (ctx) enqueueLatest({ id: crypto.randomUUID(), type: "upsert", entity: "profile_step_settings", payload: { profile, goal }, householdId: ctx.householdId, profileId: profile, createdAt: new Date().toISOString(), retryCount: 0 }, profile);
-    schedule();
-  }, [schedule]);
+  const markStepGoalDirty = useCallback(
+    (profile: ProfileId, goal: number) => {
+      if (!isSupabaseConfigured()) return;
+      dirtyStepGoals.current.set(profile, goal);
+      const ctx = ctxRef.current;
+      if (ctx)
+        enqueueLatest(
+          {
+            id: crypto.randomUUID(),
+            type: "upsert",
+            entity: "profile_step_settings",
+            payload: { profile, goal },
+            householdId: ctx.householdId,
+            profileId: profile,
+            createdAt: new Date().toISOString(),
+            retryCount: 0,
+          },
+          profile,
+        );
+      schedule();
+    },
+    [schedule],
+  );
 
   return {
     active,

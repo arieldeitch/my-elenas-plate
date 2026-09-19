@@ -4,7 +4,15 @@
  * require a configured, authenticated client (see requireSupabase()).
  */
 import { requireSupabase } from "./client";
-import type { DailySteps, DayData, Food, MealSlotId, WeighIn, WorkoutFeeling, WorkoutType } from "../domain";
+import type {
+  DailySteps,
+  DayData,
+  Food,
+  MealSlotId,
+  WeighIn,
+  WorkoutFeeling,
+  WorkoutType,
+} from "../domain";
 import { MEAL_SLOTS } from "../domain";
 import type {
   FoodEntryRow,
@@ -225,10 +233,12 @@ export async function upsertStepGoal(
   dailyGoal: number,
 ): Promise<void> {
   const sb = requireSupabase();
-  const { error } = await sb.from("profile_step_settings").upsert(
-    { household_id: householdId, profile_id: profileId, daily_goal: dailyGoal },
-    { onConflict: "profile_id" },
-  );
+  const { error } = await sb
+    .from("profile_step_settings")
+    .upsert(
+      { household_id: householdId, profile_id: profileId, daily_goal: dailyGoal },
+      { onConflict: "profile_id" },
+    );
   if (error) throw error;
 }
 

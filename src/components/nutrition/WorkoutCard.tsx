@@ -109,7 +109,10 @@ export function WorkoutCard({ onDone }: { onDone?: () => void }) {
           {editing && (
             <div className="pt-1">
               <button
-                onClick={() => { setEditing(false); onDone?.(); }}
+                onClick={() => {
+                  setEditing(false);
+                  onDone?.();
+                }}
                 className="inline-flex items-center gap-1 rounded-2xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
               >
                 <X className="h-4 w-4" /> סיום
