@@ -8,6 +8,7 @@ import { formatShortDate } from "@/lib/format";
 import { coffeeSummary } from "@/lib/coffee";
 import { canStep, formatQuantity, stepAmount, usualQuantity } from "@/lib/quantity";
 import { cn } from "@/lib/utils";
+import { formatPoints, pointsForEntry } from "@/lib/points";
 import { FoodSearch } from "./FoodSearch";
 import { QuantitySelector } from "./QuantitySelector";
 import { CoffeeSelector } from "./CoffeeSelector";
@@ -103,7 +104,7 @@ export function MealEditor({ slot, onClose }: Props) {
     }
     const added = store.addEntry(slot!, { foodId: food.id, foodName: food.name, ...usual });
     setJustAdded(added.id);
-    toast(`נוסף: ${food.name} · ${formatQuantity(added)} · אפשר לערוך כמות מיד`, { duration: 2500 });
+    toast(`נוסף: ${food.name} · ${formatQuantity(added)} · ${formatPoints(added.pointsValue ?? 0)} נק׳ · אפשר לערוך כמות מיד`, { duration: 2500 });
     return "added";
   }
 
@@ -326,7 +327,9 @@ function EntryRow({
   onDelete: () => void;
   onStep: (direction: 1 | -1) => void;
 }) {
+  const { foods } = useStore();
   const quantityText = formatQuantity(entry);
+  const pointValue = pointsForEntry(entry, foods.find((f) => f.id === entry.foodId));
   const detail = entry.coffee
     ? [coffeeSummary(entry.coffee), quantityText].filter(Boolean).join(" · ")
     : quantityText;
@@ -348,6 +351,7 @@ function EntryRow({
         <div className="min-w-0 flex-1">
           <div className="truncate font-medium text-foreground">{entry.foodName}</div>
           {entry.coffee && <div className="truncate text-xs text-muted-foreground">{detail}</div>}
+          <div className="text-[11px] font-medium text-primary">{formatPoints(pointValue)} נק׳</div>
           {entry.coffee?.note && (
             <div className="truncate text-xs text-muted-foreground/80">{entry.coffee.note}</div>
           )}
