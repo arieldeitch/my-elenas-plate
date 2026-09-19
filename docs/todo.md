@@ -16,9 +16,20 @@ holds 1 household, 2 profiles (אריאל/אלנה), 6 meal slots, RLS on 10 tab
 - [x] Reusable VisualViewport/dvh keyboard safety applied to meal, weight, fasting, and steps inputs.
 - [x] Daily steps: exact or completed-only, editable remembered goal, selected-date backfill, person isolation.
 - [x] Narrow `steps.set` queue operation, hydration/reconnect guards, cloud repository, and Realtime table.
-- [ ] **Production action:** review and apply only `supabase/apply_daily_steps_production.sql`, then run
-      `supabase/verify_daily_steps.sql`; do not use plain `supabase db push`.
-- [ ] Publish the verified revision after the migration is confirmed.
+- [x] **Production action:** daily-steps migration applied and verified on 2026-09-19.
+- [x] Daily-steps-capable revision published before DEC-033 work began.
+
+## DEC-033 — quantity restoration and internal points v1
+
+- [x] Typed search always opens quantity selection; quick favourite/recent chips retain trusted one-tap add.
+- [x] Quantity UI exposes מדידה / לפי תחושה, all units, and user-facing מעט / במידה / יותר מדי / מוגזם.
+- [x] Keyboard path removes delayed/smooth recenter and suppresses sheet animation while keyboard is open.
+- [x] Internal transparent points v1 implemented with deterministic category/portion rules and tests.
+- [x] New/edited entries persist points snapshot + model version; old rows remain untouched and use fallback calculation.
+- [x] Per-profile daily points budget is cloud-synced, durable-queue backed and Realtime-updated; default 30 is a technical placeholder, not a health recommendation.
+- [x] Supabase migration `20260919082000_internal_points_v1` applied/verified in production with RLS intact.
+- [ ] Publish current `main` and run real-phone check for keyboard, quantity modes/units, points add/edit/delete, and budget sync.
+- [ ] Calibrate points v1 from real-use feedback; no weekly bank in v1.
 
 ## M1 — Shared-truth recovery (P0) — **Code Done · Release Blocked (2026-09-18)**
 
