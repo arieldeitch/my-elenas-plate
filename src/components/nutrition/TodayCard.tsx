@@ -6,11 +6,13 @@ import { calcCompletion } from "@/lib/completion";
 import { latestActivity } from "@/lib/activity";
 import { MEAL_LABELS } from "@/lib/meal-slots";
 import { cn } from "@/lib/utils";
+import { formatPoints, pointsForDay, pointsRemaining } from "@/lib/points";
 
 interface Props {
   onOpenCalendar: () => void;
   /** M2-4: open the Day Review for this person and date. */
   onOpenReview?: () => void;
+  onOpenPoints?: () => void;
 }
 
 /**
@@ -23,13 +25,16 @@ interface Props {
  * M2-4: the progress + "לאחרונה" rows are one tap target that opens the Day
  * Review ("what exactly did I eat today?") — no extra button on the home.
  */
-export function TodayCard({ onOpenCalendar, onOpenReview }: Props) {
-  const { activeProfile, selectedDate, setSelectedDate, getDay } = useStore();
+export function TodayCard({ onOpenCalendar, onOpenReview, onOpenPoints }: Props) {
+  const { activeProfile, selectedDate, setSelectedDate, getDay, foods, getPointsBudget } = useStore();
   const profile = PROFILES.find((p) => p.id === activeProfile)!;
   const isToday = isSameDay(selectedDate, new Date());
   const day = getDay(activeProfile, toISODate(selectedDate));
   const completion = useMemo(() => calcCompletion(day.meals), [day.meals]);
   const latest = useMemo(() => latestActivity(day), [day]);
+  const points = useMemo(() => pointsForDay(day, foods), [day, foods]);
+  const pointsBudget = getPointsBudget(activeProfile);
+  const remaining = pointsRemaining(points, pointsBudget);
   const pct = (completion.documented / completion.total) * 100;
   const barColor =
     completion.state === "full"
@@ -92,6 +97,33 @@ export function TodayCard({ onOpenCalendar, onOpenReview }: Props) {
           </button>
         </div>
       </div>
+
+      <button
+        type="button"
+        onClick={onOpenPoints}
+        disabled={!onOpenPoints}
+        data-testid="today-points"
+        className={cn(
+          "mt-2 flex w-full items-center justify-between rounded-xl border px-3 py-2 text-right",
+          remaining < 0 ? "border-warn/45 bg-warn-soft" : "border-border bg-secondary/55",
+          !onOpenPoints && "pointer-events-none",
+        )}
+        aria-label={`נקודות ${formatPoints(points)} מתוך ${formatPoints(pointsBudget)}. ${
+          remaining >= 0 ? `נשארו ${formatPoints(remaining)}` : `חריגה ${formatPoints(Math.abs(remaining))}`
+        }. עריכת תקציב יומי`}
+      >
+        <span>
+          <span className="text-xs font-medium text-muted-foreground">נקודות</span>
+          <span className="mr-2 font-bold tabular-nums text-foreground">
+            {formatPoints(points)} / {formatPoints(pointsBudget)}
+          </span>
+        </span>
+        <span className={cn("text-xs font-semibold", remaining < 0 ? "text-warn-foreground" : "text-primary")}>
+          {remaining >= 0
+            ? `נשארו ${formatPoints(remaining)}`
+            : `חריגה ${formatPoints(Math.abs(remaining))}`}
+        </span>
+      </button>
 
       {/* Rows 2–3: progress + latest — ONE tap target that opens the Day Review */}
       <button
