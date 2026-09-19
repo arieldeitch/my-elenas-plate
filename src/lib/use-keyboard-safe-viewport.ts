@@ -52,7 +52,18 @@ export function useKeyboardSafeViewport(): void {
     // keyboard opens onto the final composition instead of moving it afterwards.
     const onPointerDown = (event: PointerEvent) => {
       const target = editable(event.target) ? event.target : null;
-      if (target) ensureVisible(target);
+      if (!target) return;
+      const coarse =
+        event.pointerType === "touch" ||
+        (typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches);
+      if (coarse) {
+        // Pre-position while the tap is still being handled, before focus asks
+        // the OS to animate the software keyboard. This avoids the visible
+        // "keyboard opens, then the form jumps" sequence.
+        target.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
+      } else {
+        ensureVisible(target);
+      }
     };
 
     const onFocus = (event: FocusEvent) => {
