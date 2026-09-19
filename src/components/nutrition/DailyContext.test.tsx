@@ -17,4 +17,16 @@ describe("DailyContext", () => {
     expect(screen.getByLabelText("מספר מדויק")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /ביצעתי/ })).toBeInTheDocument();
   });
+
+  it("saves an exact step report through the editor", () => {
+    render(
+      <StoreProvider>
+        <DailyContext onOpenWeight={() => {}} />
+      </StoreProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /צעדים/ }));
+    fireEvent.change(screen.getByLabelText("מספר מדויק"), { target: { value: "8734" } });
+    fireEvent.click(screen.getByRole("button", { name: "שמירת מספר" }));
+    expect(screen.getByText("8,734")).toBeInTheDocument();
+  });
 });

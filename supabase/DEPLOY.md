@@ -1,6 +1,17 @@
 # Deploying to the remote Supabase project
 
-## APPLIED (2026-07-25) — nothing is pending
+## PENDING REVIEW (2026-09-19) — daily steps only
+
+`scripts/migrations/20260919090000_daily_steps.sql` is a reviewed, forward-only candidate containing
+the two steps tables, constraints, indexes, household-member RLS, update triggers and Realtime
+publication changes. It has **not** been applied to production. Because this workspace does not expose
+the registered migration writer, the SQL is staged outside the managed migration directory.
+
+Production action: review the SQL, register it through the controlling environment's migration tool as
+`20260919090000_daily_steps.sql`, apply only that migration, regenerate database types, then verify one
+goal and one dated report for each profile plus cross-client Realtime. Do not run plain `supabase db push`.
+
+## APPLIED BASELINE (2026-07-25)
 
 The production bootstrap is **complete**. Applied once, manually, in the SQL Editor of project
 `rqgoiuztphkcvbwtbxbj`:
