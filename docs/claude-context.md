@@ -1,7 +1,7 @@
 # Claude Context
 
 Fast-start context for Claude Code. The latest user instruction always overrides older docs.
-Updated 2026-09-19 (twelfth run: DEC-034 points v2-il + personalised budget; migration 20260919100000 prepared, NOT applied; publish after apply).
+Updated 2026-09-19 (DEC-034 points v2-il + personalised budget; migration 20260919100000 applied/verified in production; Lovable publish triggered; phone acceptance next).
 
 ## Start state
 
@@ -17,9 +17,7 @@ Updated 2026-09-19 (twelfth run: DEC-034 points v2-il + personalised budget; mig
   is the pure engine (`calculatePointsV2`, `scoreEntry`, `pointsForEntry` = persisted snapshot wins,
   `resolvePointsBudget`, `ageFromBirthDate`, `latestWeightKg`). Vegetables 0 always (plain salads are
   calibrated 0 via `FoodDef.pointsPerPortion`), fruit 1/portion. Profile facts (sex/birth date/height/
-  goal/override) live on `profiles` — migration `20260919100000` **prepared, not applied**; apply script
-  `supabase/apply_points_v2_production.sql`, verify `supabase/verify_points_v2.sql`. Publish only after
-  the apply. Elena calibrates via the table in the run record; never ask for proprietary formulas.
+  goal/override) live on `profiles` — migration `20260919100000` **applied + verified on production 2026-09-19**; no facts were guessed and old point snapshots were untouched. `supabase/apply_points_v2_production.sql` / `supabase/verify_points_v2.sql` remain as deployment evidence. Lovable publish was triggered after the apply; phone acceptance is next. Elena calibrates via the table in the run record; never ask for proprietary formulas.
 - **DEC-033 is implemented on main (2026-09-19).** Typed search opens QuantitySelector; favourite/recent chips keep trusted quick add. Quantity UI is measured or subjective with explicit units. Keyboard safety has no smooth/delayed post-open recenter. Internal points v1 uses transparent category×portion rules, persists entry snapshots, and has a synced per-profile daily budget. Production migration `20260919082000_internal_points_v1` is applied and verified; publish + phone acceptance remain. It is NOT Weight Watchers' formula and adds no calories/macros.
 - **DEC-032 is implemented (2026-09-19).** The daily loop now uses a calmer palette, three-action bottom
   navigation, a four-tile context grid (weight/workout/fasting/steps), and shared daily steps with exact
