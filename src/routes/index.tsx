@@ -18,6 +18,7 @@ import { BrandMark } from "@/components/nutrition/BrandMark";
 import { RuntimeModeNotice } from "@/components/nutrition/RuntimeModeNotice";
 import { DeviceProfileChooser } from "@/components/nutrition/DeviceProfileChooser";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { useKeyboardSafeViewport } from "@/lib/use-keyboard-safe-viewport";
 
 // The page title must not claim "demo" when the build is a connected cloud build.
 const TITLE = isSupabaseConfigured() ? "מעקב תזונה משותף" : "מעקב תזונה משותף — גרסת הדגמה";
@@ -40,6 +41,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
+  useKeyboardSafeViewport();
   const store = useStore();
   const [openSlot, setOpenSlot] = useState<MealSlotId | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -112,7 +114,6 @@ function Home() {
         active="home"
         onCalendar={() => setCalendarOpen(true)}
         onAdd={() => setOpenSlot(nextSlot)}
-        onHistory={() => setCalendarOpen(true)}
       />
     </div>
   );
