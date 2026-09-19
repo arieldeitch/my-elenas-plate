@@ -91,7 +91,6 @@ export interface SyncControls {
 const WEIGH_KINDS = new Set(["weighin.insert"]);
 const PREF_KINDS = new Set(["pref.favorite", "pref.recent"]);
 const POINTS_BUDGET_KINDS = new Set(["profile.points-budget.set"]);
-const POINTS_BUDGET_KINDS = new Set(["profile.points-budget.set"]);
 const DRAIN_DEBOUNCE_MS = 400;
 /**
  * Converging a day from the cloud after our own drain and after each realtime
@@ -184,21 +183,6 @@ export function useSupabaseSync(args: Args): SyncControls {
       }
     },
     [setFavoritesMap, setRecentsMap],
-  );
-
-  const hydratePointsBudgetFor = useCallback(
-    async (profile: ProfileId) => {
-      const ctx = ctxRef.current;
-      if (!ctx || queue.hasPendingForProfile(profile, POINTS_BUDGET_KINDS)) return;
-      try {
-        const budget = await hydrateProfilePointsBudget(ctx, profile);
-        if (queue.hasPendingForProfile(profile, POINTS_BUDGET_KINDS)) return;
-        setDailyPointsBudgets((prev) => ({ ...prev, [profile]: budget }));
-      } catch (err) {
-        console.warn("hydrate points budget failed", err);
-      }
-    },
-    [setDailyPointsBudgets],
   );
 
   const hydratePointsBudgetFor = useCallback(

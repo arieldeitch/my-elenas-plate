@@ -1,11 +1,13 @@
-import { useMemo } from "react";
-import { Calendar, ChevronLeft, ChevronRight, ListChecks } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Calendar, ChevronLeft, ChevronRight, ListChecks, Pencil } from "lucide-react";
 import { useStore, PROFILES } from "@/lib/store";
 import { addDays, formatShortDate, isSameDay, toISODate } from "@/lib/format";
 import { calcCompletion } from "@/lib/completion";
 import { latestActivity } from "@/lib/activity";
 import { MEAL_LABELS } from "@/lib/meal-slots";
 import { cn } from "@/lib/utils";
+import { formatPoints, pointsForDay, pointsRemaining } from "@/lib/points";
+import { PointsBudgetEditor } from "./PointsBudgetEditor";
 
 interface Props {
   onOpenCalendar: () => void;
@@ -24,13 +26,17 @@ interface Props {
  * Review ("what exactly did I eat today?") — no extra button on the home.
  */
 export function TodayCard({ onOpenCalendar, onOpenReview }: Props) {
-  const { activeProfile, selectedDate, setSelectedDate, getDay } = useStore();
+  const { activeProfile, selectedDate, setSelectedDate, getDay, foods, dailyPointsBudgets } = useStore();
+  const [budgetOpen, setBudgetOpen] = useState(false);
   const profile = PROFILES.find((p) => p.id === activeProfile)!;
   const isToday = isSameDay(selectedDate, new Date());
   const day = getDay(activeProfile, toISODate(selectedDate));
   const completion = useMemo(() => calcCompletion(day.meals), [day.meals]);
   const latest = useMemo(() => latestActivity(day), [day]);
   const pct = (completion.documented / completion.total) * 100;
+  const points = pointsForDay(day, foods);
+  const budget = dailyPointsBudgets[activeProfile];
+  const remaining = pointsRemaining(points, budget);
   const barColor =
     completion.state === "full"
       ? "bg-primary"
@@ -93,6 +99,19 @@ export function TodayCard({ onOpenCalendar, onOpenReview }: Props) {
         </div>
       </div>
 
+      <div className="mt-3 flex items-center justify-between rounded-xl border border-border bg-secondary/60 px-3 py-2" data-testid="today-points">
+        <div>
+          <div className="text-xs text-muted-foreground">נקודות היום</div>
+          <div className="font-bold tabular-nums">{formatPoints(points)} / {budget}</div>
+        </div>
+        <div className={cn("text-sm font-semibold tabular-nums", remaining < 0 ? "text-destructive" : "text-primary")}>
+          {remaining < 0 ? `${formatPoints(Math.abs(remaining))} מעל` : `${formatPoints(remaining)} נותרו`}
+        </div>
+        <button type="button" onClick={() => setBudgetOpen(true)} aria-label="עריכת תקציב נקודות" className="grid h-10 w-10 place-items-center rounded-xl hover:bg-card">
+          <Pencil className="h-4 w-4" />
+        </button>
+      </div>
+
       {/* Rows 2–3: progress + latest — ONE tap target that opens the Day Review */}
       <button
         type="button"
@@ -152,6 +171,7 @@ export function TodayCard({ onOpenCalendar, onOpenReview }: Props) {
           )}
         </p>
       </button>
+      <PointsBudgetEditor open={budgetOpen} onClose={() => setBudgetOpen(false)} />
     </section>
   );
 }
