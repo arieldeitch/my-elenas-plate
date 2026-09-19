@@ -1,4 +1,4 @@
-import { Check, ChevronLeft, Dumbbell, Minus, Timer } from "lucide-react";
+import { Check, ChevronLeft, Dumbbell, Footprints, Minus, Timer } from "lucide-react";
 import { useMemo } from "react";
 import { MEAL_SLOTS, partnerOf, type ProfileId } from "@/lib/domain";
 import { MEAL_LABELS } from "@/lib/meal-slots";
@@ -46,6 +46,12 @@ export function PartnerGlance({ onOpen }: Props = {}) {
     : null;
   const workout = day.workout?.performed ? (day.workout.type ?? "אימון") : null;
   const fasting = day.fasting ? `${day.fasting.start}–${day.fasting.end}` : null;
+  const steps =
+    day.steps?.steps != null
+      ? day.steps.steps.toLocaleString("he-IL")
+      : day.steps?.completed
+        ? "בוצע"
+        : null;
 
   return (
     <button
@@ -92,7 +98,7 @@ export function PartnerGlance({ onOpen }: Props = {}) {
               );
             })}
           </span>
-          {(workout || fasting) && (
+          {(workout || fasting || steps) && (
             <span
               className="flex items-center gap-1.5 text-[11px] text-muted-foreground"
               aria-hidden
@@ -100,6 +106,16 @@ export function PartnerGlance({ onOpen }: Props = {}) {
               {workout && (
                 <span className="inline-flex items-center gap-0.5" data-testid="partner-workout">
                   <Dumbbell className="h-3 w-3" />
+                </span>
+              )}
+              {steps && (
+                <span
+                  className="inline-flex items-center gap-0.5 tabular-nums"
+                  data-testid="partner-steps"
+                  title={`צעדים: ${steps}`}
+                >
+                  <Footprints className="h-3 w-3" />
+                  {steps}
                 </span>
               )}
               {fasting && (
