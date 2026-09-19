@@ -27,4 +27,11 @@ from `supabase/verify_daily_steps.sql`. Never run plain `supabase db push`.
 
 ## Verification
 
-Final command results and revision are recorded in the final delivery report. No Docker was started.
+- `bun run typecheck` — passed.
+- `bun run lint` — passed with eight pre-existing Fast Refresh warnings and no errors.
+- `bunx vitest run` — passed: 41 files / 343 tests; 3 live-integration files / 16 tests skipped by their environment gates. This includes the PGlite migration suite.
+- `bun run build` — passed; only the existing bundle-size/Vite notices remain.
+- `bun run preflight -- --env` — passed all five available checks; privileged SQL verification remains manual.
+- Hermetic Playwright and the 360×740 / 412×915 mobile walk were attempted, but Chromium could not start because this container lacks `libglib-2.0.so.0`; `apt-get` is unavailable and the fallback FHS sandbox is not permitted. Deterministic component, axe, overflow-layout, and VisualViewport tests remain green.
+
+No Docker was started and no production SQL was applied.
