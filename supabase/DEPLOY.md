@@ -1,5 +1,9 @@
 # Deploying to the remote Supabase project
 
+## Daily points v1 (2026-09-19, DEC-033) — PENDING REVIEW, NOT APPLIED
+
+Review `supabase/migrations/20260919053000_daily_points_v1.sql`, then apply only `supabase/apply_daily_points_production.sql` through the approved production SQL path. Run `supabase/verify_daily_points.sql` afterwards. This is additive, leaves historical entry snapshots null, preserves RLS/grants, and does not backfill. Never run plain `supabase db push`.
+
 ## Daily steps (2026-09-19, DEC-032) — PENDING REVIEW, NOT APPLIED
 
 Review `supabase/migrations/20260919044237_daily_steps.sql`, then apply only
