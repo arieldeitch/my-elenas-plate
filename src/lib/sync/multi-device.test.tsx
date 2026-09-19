@@ -434,8 +434,9 @@ describe("network budget (reads / writes / subscriptions)", () => {
     const A = await mountDevice(USER_A, "me");
     const activationReads = reads();
     const activationWrites = writes();
-    // profiles + foods + own day (6 incl. daily_steps + latest goal) + weigh-ins + prefs + partner day (6) ≈ 16
-    expect(activationReads).toBeLessThanOrEqual(16);
+    // profiles + foods + profile budget + own day (6 incl. daily_steps + latest goal)
+    // + weigh-ins + prefs + partner day (6) ≈ 17
+    expect(activationReads).toBeLessThanOrEqual(17);
     expect(activationWrites).toBe(0);
     expect(fake.channels.size).toBe(1);
     expect(fake.log.filter((l) => l.table === "profiles" && l.action === "select")).toHaveLength(1);
