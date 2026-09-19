@@ -53,6 +53,13 @@ export function enqueue(m: QueuedMutation): void {
   write(items);
 }
 
+/** Replaces an older unsent mutation for the same logical record. */
+export function enqueueLatest(m: QueuedMutation, logicalKey: string): void {
+  const items = read().filter((x) => `${x.entity}:${x.profileId ?? ""}:${String((x.payload as { key?: string })?.key ?? "")}` !== `${m.entity}:${m.profileId ?? ""}:${logicalKey}`);
+  items.push({ ...m, payload: { ...(m.payload as object), key: logicalKey } });
+  write(items);
+}
+
 /** Pending, non-quarantined mutations in insertion order. */
 export function pending(): QueuedMutation[] {
   return read().filter((m) => !m.quarantined);
