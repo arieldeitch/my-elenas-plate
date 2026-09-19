@@ -5,18 +5,18 @@ export const DEFAULT_DAILY_POINTS_BUDGET = 30;
 
 const CATEGORY_POINTS: Record<string, number> = {
   "ירקות ועשבי תיבול": 0,
-  "פירות": 0,
+  פירות: 0,
   "מוצרי חלב ותחליפים": 2,
-  "ביצים": 2,
+  ביצים: 2,
   "לחם ומאפים": 3,
   "דגנים ופחמימות": 4,
-  "קטניות": 3,
+  קטניות: 3,
   "עוף ובשר": 4,
-  "דגים": 3,
+  דגים: 3,
   "מנות ותבשילים": 5,
   "אגוזים, גרעינים וממרחים": 4,
   "חטיפים ומתוקים": 6,
-  "משקאות": 2,
+  משקאות: 2,
   "רטבים, שמנים ותבלינים": 3,
 };
 
@@ -30,7 +30,8 @@ const SUBJECTIVE_FACTOR: Record<SubjectiveAmount, number> = {
 export function portionFactor(
   entry: Pick<FoodEntry, "mode" | "amount" | "unit" | "subjective">,
 ): number {
-  if (entry.mode === "subjective") return entry.subjective ? SUBJECTIVE_FACTOR[entry.subjective] : 1;
+  if (entry.mode === "subjective")
+    return entry.subjective ? SUBJECTIVE_FACTOR[entry.subjective] : 1;
   const amount = Math.max(0, entry.amount ?? 0);
   const unit: Unit | undefined = entry.unit;
   if (unit === "גרם") return amount / 100;

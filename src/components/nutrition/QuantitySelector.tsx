@@ -36,9 +36,10 @@ export function QuantitySelector({
   const suggested = food.suggestedUnits ?? [food.defaultUnit ?? "יחידה"];
   const unitList = showAllUnits ? ALL_UNITS : suggested;
 
-  const previewEntry: Omit<FoodEntry, "id"> = mode === "measured"
-    ? { foodId: food.id, foodName: food.name, mode, amount: parseAmount(amount), unit }
-    : { foodId: food.id, foodName: food.name, mode, subjective };
+  const previewEntry: Omit<FoodEntry, "id"> =
+    mode === "measured"
+      ? { foodId: food.id, foodName: food.name, mode, amount: parseAmount(amount), unit }
+      : { foodId: food.id, foodName: food.name, mode, subjective };
 
   function handleSubmit() {
     if (mode === "measured") {
@@ -172,7 +173,11 @@ export function QuantitySelector({
       )}
 
       {pointsPreview && (
-        <div className="rounded-xl bg-info-soft px-3 py-2 text-sm font-medium text-info" aria-live="polite" data-testid="points-preview">
+        <div
+          className="rounded-xl bg-info-soft px-3 py-2 text-sm font-medium text-info"
+          aria-live="polite"
+          data-testid="points-preview"
+        >
           {formatPoints(pointsPreview(previewEntry))} נק׳
         </div>
       )}

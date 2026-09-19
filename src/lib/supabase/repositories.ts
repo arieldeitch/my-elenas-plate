@@ -60,7 +60,6 @@ export async function bootstrapHousehold(): Promise<HouseholdContext> {
   return { householdId: householdId as string, profileIdBySlug, pointsBudgetBySlug };
 }
 
-
 export async function loadProfilePointsBudget(profileId: string): Promise<number> {
   const sb = requireSupabase();
   const { data, error } = await sb

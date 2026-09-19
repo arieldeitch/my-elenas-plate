@@ -21,7 +21,11 @@ export function useKeyboardSafeViewport(): void {
       root.style.setProperty("--app-viewport-height", `${Math.round(height)}px`);
       root.style.setProperty("--app-viewport-top", `${Math.round(offsetTop)}px`);
       const active = document.activeElement;
-      if (active instanceof HTMLElement && active.matches(FOCUSABLE) && isObscured(active, offsetTop, height)) {
+      if (
+        active instanceof HTMLElement &&
+        active.matches(FOCUSABLE) &&
+        isObscured(active, offsetTop, height)
+      ) {
         active.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "auto" });
       }
     };

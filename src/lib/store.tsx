@@ -236,7 +236,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       dailyPointsBudgets,
       foods,
     });
-  }, [hydrated, activeProfile, days, weighInsMap, favoritesMap, recentsMap, dailyPointsBudgets, foods]);
+  }, [
+    hydrated,
+    activeProfile,
+    days,
+    weighInsMap,
+    favoritesMap,
+    recentsMap,
+    dailyPointsBudgets,
+    foods,
+  ]);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Never let the demo "saved" pulse fire on an unmounted provider.

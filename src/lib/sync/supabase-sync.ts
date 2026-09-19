@@ -239,7 +239,10 @@ export function hydrateFoods(ctx: HouseholdContext): Promise<Food[]> {
 }
 
 /** Loads a profile's preference rows (favorites + recents). */
-export function hydrateProfilePointsBudget(ctx: HouseholdContext, local: ProfileId): Promise<number> {
+export function hydrateProfilePointsBudget(
+  ctx: HouseholdContext,
+  local: ProfileId,
+): Promise<number> {
   const profileId = profileIdFor(ctx, local);
   if (!profileId) return Promise.resolve(30);
   return loadProfilePointsBudget(profileId);
@@ -295,8 +298,8 @@ export function describeChange(
   const change: RealtimeChange = { table, eventType: payload.eventType };
   const profileId =
     table === "profiles"
-      ? row?.id ?? (payload.old as RowLike | undefined)?.id
-      : row?.profile_id ?? (payload.old as RowLike | undefined)?.profile_id;
+      ? (row?.id ?? (payload.old as RowLike | undefined)?.id)
+      : (row?.profile_id ?? (payload.old as RowLike | undefined)?.profile_id);
   if (profileId) change.profile = localProfileFor(ctx, profileId);
   const iso = row?.log_date ?? (payload.old as RowLike | undefined)?.log_date;
   if (iso) change.iso = iso;

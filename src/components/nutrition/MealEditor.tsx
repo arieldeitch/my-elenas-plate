@@ -97,10 +97,16 @@ export function MealEditor({ slot, onClose }: Props) {
     }
     const added = store.addEntry(slot!, { foodId: food.id, foodName: food.name, ...usual });
     setJustAdded(added.id);
-    toast(`נוסף: ${food.name} · ${formatQuantity(added)} · ${formatPoints(added.pointsValue ?? 0)} נק׳`, {
-      duration: 3000,
-      action: { label: "עריכת כמות", onClick: () => setView({ kind: "quantity", food, editing: added }) },
-    });
+    toast(
+      `נוסף: ${food.name} · ${formatQuantity(added)} · ${formatPoints(added.pointsValue ?? 0)} נק׳`,
+      {
+        duration: 3000,
+        action: {
+          label: "עריכת כמות",
+          onClick: () => setView({ kind: "quantity", food, editing: added }),
+        },
+      },
+    );
     return "added";
   }
 

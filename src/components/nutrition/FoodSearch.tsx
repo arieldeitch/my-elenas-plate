@@ -150,9 +150,7 @@ export function FoodSearch({ onChoose, onCreate, onAddCoffee, autoFocus = true }
                 data-testid="search-result"
                 data-direct="false"
                 aria-label={
-                  f.kind === "coffee"
-                    ? `${f.name}, פתיחת עורך הקפה`
-                    : `${f.name}, פתיחת בחירת כמות`
+                  f.kind === "coffee" ? `${f.name}, פתיחת עורך הקפה` : `${f.name}, פתיחת בחירת כמות`
                 }
                 className="flex w-full items-center gap-3 rounded-xl border border-border bg-card px-3 py-3 text-right hover:border-primary/40"
               >
