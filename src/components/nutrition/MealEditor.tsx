@@ -7,8 +7,9 @@ import { useStore, PROFILES } from "@/lib/store";
 import { formatShortDate } from "@/lib/format";
 import { coffeeSummary } from "@/lib/coffee";
 import { canStep, formatQuantity, stepAmount, usualQuantity } from "@/lib/quantity";
+import { formatPoints, pointsForEntry, resolvedEntryPoints } from "@/lib/points";
 import { cn } from "@/lib/utils";
-import { FoodSearch } from "./FoodSearch";
+import { FoodSearch, type FoodSelectionSource } from "./FoodSearch";
 import { QuantitySelector } from "./QuantitySelector";
 import { CoffeeSelector } from "./CoffeeSelector";
 
@@ -84,19 +85,22 @@ export function MealEditor({ slot, onClose }: Props) {
    * its editor; a food without a trusted default opens the quantity screen.
    * Returns what happened so the search box can clear itself after an add.
    */
-  function handleChoose(food: Food): "added" | "opened" {
+  function handleChoose(food: Food, source: FoodSelectionSource): "added" | "opened" {
     if (food.kind === "coffee") {
       setView({ kind: "coffee" });
       return "opened";
     }
     const usual = usualQuantity(food);
-    if (!usual) {
+    if (source === "typed" || !usual) {
       setView({ kind: "quantity", food });
       return "opened";
     }
     const added = store.addEntry(slot!, { foodId: food.id, foodName: food.name, ...usual });
     setJustAdded(added.id);
-    toast(`נוסף: ${food.name} · ${formatQuantity(added)}`, { duration: 2500 });
+    toast(`נוסף: ${food.name} · ${formatQuantity(added)} · ${formatPoints(added.pointsValue ?? 0)} נק׳`, {
+      duration: 3000,
+      action: { label: "עריכת כמות", onClick: () => setView({ kind: "quantity", food, editing: added }) },
+    });
     return "added";
   }
 

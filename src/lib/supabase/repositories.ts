@@ -37,6 +37,7 @@ import {
 export interface HouseholdContext {
   householdId: string;
   profileIdBySlug: Record<string, string>;
+  pointsBudgetBySlug: Record<string, number>;
 }
 
 /** Ensures the household + two profiles exist and returns the mapping. */
@@ -51,8 +52,33 @@ export async function bootstrapHousehold(): Promise<HouseholdContext> {
     .order("sort_order");
   if (pErr) throw pErr;
   const profileIdBySlug: Record<string, string> = {};
-  for (const p of (profiles ?? []) as ProfileRow[]) profileIdBySlug[p.slug] = p.id;
-  return { householdId: householdId as string, profileIdBySlug };
+  const pointsBudgetBySlug: Record<string, number> = {};
+  for (const p of (profiles ?? []) as ProfileRow[]) {
+    profileIdBySlug[p.slug] = p.id;
+    pointsBudgetBySlug[p.slug] = p.daily_points_budget ?? 30;
+  }
+  return { householdId: householdId as string, profileIdBySlug, pointsBudgetBySlug };
+}
+
+
+export async function loadProfilePointsBudget(profileId: string): Promise<number> {
+  const sb = requireSupabase();
+  const { data, error } = await sb
+    .from("profiles")
+    .select("daily_points_budget")
+    .eq("id", profileId)
+    .single();
+  if (error) throw error;
+  return data?.daily_points_budget ?? 30;
+}
+
+export async function updateProfilePointsBudget(profileId: string, budget: number): Promise<void> {
+  const sb = requireSupabase();
+  const { error } = await sb
+    .from("profiles")
+    .update({ daily_points_budget: budget })
+    .eq("id", profileId);
+  if (error) throw error;
 }
 
 /** Loads a single day's meals (statuses + entries) for a profile. */

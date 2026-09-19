@@ -10,15 +10,17 @@ import { cn } from "@/lib/utils";
 /** Results shown per query. The catalog is never rendered in full. */
 const RESULT_LIMIT = 20;
 
+export type FoodSelectionSource = "typed" | "quick";
+
 interface Props {
   /**
-   * A food was chosen — from a favourite / recent chip OR a typed result (one
+   * A food was chosen from a typed result or a trusted favourite/recent chip.
    * path since M2-6). The caller adds it immediately when its usual quantity
    * is trusted and returns "added" (the search box clears so the new row and
    * the chips are visible again), or opens the quantity / coffee step and
    * returns "opened".
    */
-  onChoose: (food: Food) => "added" | "opened";
+  onChoose: (food: Food, source: FoodSelectionSource) => "added" | "opened";
   onCreate: (name: string) => void;
   /** Fast path straight into the coffee editor. */
   onAddCoffee?: () => void;
@@ -27,8 +29,8 @@ interface Props {
 }
 
 export function FoodSearch({ onChoose, onCreate, onAddCoffee, autoFocus = true }: Props) {
-  function choose(food: Food) {
-    if (onChoose(food) === "added") {
+  function choose(food: Food, source: FoodSelectionSource) {
+    if (onChoose(food, source) === "added") {
       setRaw("");
       setQ("");
       inputRef.current?.focus();
@@ -113,7 +115,7 @@ export function FoodSearch({ onChoose, onCreate, onAddCoffee, autoFocus = true }
                     food={f}
                     isFav
                     recent={recents.includes(f.id)}
-                    onChoose={choose}
+                    onChoose={(food) => choose(food, "quick")}
                   />
                 ))}
               </Grid>
@@ -123,7 +125,7 @@ export function FoodSearch({ onChoose, onCreate, onAddCoffee, autoFocus = true }
             <Section title="אחרונים" icon={<Clock className="h-4 w-4" />}>
               <Grid>
                 {recentList.map((f) => (
-                  <FoodChip key={f.id} food={f} onChoose={choose} />
+                  <FoodChip key={f.id} food={f} onChoose={(food) => choose(food, "quick")} />
                 ))}
               </Grid>
             </Section>
@@ -140,21 +142,17 @@ export function FoodSearch({ onChoose, onCreate, onAddCoffee, autoFocus = true }
         <div className="space-y-1">
           {results.map((f) => {
             const usual = usualQuantity(f);
-            const hint = usual
-              ? formatQuantity(usual)
-              : f.kind === "coffee"
-                ? "סוג וחלב"
-                : "בחירת כמות";
+            const hint = f.kind === "coffee" ? "סוג וחלב" : "בחירת כמות";
             return (
               <button
                 key={f.id}
-                onClick={() => choose(f)}
+                onClick={() => choose(f, "typed")}
                 data-testid="search-result"
-                data-direct={usual ? "true" : "false"}
+                data-direct="false"
                 aria-label={
-                  usual
-                    ? `${f.name}, הוספה של ${hint}`
-                    : `${f.name}, ${f.kind === "coffee" ? "פתיחת עורך הקפה" : "פתיחת בחירת כמות"}`
+                  f.kind === "coffee"
+                    ? `${f.name}, פתיחת עורך הקפה`
+                    : `${f.name}, פתיחת בחירת כמות`
                 }
                 className="flex w-full items-center gap-3 rounded-xl border border-border bg-card px-3 py-3 text-right hover:border-primary/40"
               >
@@ -169,11 +167,11 @@ export function FoodSearch({ onChoose, onCreate, onAddCoffee, autoFocus = true }
                 <span
                   className={cn(
                     "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[12px] tabular-nums",
-                    usual ? "bg-primary-soft text-primary" : "bg-secondary text-muted-foreground",
+                    "bg-secondary text-muted-foreground",
                   )}
                   aria-hidden
                 >
-                  {usual ? <Plus className="h-3 w-3" /> : <SlidersHorizontal className="h-3 w-3" />}
+                  <SlidersHorizontal className="h-3 w-3" />
                   {hint}
                 </span>
               </button>

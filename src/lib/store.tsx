@@ -44,6 +44,7 @@ import { MEAL_SLOTS } from "./domain";
 import { FOOD_CATALOG, mergeCatalog } from "./food-catalog";
 import { normalizeFoodName } from "./food-normalize";
 import { toISODate } from "./format";
+import { DEFAULT_DAILY_POINTS_BUDGET, POINTS_MODEL_VERSION, pointsForEntry } from "./points";
 import { loadState, saveState } from "./persistence";
 import { loadDeviceProfile, saveDeviceProfile } from "./device-profile";
 import { isSupabaseConfigured } from "./supabase/client";
@@ -91,6 +92,8 @@ interface StoreValue {
   favorites: string[];
   recents: string[];
   toggleFavorite: (foodId: string) => void;
+  dailyPointsBudgets: PerProfile<number>;
+  setDailyPointsBudget: (value: number) => void;
 
   addEntry: (slot: MealSlotId, entry: Omit<FoodEntry, "id">) => FoodEntry;
   updateEntry: (slot: MealSlotId, entry: FoodEntry) => void;
@@ -151,6 +154,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [weighInsMap, setWeighInsMap] = useState<PerProfile<WeighIn[]>>({ me: [], elena: [] });
   const [favoritesMap, setFavoritesMap] = useState<PerProfile<string[]>>({ me: [], elena: [] });
   const [recentsMap, setRecentsMap] = useState<PerProfile<string[]>>({ me: [], elena: [] });
+  const [dailyPointsBudgets, setDailyPointsBudgets] = useState<PerProfile<number>>({
+    me: DEFAULT_DAILY_POINTS_BUDGET,
+    elena: DEFAULT_DAILY_POINTS_BUDGET,
+  });
   // The built-in catalog is the pre-hydration fallback; Supabase supersedes it
   // by normalized name once loaded (see `mergeCatalog`).
   const [foods, setFoods] = useState<Food[]>(FOOD_CATALOG);
@@ -168,6 +175,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setFoods,
     setFavoritesMap,
     setRecentsMap,
+    setDailyPointsBudgets,
     activeProfile,
     iso,
     setSyncState,
@@ -192,6 +200,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setWeighInsMap(saved.weighIns);
       setFavoritesMap(saved.favorites);
       setRecentsMap(saved.recents);
+      if (saved.dailyPointsBudgets) setDailyPointsBudgets(saved.dailyPointsBudgets);
       // Merge rather than replace: a snapshot taken before a catalog update must
       // not shrink the catalog back to its older contents.
       setFoods(mergeCatalog(FOOD_CATALOG, saved.foods));
@@ -224,9 +233,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       weighIns: weighInsMap,
       favorites: favoritesMap,
       recents: recentsMap,
+      dailyPointsBudgets,
       foods,
     });
-  }, [hydrated, activeProfile, days, weighInsMap, favoritesMap, recentsMap, foods]);
+  }, [hydrated, activeProfile, days, weighInsMap, favoritesMap, recentsMap, dailyPointsBudgets, foods]);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Never let the demo "saved" pulse fire on an unmounted provider.
@@ -293,8 +303,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const dayCtx = { profile: activeProfile, iso };
 
+  const withPointsSnapshot = (entry: Omit<FoodEntry, "id">): Omit<FoodEntry, "id"> => {
+    const food = foods.find((candidate) => candidate.id === entry.foodId || candidate.name === entry.foodName);
+    return {
+      ...entry,
+      pointsValue: pointsForEntry(entry, food),
+      pointsModelVersion: POINTS_MODEL_VERSION,
+    };
+  };
+
   const addEntry: StoreValue["addEntry"] = (slot, entry) => {
-    const withId: FoodEntry = { ...entry, id: genId("e"), loggedAt: new Date().toISOString() };
+    const withId: FoodEntry = {
+      ...withPointsSnapshot(entry),
+      id: genId("e"),
+      loggedAt: new Date().toISOString(),
+    };
     mutateDay(activeProfile, iso, (d) => {
       const meal = d.meals[slot];
       meal.entries.push(withId);
@@ -307,12 +330,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const updateEntry: StoreValue["updateEntry"] = (slot, entry) => {
+    const recomputed: FoodEntry = { ...entry, ...withPointsSnapshot(entry) };
     mutateDay(activeProfile, iso, (d) => {
       const meal = d.meals[slot];
-      meal.entries = meal.entries.map((e) => (e.id === entry.id ? entry : e));
+      meal.entries = meal.entries.map((e) => (e.id === entry.id ? recomputed : e));
       return d;
     });
-    sync.enqueue(opsForUpdateEntry(dayCtx, slot, entry));
+    sync.enqueue(opsForUpdateEntry(dayCtx, slot, recomputed));
   };
 
   const removeEntry: StoreValue["removeEntry"] = (slot, entryId) => {
@@ -390,6 +414,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     sync.enqueue(opsForSetSteps(dayCtx, normalized));
   };
 
+  const setDailyPointsBudget: StoreValue["setDailyPointsBudget"] = (value) => {
+    const budget = Math.max(1, Math.round(value));
+    setDailyPointsBudgets((prev) => ({ ...prev, [activeProfile]: budget }));
+    triggerSave();
+    sync.enqueue([{ kind: "profile.points-budget.set", profile: activeProfile, budget }]);
+  };
+
   const addFood: StoreValue["addFood"] = (name, category) => {
     const trimmed = name.trim();
     // Duplicate prevention: the DB enforces unique (household_id, normalized_name),
@@ -459,6 +490,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       favorites: favoritesMap[activeProfile],
       recents: recentsMap[activeProfile],
       toggleFavorite,
+      dailyPointsBudgets,
+      setDailyPointsBudget,
       addEntry,
       updateEntry,
       removeEntry,
@@ -482,6 +515,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       weighInsMap,
       favoritesMap,
       recentsMap,
+      dailyPointsBudgets,
       foods,
     ],
   );

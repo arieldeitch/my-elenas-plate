@@ -22,6 +22,7 @@ export interface PersistedState {
   weighIns: PerProfile<WeighIn[]>;
   favorites: PerProfile<string[]>;
   recents: PerProfile<string[]>;
+  dailyPointsBudgets?: PerProfile<number>;
   foods: Food[];
 }
 
