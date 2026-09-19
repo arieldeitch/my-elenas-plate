@@ -1,7 +1,7 @@
 # Claude Context
 
 Fast-start context for Claude Code. The latest user instruction always overrides older docs.
-Updated 2026-09-19 (DEC-032 daily steps and focused mobile UX; steps migration not applied to production).
+Updated 2026-09-19 (DEC-033 quantity restoration + internal points v1; production schema applied, publish pending).
 
 ## Start state
 
@@ -11,6 +11,7 @@ Updated 2026-09-19 (DEC-032 daily steps and focused mobile UX; steps migration n
   M1 status: `docs/claude-tasks/M1_STATUS.md`; **M1 release entrypoint:**
   `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md`; latest run record:
   `docs/claude-tasks/RUN_2026-09-18_RELIABILITY_HARDENING.md` (previous: `RUN_2026-09-18_ACCESS_SIMPLIFICATION.md`).
+- **DEC-033 is implemented on main (2026-09-19).** Typed search opens QuantitySelector; favourite/recent chips keep trusted quick add. Quantity UI is measured or subjective with explicit units. Keyboard safety has no smooth/delayed post-open recenter. Internal points v1 uses transparent category×portion rules, persists entry snapshots, and has a synced per-profile daily budget. Production migration `20260919082000_internal_points_v1` is applied and verified; publish + phone acceptance remain. It is NOT Weight Watchers' formula and adds no calories/macros.
 - **DEC-032 is implemented (2026-09-19).** The daily loop now uses a calmer palette, three-action bottom
   navigation, a four-tile context grid (weight/workout/fasting/steps), and shared daily steps with exact
   or completed-only reporting. The steps row is keyed by profile/date, carries a goal snapshot, uses the
@@ -35,9 +36,9 @@ Updated 2026-09-19 (DEC-032 daily steps and focused mobile UX; steps migration n
   `DailyContextRow` (weight · workout · fasting · steps, inline editors). `DayReview` sheet (DEC-028) opens from
   the today card / partner card: read-only day per slot for either person; edit only for the active
   person; looking never switches person or date. Meal-editor rows have a − / + pill for count units only
-  (DEC-029; `lib/quantity.ts` `COUNT_UNITS`, `stepAmount`, `formatQuantity`). Chips AND typed results add
-  directly only when `usualQuantity(food)` is trusted (1 × count unit, DEC-030); otherwise the quantity
-  screen. Visual check: `scripts/home-snapshots.mjs`
+  (DEC-029; `lib/quantity.ts` `COUNT_UNITS`, `stepAmount`, `formatQuantity`). Under DEC-033,
+  typed search results always open QuantitySelector so measured/subjective + unit choice is explicit;
+  favourite/recent chips may quick-add only when `usualQuantity(food)` is trusted. Visual check: `scripts/home-snapshots.mjs`
   against `npx vite dev --mode hermetic --port 4336` (screenshots + page height + above-the-fold report).
   One-screen `MealEditor` with one-tap quick add from favourites/recents. Personal colours on
   `PROFILES` (`color`/`tint`); `data-owner` on the today card and the editor dialog. No calories/macros
