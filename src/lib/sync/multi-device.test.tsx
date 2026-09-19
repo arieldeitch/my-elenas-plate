@@ -56,7 +56,7 @@ const { StoreProvider, useStore } = await import("../store");
 const queue = await import("./queue");
 const { bootstrapHousehold } = await import("../supabase/repositories");
 const { applyOperation, hydrateDay } = await import("./supabase-sync");
-const { opsForAddEntry, opsForUpdateEntry } = await import("./operations");
+const { opsForAddEntry, opsForSetSteps, opsForUpdateEntry } = await import("./operations");
 
 const wrapper = ({ children }: { children: ReactNode }) => (
   <StoreProvider>{children}</StoreProvider>
@@ -116,6 +116,10 @@ async function deviceB() {
         opsForUpdateEntry({ profile, iso: today() }, slot, entry).map((op) =>
           applyOperation(ctx, op),
         ),
+      ),
+    steps: (profile: "me" | "elena", log: { goalSteps: number; steps?: number; completed: boolean }) =>
+      Promise.all(
+        opsForSetSteps({ profile, iso: today() }, log).map((op) => applyOperation(ctx, op)),
       ),
     view: (profile: "me" | "elena") => hydrateDay(ctx, profile, today()),
   };
@@ -181,6 +185,38 @@ describe("multi-device: A = Ariel, B = Elena, C = fresh phone", () => {
     expect(fake.rows("households")).toHaveLength(1);
     expect(fake.rows("profiles")).toHaveLength(2);
     C.unmount();
+  });
+
+  it("daily steps stay person-scoped and propagate between devices through realtime", async () => {
+    const A = await mountDevice(USER_A, "me");
+    const B = await deviceB();
+
+    act(() =>
+      A.result.current.setSteps({ goalSteps: 10_000, steps: 8_734, completed: false }),
+    );
+    await waitFor(() => expect(A.result.current.syncState).toBe("saved"));
+    const bSeesAriel = await B.view("me");
+    expect(bSeesAriel!.steps).toEqual({
+      goalSteps: 10_000,
+      steps: 8_734,
+      completed: false,
+    });
+
+    await B.steps("elena", { goalSteps: 12_000, completed: true });
+    await waitFor(() =>
+      expect(A.result.current.getDay("elena", today()).steps).toEqual({
+        goalSteps: 12_000,
+        steps: undefined,
+        completed: true,
+      }),
+    );
+    expect(A.result.current.getDay("me", today()).steps?.steps).toBe(8_734);
+
+    const rows = fake.rows("daily_steps");
+    expect(rows).toHaveLength(2);
+    expect(rows.find((r) => r.profile_id === ARIEL)).toMatchObject({ steps: 8734, completed: false });
+    expect(rows.find((r) => r.profile_id === ALENA)).toMatchObject({ steps: null, completed: true });
+    A.unmount();
   });
 
   it("A switches to Elena explicitly and changes her quantity → only Elena's row changes; B's reload shows it", async () => {
@@ -391,8 +427,8 @@ describe("network budget (reads / writes / subscriptions)", () => {
     const A = await mountDevice(USER_A, "me");
     const activationReads = reads();
     const activationWrites = writes();
-    // bootstrap profiles + foods + own day (4) + weigh-ins + prefs + partner day (4) ≈ 12
-    expect(activationReads).toBeLessThanOrEqual(12);
+    // profiles + foods + own day (6 incl. daily_steps + latest goal) + weigh-ins + prefs + partner day (6) ≈ 16
+    expect(activationReads).toBeLessThanOrEqual(16);
     expect(activationWrites).toBe(0);
     expect(fake.channels.size).toBe(1);
     expect(fake.log.filter((l) => l.table === "profiles" && l.action === "select")).toHaveLength(1);
@@ -401,7 +437,7 @@ describe("network budget (reads / writes / subscriptions)", () => {
     fake.log.length = 0;
     act(() => A.result.current.setActiveProfile("elena"));
     await new Promise((r) => setTimeout(r, 50));
-    expect(reads()).toBeLessThanOrEqual(10);
+    expect(reads()).toBeLessThanOrEqual(14);
     expect(writes()).toBe(0);
 
     // Quick add: 3 writes (entry upsert, status set, recent pref) and only the
