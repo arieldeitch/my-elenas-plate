@@ -32,6 +32,7 @@ import {
   upsertFood,
   upsertWeighIn,
   upsertWorkout,
+  updateProfilePointsBudget,
   type HouseholdContext,
 } from "../supabase/repositories";
 import { SLUG_BY_LOCAL_PROFILE } from "./migrate-local";
@@ -131,6 +132,11 @@ export async function applyOperation(ctx: HouseholdContext, op: Operation): Prom
     case "steps.set": {
       const profileId = requireProfile(ctx, op.profile);
       await upsertDailySteps(householdId, profileId, op.iso, op.steps);
+      return;
+    }
+    case "profile.points-budget.set": {
+      const profileId = requireProfile(ctx, op.profile);
+      await updateProfilePointsBudget(profileId, op.budget);
       return;
     }
     case "weighin.insert": {
@@ -250,6 +256,7 @@ export const REALTIME_TABLES = [
   "weigh_ins",
   "foods",
   "food_preferences",
+  "profiles",
 ] as const;
 export type RealtimeTable = (typeof REALTIME_TABLES)[number];
 
