@@ -35,6 +35,7 @@ import type {
   MealSlotId,
   Profile,
   ProfileId,
+  StepLog,
   SyncState,
   WeighIn,
   WorkoutLog,
@@ -52,6 +53,7 @@ import {
   opsForRemoveEntry,
   opsForSetFasting,
   opsForSetMealSkipped,
+  opsForSetSteps,
   opsForSetWorkout,
   opsForUpdateEntry,
 } from "./sync/operations";
@@ -98,6 +100,7 @@ interface StoreValue {
 
   setFasting: (f: FastingLog | undefined) => void;
   setWorkout: (w: WorkoutLog | undefined) => void;
+  setSteps: (s: StepLog) => void;
 
   weighIns: WeighIn[];
   addWeighIn: (w: Omit<WeighIn, "id">) => void;
@@ -105,10 +108,17 @@ interface StoreValue {
 
 const StoreCtx = createContext<StoreValue | null>(null);
 
-function emptyDay(): DayData {
+function emptyDay(goalSteps = 10_000): DayData {
   const meals = {} as Record<MealSlotId, DailyMeal>;
   for (const s of MEAL_SLOTS) meals[s] = { slot: s, status: "empty", entries: [] };
-  return { meals };
+  return { meals, steps: { goalSteps, completed: false } };
+}
+
+function latestStepGoal(profileDays: Record<string, DayData>): number {
+  const candidates = Object.entries(profileDays)
+    .filter(([, day]) => day.steps?.goalSteps && day.steps.goalSteps > 0)
+    .sort(([a], [b]) => (a < b ? 1 : -1));
+  return candidates[0]?.[1].steps?.goalSteps ?? 10_000;
 }
 
 let localId = 100_000;
@@ -248,7 +258,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const getDay = useCallback(
     (profile: ProfileId, isoDate: string): DayData => {
-      return days[profile][isoDate] ?? emptyDay();
+      return days[profile][isoDate] ?? emptyDay(latestStepGoal(days[profile]));
     },
     [days],
   );
@@ -258,7 +268,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const mutateDay = useCallback(
     (profile: ProfileId, isoDate: string, updater: (d: DayData) => DayData) => {
       setDays((prev) => {
-        const existing = prev[profile][isoDate] ?? emptyDay();
+        const existing = prev[profile][isoDate] ?? emptyDay(latestStepGoal(prev[profile]));
         const next = updater(structuredClone(existing));
         return { ...prev, [profile]: { ...prev[profile], [isoDate]: next } };
       });
@@ -309,7 +319,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     // Read the entry from current state *before* mutating: the setDays updater
     // runs after this function returns, so capturing it inside would yield
     // undefined and break the undo toast.
-    const current = days[activeProfile][iso] ?? emptyDay();
+    const current = days[activeProfile][iso] ?? emptyDay(latestStepGoal(days[activeProfile]));
     const meal = current.meals[slot];
     const removed = meal.entries.find((e) => e.id === entryId);
     const remaining = meal.entries.filter((e) => e.id !== entryId).length;
@@ -336,7 +346,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const setMealSkipped: StoreValue["setMealSkipped"] = (slot, skipped) => {
-    const current = days[activeProfile][iso] ?? emptyDay();
+    const current = days[activeProfile][iso] ?? emptyDay(latestStepGoal(days[activeProfile]));
     const visibleIds = current.meals[slot].entries.map((e) => e.id);
     mutateDay(activeProfile, iso, (d) => {
       const meal = d.meals[slot];
@@ -365,6 +375,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return d;
     });
     sync.enqueue(opsForSetWorkout(dayCtx, w));
+  };
+
+  const setSteps: StoreValue["setSteps"] = (s) => {
+    const normalized: StepLog = {
+      goalSteps: Math.max(1, Math.round(s.goalSteps)),
+      steps: s.steps == null ? undefined : Math.max(0, Math.round(s.steps)),
+      completed: s.steps == null ? s.completed : s.steps >= s.goalSteps,
+    };
+    mutateDay(activeProfile, iso, (d) => {
+      d.steps = normalized;
+      return d;
+    });
+    sync.enqueue(opsForSetSteps(dayCtx, normalized));
   };
 
   const addFood: StoreValue["addFood"] = (name, category) => {
@@ -443,6 +466,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setMealSkipped,
       setFasting,
       setWorkout,
+      setSteps,
       weighIns: weighInsMap[activeProfile],
       addWeighIn,
     }),
