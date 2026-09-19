@@ -1,6 +1,18 @@
 # Deploying to the remote Supabase project
 
-## Access simplification (DEC-031) — APPLIED + Anonymous Auth ON
+## Daily steps (2026-09-19, DEC-032) — PENDING REVIEW, NOT APPLIED
+
+Review `supabase/migrations/20260919044237_daily_steps.sql`, then apply only
+`supabase/apply_daily_steps_production.sql` through the approved SQL Editor or controlling migration
+tool. The wrapper creates `daily_steps`, grants authenticated/service access before enabling RLS,
+adds household-member policies, the update trigger, index, Realtime publication, and the migration
+ledger row. Afterwards run `supabase/verify_daily_steps.sql` read-only.
+
+Expected verification: RLS/authenticated CRUD/service-role CRUD/Realtime are true, anon SELECT is
+false, constraints and all four policies exist, and ledger version `20260919044237` is present. Do not
+run plain `supabase db push`.
+
+## Access simplification (2026-09-18, DEC-031) — migration APPLIED (controlling GPT, verified); ONE Auth setting still pending
 
 `supabase/migrations/20260918160000_anonymous_device_join.sql` replaces `bootstrap_household()` so
 that every device session (Supabase **anonymous** user) joins the one existing household instead of
@@ -9,7 +21,7 @@ the real SQL by `src/lib/supabase/household-join.pg.test.ts`.
 
 **State 2026-09-18 17:45:** steps 1–3 done and verified externally (1 household, 2 profiles, 390 foods,
 device-join function with the advisory lock, ledger `20260918160000`, RLS on 10, anon cannot execute).
-Step 4 is now complete: **Allow anonymous sign-ins = ON** (2026-09-19; confirmed by owner and the Supabase Advisor). Historical apply path, for the record:
+Step 4 (the Auth switch) was still OFF at 17:39. Apply path, for the record:
 
 1. Run `supabase/verify_anonymous_join.sql` (read-only); keep the output. §1 must show the July
    household first (seeded catalog, two profiles).
@@ -27,16 +39,7 @@ Step 4 is now complete: **Allow anonymous sign-ins = ON** (2026-09-19; confirmed
 
 ### Post-pilot hardening (2026-09-19) — APPLIED
 
-`supabase/migrations/20260918180000_harden_function_search_path.sql` was applied directly to production on 2026-09-19 and verified: `set_updated_at()` is pinned to `search_path = ''`; EXECUTE on `is_household_member(uuid)` is revoked from `public`/`anon` and retained for `authenticated`/`service_role`; ledger contains `20260918180000`. Supabase Advisor no longer reports the mutable-search-path or anonymous-executable findings. Remaining Auth warning about leaked-password protection is irrelevant to the passwordless DEC-031 product flow. Anonymous sign-ins are now ON; this hardening is no longer a release blocker.
-
-## Daily steps (2026-09-19) — APPLIED
-
-Migration `20260919044237_daily_steps` is applied to production and mirrored in Git at
-`supabase/migrations/20260919044237_daily_steps.sql`. It adds the 11th public table, `daily_steps`,
-with one row per profile/date, goal snapshot, optional exact step count, and completed flag.
-Verified directly: RLS=true; authenticated has SELECT/INSERT/UPDATE/DELETE; unauthenticated `anon`
-has no SELECT; table is in `supabase_realtime`; initial row count was 0. Read-only verification:
-`supabase/verify_daily_steps.sql`.
+`supabase/migrations/20260918180000_harden_function_search_path.sql` was applied directly to production on 2026-09-19 and verified: `set_updated_at()` is pinned to `search_path = ''`; EXECUTE on `is_household_member(uuid)` is revoked from `public`/`anon` and retained for `authenticated`/`service_role`; ledger contains `20260918180000`. Supabase Advisor no longer reports the mutable-search-path or anonymous-executable findings. Remaining Auth warning about leaked-password protection is irrelevant to the passwordless DEC-031 product flow. The only release blocker is still **Allow anonymous sign-ins = ON**.
 
 ## M1 release (2026-09-18) — applied to production on 2026-09-18 (kept for history)
 
@@ -140,7 +143,7 @@ which lets built-in catalog foods be favorited/recented). Re-apply with either o
 ## Verify remotely
 
 ```bash
-# tables present (expects 11 in current production)
+# tables present (expects 10)
 curl -s "$VITE_SUPABASE_URL/rest/v1/profiles?select=id&limit=1" -H "apikey: $VITE_SUPABASE_ANON_KEY"
 # RLS: anon gets [] (denied), never an error about a missing table
 ```

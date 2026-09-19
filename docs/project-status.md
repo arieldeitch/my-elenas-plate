@@ -1,25 +1,24 @@
 # Project Status
 
-**Date:** 2026-09-19 (real-device UX feedback pass — DEC-032)
-**Branch:** `main` — silent anonymous access + calmer UI/nav + daily steps implementation.
-**Supabase project:** `rqgoiuztphkcvbwtbxbj` (production) · Anonymous sign-ins **ON**.
-**Stage:** **M1 remains YELLOW only until the complete two-phone §3b report. Ariel confirmed the no-login experience works much better. DEC-032 is implemented on `main`; Supabase migration `20260919044237_daily_steps` is already applied and verified. Production UI publish is still pending because Lovable has not yet synced the newest GitHub HEAD.**
-**Database:** 11 public tables with RLS; `daily_steps` has authenticated CRUD, no unauthenticated anon access, Realtime enabled, unique profile/date rows.
-**Deployment:** <https://my-elenas-plate.lovable.app> is still the last Lovable-synced build until Lovable catches up with `main`; do not claim DEC-032 live until `latest_commit_sha` matches GitHub and a publish/preflight succeeds.
+**Date:** 2026-09-19 (owner reports anonymous sign-ins ON; live verification pending)
+**Branch:** current synced working branch — DEC-032 steps/UX pass implemented; production migration remains unapplied. Release path: review/apply only `20260919044237_daily_steps`, verify, then publish.
+**Supabase project:** `rqgoiuztphkcvbwtbxbj` (production) · isolated branch `uyroeumwmjhrcbkesmgb`
+**Stage:** **Feature work paused. M1 = YELLOW only until live verification: DEC-031 + hardening are applied, owner reports Supabase "Allow anonymous sign-ins" = ON, and current main is published. Next: fresh-device smoke + §3b on two phones → M1 CLOSED → M2-7 (`M2_7_PILOT.md`).**
+**Deployment:** <https://my-elenas-plate.lovable.app> serves `main` `fd32a38` (no-login build): `mode=cloud`, `target=shared`, `misconfigured=false`, host `rqgoiuztphkcvbwtbxbj`, no secrets — `PREFLIGHT PASS — 14 checks` (2026-09-18 16:40). Fresh device → one anonymous sign-in request → `422 anonymous_provider_disabled` → retry state until the Auth switch is ON.
 **Pilot-ready code checkpoint:** tag `pilot-ready-2026-07-24` → `29ac1d5`.
 
 > Rule: nothing is listed as "working" unless it was actually run/verified.
 
-## 2026-09-19 — DEC-032 real-device UX feedback pass
+## 2026-09-19 — calmer daily UX, keyboard safety, and shared daily steps (DEC-032)
 
-Ariel's first live use confirmed the anonymous/no-login path is materially better and produced the next concrete product feedback. Implemented on `main`:
-- calmer light palette (not dark mode), clearer card/tile boundaries;
-- bottom nav reduced to **בית · הוספה מהירה · יומן**; duplicate History and dead More removed;
-- reusable VisualViewport/dvh keyboard-safety for sheets/forms;
-- `DailyContextRow` redesigned as 4 balanced tiles, 2×2 on narrow phones;
-- daily steps: per-person/per-date exact count or **ביצעתי**, editable remembered goal, retroactive logging through `selectedDate`, durable queue + Realtime + partner glance;
-- production migration `20260919044237_daily_steps` applied and verified (RLS/authenticated CRUD/no anon/Reatime).
-Deterministic tests were added/extended for nav, steps operations, retroactive/person isolation and cross-device Realtime. Full typecheck/lint/Vitest/Playwright/build gate is **not yet claimed** in this session because Lovable has not synced the new HEAD and the GitHub Actions workflow has not produced a run yet.
+Implemented a calmer light palette and clearer card boundaries; a balanced four-tile context module
+(weight, workout, fasting, steps); bottom navigation reduced to Home / Quick Add / Journal; and reusable
+VisualViewport/dvh keyboard protection for input editors. Daily steps support exact counts or a truthful
+completed-only report, selected-date backfill, per-profile goals with a 10,000 first-run fallback,
+historical goal snapshots, narrow durable queue writes, hydration guards, Realtime, and partner visibility.
+Migration `supabase/migrations/20260919044237_daily_steps.sql` plus the production apply/verify scripts
+are reviewed artifacts only: **production SQL was not applied**. Current verification is recorded in
+`docs/claude-tasks/RUN_2026-09-19_STEPS_UX.md`.
 
 ## 2026-09-18 (eleventh run) — reliability / hardening before the pilot
 

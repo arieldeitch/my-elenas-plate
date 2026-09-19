@@ -198,7 +198,6 @@ export function opsForSetWorkout(ctx: DayOpsContext, workout: WorkoutLog | undef
   return workout ? [{ kind: "workout.set", ...ctx, workout }] : [{ kind: "workout.clear", ...ctx }];
 }
 
-
 export function opsForSetSteps(ctx: DayOpsContext, steps: StepLog): Operation[] {
   return [{ kind: "steps.set", ...ctx, steps }];
 }

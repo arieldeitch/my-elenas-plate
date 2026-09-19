@@ -4,7 +4,15 @@
  * require a configured, authenticated client (see requireSupabase()).
  */
 import { requireSupabase } from "./client";
-import type { DayData, Food, MealSlotId, StepLog, WeighIn, WorkoutFeeling, WorkoutType } from "../domain";
+import type {
+  DayData,
+  Food,
+  MealSlotId,
+  StepLog,
+  WeighIn,
+  WorkoutFeeling,
+  WorkoutType,
+} from "../domain";
 import { MEAL_SLOTS } from "../domain";
 import type {
   FoodEntryRow,
@@ -229,8 +237,6 @@ export async function deleteWorkout(profileId: string, logDate: string): Promise
     .eq("log_date", logDate);
   if (error) throw error;
 }
-
-
 
 export async function upsertDailySteps(
   householdId: string,

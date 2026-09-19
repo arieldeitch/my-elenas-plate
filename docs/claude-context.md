@@ -1,11 +1,9 @@
 # Claude Context
 
 Fast-start context for Claude Code. The latest user instruction always overrides older docs.
-Updated 2026-09-19 (DEC-032 real-device UX + daily steps; Supabase ready, Lovable publish pending).
+Updated 2026-09-19 (DEC-032 daily steps and focused mobile UX; steps migration not applied to production).
 
 ## Start state
-
-- **LATEST OVERRIDE (2026-09-19, DEC-032):** Anonymous Auth is ON and working on Ariel's phone. Production DB now has 11 public RLS tables; `20260919044237_daily_steps` is applied/verified. `main` carries the real-device feedback pass: calmer light palette, stronger borders, only Home/Quick Add/Journal nav, global keyboard-safe VisualViewport behavior, 4-tile DailyContext (weight/workout/fasting/steps), and cloud-synced retroactive steps (exact or completed, remembered per-profile goal). Do not rebuild this from scratch. First verify current HEAD/tests, then get Lovable synced/published and run live smoke. Full quality gate has not yet been observed for this HEAD, so do not claim GREEN until it runs.
 
 - **Project:** shared Nutrition Tracker for **אריאל (Ariel)** and **אלנה (Elena)** — Hebrew, RTL,
   mobile-first daily logging.
@@ -13,7 +11,13 @@ Updated 2026-09-19 (DEC-032 real-device UX + daily steps; Supabase ready, Lovabl
   M1 status: `docs/claude-tasks/M1_STATUS.md`; **M1 release entrypoint:**
   `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md`; latest run record:
   `docs/claude-tasks/RUN_2026-09-18_RELIABILITY_HARDENING.md` (previous: `RUN_2026-09-18_ACCESS_SIMPLIFICATION.md`).
-- **Feature work is paused (2026-09-18).** The daily loop is considered ready for first real use. Do
+- **DEC-032 is implemented (2026-09-19).** The daily loop now uses a calmer palette, three-action bottom
+  navigation, a four-tile context grid (weight/workout/fasting/steps), and shared daily steps with exact
+  or completed-only reporting. The steps row is keyed by profile/date, carries a goal snapshot, uses the
+  durable narrow-operation queue and Realtime, and always follows `selectedDate`. The reviewed migration
+  is `supabase/migrations/20260919044237_daily_steps.sql`; production still requires the dedicated apply
+  wrapper and read-only verification in `supabase/DEPLOY.md`. Never run plain `supabase db push`.
+- **Feature work was paused (2026-09-18).** The daily loop is considered ready for first real use. Do
   not build M2-8; it will be selected from the pilot's friction log (`docs/claude-tasks/M2_7_PILOT.md`).
   **Owner actions A/B/C are complete; §2 PASSED on the served `0cd3673`; §3 item 9 PASSES — but that
   build shows a login screen, which DEC-031 (2026-09-18) removed as a product regression.** Access
@@ -27,8 +31,8 @@ Updated 2026-09-19 (DEC-032 real-device UX + daily steps; Supabase ready, Lovabl
   one membership) → `npm run preflight -- --live` on the republished sha → §3b reply → mark M1 CLOSED,
   start the pilot. If a §3b item fails, fix only that. No M2-8. Never ask Ariel for
   Supabase/GitHub/Lovable actions. Post-pilot: `apply_hardening_post_pilot.sql` (M1-R8).
-- **Home (M2, DEC-026/027):** `TodayCard` (me) → `PartnerGlance` (partner) → six compact `MealCard`s →
-  `DailyContextRow` (weight · workout · fasting, inline editors). `DayReview` sheet (DEC-028) opens from
+- **Home (M2, DEC-026/027/032):** `TodayCard` (me) → `PartnerGlance` (partner) → six compact `MealCard`s →
+  `DailyContextRow` (weight · workout · fasting · steps, inline editors). `DayReview` sheet (DEC-028) opens from
   the today card / partner card: read-only day per slot for either person; edit only for the active
   person; looking never switches person or date. Meal-editor rows have a − / + pill for count units only
   (DEC-029; `lib/quantity.ts` `COUNT_UNITS`, `stepAmount`, `formatQuantity`). Chips AND typed results add
@@ -42,7 +46,7 @@ Updated 2026-09-19 (DEC-032 real-device UX + daily steps; Supabase ready, Lovabl
   `m1-shared-truth-test` (`uyroeumwmjhrcbkesmgb`).
 - **Production DB status:** bootstrap complete, catalog seeded. The reviewed M1 grants/default
   privileges are applied to production and verified. The migration ledger contains both
-  `20260725190000` and `20260916120000`; the original 10 public tables plus `daily_steps` (11 total) have RLS enabled; authenticated/service_role
+  `20260725190000` and `20260916120000`; all 10 public tables have RLS enabled; authenticated/service_role
   have the required table privileges. Owner action C is complete.
 - **Fail-safe since 2026-09-18 (DEC-025):** a production build without Supabase config is now
   **blocked** (`RuntimeGate`), `.env.production` is committed with the public URL/target and one

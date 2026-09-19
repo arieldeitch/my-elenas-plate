@@ -273,6 +273,7 @@ describe("active cloud path (hermetic)", () => {
     await waitFor(() => expect(hook.result.current.syncDetail.realtime).toBe("subscribed"));
     expect([...fake.handlers.keys()].sort()).toEqual(
       [
+        "daily_steps",
         "fasting_logs",
         "food_entries",
         "food_preferences",
@@ -344,7 +345,7 @@ describe("activation resilience", () => {
     expect(fake.handlers.size).toBe(0);
     // Server comes back; the bounded retry timer (3 s) re-activates.
     fake.offline = false;
-    await waitFor(() => expect(fake.handlers.size).toBe(7), { timeout: 6000 });
+    await waitFor(() => expect(fake.handlers.size).toBe(8), { timeout: 6000 });
     await waitFor(() => expect(hook.result.current.syncState).toBe("saved"));
     // Exactly one activation: one bootstrap rpc, one channel.
     expect(fake.channelCount).toBe(1);
@@ -356,7 +357,7 @@ describe("activation resilience", () => {
     // SIGNED_IN arrives while the initial activation is still bootstrapping.
     act(() => auth.callback!({ user: { id: USER }, access_token: "token" }));
     await waitFor(() => expect(hook.result.current.syncState).toBe("saved"));
-    await waitFor(() => expect(fake.handlers.size).toBe(7));
+    await waitFor(() => expect(fake.handlers.size).toBe(8));
     await new Promise((r) => setTimeout(r, 100));
     expect(fake.channelCount).toBe(1);
     hook.unmount();
@@ -453,7 +454,7 @@ describe("account boundaries", () => {
     act(() => auth.callback!(null));
     expect(fake.handlers.size).toBe(0);
     act(() => auth.callback!({ user: { id: USER }, access_token: "token" }));
-    await waitFor(() => expect(fake.handlers.size).toBe(7));
+    await waitFor(() => expect(fake.handlers.size).toBe(8));
     expect(fake.channelCount).toBe(2);
     hook.unmount();
   });

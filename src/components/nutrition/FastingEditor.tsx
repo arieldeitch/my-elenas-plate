@@ -32,7 +32,10 @@ export function FastingEditor({ onDone }: Props) {
   }
 
   return (
-    <div className="space-y-3" data-testid="fasting-editor">
+    <div
+      className="keyboard-safe-scroll max-h-[calc(var(--app-viewport-height)-12rem)] space-y-3 overflow-y-auto pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+      data-testid="fasting-editor"
+    >
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium mb-1" htmlFor="fstart">

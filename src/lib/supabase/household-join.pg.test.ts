@@ -74,6 +74,7 @@ beforeAll(async () => {
     create role authenticated nologin;
     create role service_role nologin bypassrls;
     grant usage on schema public to anon, authenticated, service_role;
+    create publication supabase_realtime;
   `);
   for (const file of readdirSync(MIGRATIONS).sort()) {
     if (SKIP.has(file)) continue;
@@ -265,6 +266,7 @@ describe("bootstrap_household — historical household wins, catalog stays attac
       create role authenticated nologin;
       create role service_role nologin bypassrls;
       grant usage on schema public to anon, authenticated, service_role;
+      create publication supabase_realtime;
     `);
     for (const file of readdirSync(MIGRATIONS).sort()) {
       if (SKIP.has(file)) continue;

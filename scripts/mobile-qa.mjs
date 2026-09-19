@@ -192,7 +192,35 @@ for (const [name, opts] of Object.entries(VIEWPORTS)) {
     await page.getByRole("button", { name: "סיום" }).click();
   }
   await audit(page, name, "15-home-full");
-  await page.screenshot({ path: `${OUT}/${name}-15-home-full-fullpage.png`, fullPage: true });
+  await page.screenshot({ path: `${OUT}/${name}-15-home-full.png` });
+
+  // Keyboard-height condition: the focused steps field and its submit action
+  // must both remain reachable in a 420px visual viewport.
+  await page.getByTestId("context-steps").click();
+  const countInput = page.getByLabel("מספר צעדים");
+  await countInput.focus();
+  const originalViewport = page.viewportSize();
+  await page.setViewportSize({ width: originalViewport.width, height: 420 });
+  await page.waitForTimeout(150);
+  const keyboardSafety = await page.evaluate(() => {
+    const input = document.querySelector("#steps-count")?.getBoundingClientRect();
+    const save = [...document.querySelectorAll("button")]
+      .find((button) => button.textContent?.trim() === "שמירה")
+      ?.getBoundingClientRect();
+    return {
+      inputVisible: Boolean(input && input.top >= 0 && input.bottom <= window.innerHeight),
+      saveVisible: Boolean(save && save.top >= 0 && save.bottom <= window.innerHeight),
+    };
+  });
+  log(
+    `[${name}] keyboard-steps: input=${keyboardSafety.inputVisible} save=${keyboardSafety.saveVisible}`,
+  );
+  if (!keyboardSafety.inputVisible || !keyboardSafety.saveVisible) {
+    throw new Error(`${name}: steps input or save action is hidden by constrained viewport`);
+  }
+  await page.screenshot({ path: `${OUT}/${name}-keyboard-steps.png` });
+  await page.setViewportSize(originalViewport);
+  await page.getByRole("button", { name: "ביצעתי את יעד הצעדים" }).click();
 
   // 14. Day Review (own) + 8. partner glance → partner review
   await page.getByTestId("today-review").click();
