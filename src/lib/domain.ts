@@ -209,10 +209,18 @@ export interface WeighIn {
   bodyFatPct?: number;
 }
 
+/** Daily step reporting. steps is absent for the quick "ביצעתי" mode. */
+export interface StepLog {
+  goalSteps: number;
+  steps?: number;
+  completed: boolean;
+}
+
 export interface DayData {
   meals: Record<MealSlotId, DailyMeal>;
   fasting?: FastingLog;
   workout?: WorkoutLog;
+  steps?: StepLog;
 }
 
 export type SyncState = "saved" | "saving" | "offline" | "pending" | "error";
