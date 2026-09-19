@@ -28,6 +28,7 @@ import {
   setFavorite,
   setMealStatus,
   upsertFasting,
+  upsertDailySteps,
   upsertFood,
   upsertWeighIn,
   upsertWorkout,
@@ -127,6 +128,11 @@ export async function applyOperation(ctx: HouseholdContext, op: Operation): Prom
       await deleteWorkout(profileId, op.iso);
       return;
     }
+    case "steps.set": {
+      const profileId = requireProfile(ctx, op.profile);
+      await upsertDailySteps(householdId, profileId, op.iso, op.steps);
+      return;
+    }
     case "weighin.insert": {
       const profileId = requireProfile(ctx, op.profile);
       await upsertWeighIn(householdId, profileId, op.weighIn);
@@ -213,6 +219,9 @@ export async function pushDaySnapshotUNSAFE(
   if (day.workout) {
     await upsertWorkout(ctx.householdId, profileId, iso, day.workout);
   }
+  if (day.steps) {
+    await upsertDailySteps(ctx.householdId, profileId, iso, day.steps);
+  }
 }
 
 // --- custom foods + favorites/recents --------------------------------------
@@ -237,6 +246,7 @@ export const REALTIME_TABLES = [
   "meal_statuses",
   "fasting_logs",
   "workout_logs",
+  "daily_steps",
   "weigh_ins",
   "foods",
   "food_preferences",
