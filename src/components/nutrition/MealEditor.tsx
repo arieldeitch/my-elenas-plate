@@ -9,9 +9,17 @@ import { coffeeSummary } from "@/lib/coffee";
 import { canStep, formatQuantity, stepAmount, usualQuantity } from "@/lib/quantity";
 import { cn } from "@/lib/utils";
 import { formatPoints, pointsForEntry } from "@/lib/points";
+import {
+  getReferenceIndex,
+  groupForFood,
+  type ReferenceGroup,
+  type ReferenceRuntimeItem as ReferenceItem,
+} from "@/lib/points-reference";
 import { FoodSearch } from "./FoodSearch";
 import { QuantitySelector } from "./QuantitySelector";
 import { CoffeeSelector } from "./CoffeeSelector";
+import { VariantPicker } from "./VariantPicker";
+import { NewFoodForm } from "./NewFoodForm";
 
 interface Props {
   slot: MealSlotId | null;
@@ -25,8 +33,10 @@ interface Props {
  */
 type View =
   | { kind: "meal" }
-  | { kind: "quantity"; food: Food; editing?: FoodEntry }
-  | { kind: "coffee"; editing?: FoodEntry };
+  | { kind: "variant"; food: Food; group: ReferenceGroup }
+  | { kind: "quantity"; food: Food; editing?: FoodEntry; referenceItem?: ReferenceItem }
+  | { kind: "coffee"; editing?: FoodEntry }
+  | { kind: "newFood"; name: string };
 
 export function MealEditor({ slot, onClose }: Props) {
   const store = useStore();
@@ -90,6 +100,13 @@ export function MealEditor({ slot, onClose }: Props) {
       setView({ kind: "coffee" });
       return "opened";
     }
+    // Several reference portions → the person picks one (DEC-035 §6), from a
+    // chip or a typed result alike; nothing is chosen silently.
+    const group = groupForFood(getReferenceIndex(), food);
+    if (group && group.items.length > 1) {
+      setView({ kind: "variant", food, group });
+      return "opened";
+    }
     // A typed search is deliberate: always ask how much was eaten so the
     // measured/subjective choice and the unit picker never disappear behind
     // the quick-add optimisation. Trusted favourite/recent chips keep one-tap.
@@ -147,9 +164,9 @@ export function MealEditor({ slot, onClose }: Props) {
     }
   }
 
+  /** A name the catalog and the reference do not know: confirm portion + points first (DEC-035 §7). */
   function handleCreateFood(name: string) {
-    const f = store.addFood(name);
-    setView({ kind: "quantity", food: f });
+    setView({ kind: "newFood", name });
   }
 
   return (
@@ -230,6 +247,15 @@ export function MealEditor({ slot, onClose }: Props) {
                           }
                           const food = store.foods.find((f) => f.id === e.foodId);
                           if (food) setView({ kind: "quantity", food, editing: e });
+                          else if (e.referenceItemId) {
+                            // The food row is gone (archived) but the snapshot
+                            // knows its reference: edit against a name-only food.
+                            setView({
+                              kind: "quantity",
+                              food: { id: e.foodId, name: e.foodName },
+                              editing: e,
+                            });
+                          }
                         }}
                         onDelete={() => handleDelete(e)}
                         onStep={(dir) => handleStep(e, dir)}
@@ -247,10 +273,31 @@ export function MealEditor({ slot, onClose }: Props) {
               </div>
             ))}
 
+          {view.kind === "variant" && (
+            <VariantPicker
+              food={view.food}
+              group={view.group}
+              onPick={(item) => setView({ kind: "quantity", food: view.food, referenceItem: item })}
+              onCancel={() => setView({ kind: "meal" })}
+            />
+          )}
+
+          {view.kind === "newFood" && (
+            <NewFoodForm
+              initialName={view.name}
+              onSubmit={({ name, category, details }) => {
+                const f = store.addFood(name, category, details);
+                setView({ kind: "quantity", food: f });
+              }}
+              onCancel={() => setView({ kind: "meal" })}
+            />
+          )}
+
           {view.kind === "quantity" && (
             <QuantitySelector
               food={view.food}
               initial={view.editing}
+              referenceItem={view.referenceItem}
               submitLabel={view.editing ? "עדכון" : "הוספת המאכל"}
               onSubmit={(entry) => {
                 // Replace the quantity WHOLE: a mode switch must not leave the
