@@ -4,6 +4,7 @@
  * number — the two modes are validated independently.
  */
 import type { FoodKind, QuantityMode, SubjectiveAmount, Unit } from "./domain";
+import { getReferenceIndex, usualReferenceQuantity } from "./points-reference";
 
 export interface MeasuredInput {
   amount: number;
@@ -132,8 +133,12 @@ export function formatQuantity(entry: {
 export function usualQuantity(food: {
   kind?: FoodKind;
   defaultUnit?: Unit;
-}): { mode: "measured"; amount: number; unit: Unit } | null {
+  referenceGroupKey?: string;
+}): { mode: "measured"; amount: number; unit: Unit; referenceItemId?: string } | null {
   if (food.kind === "coffee") return null;
+  // A reference-linked food has a real usual quantity: its reference portion
+  // (DEC-035) — but only when there is exactly one, so nothing is chosen silently.
+  if (food.referenceGroupKey) return usualReferenceQuantity(getReferenceIndex(), food);
   if (!food.defaultUnit || !COUNT_UNITS.includes(food.defaultUnit)) return null;
   return { mode: "measured", amount: 1, unit: food.defaultUnit };
 }
