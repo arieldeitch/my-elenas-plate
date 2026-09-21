@@ -15,6 +15,7 @@ import type {
   FoodKind,
   MealSlotId,
   MealStatus,
+  ProfileId,
   QuantityMode,
   SubjectiveAmount,
   Unit,
@@ -125,6 +126,11 @@ export function entryToRow(entry: FoodEntry, ctx: EntryContext): FoodEntryInsert
     note: entry.coffee?.note ?? null,
     points_value: entry.pointsValue ?? null,
     points_model_version: entry.pointsModelVersion ?? null,
+    // DEC-035 snapshot provenance — written once with the snapshot, never rewritten.
+    points_basis: entry.pointsBasis ?? null,
+    reference_item_id: entry.referenceItemId ?? null,
+    base_points: entry.basePoints ?? null,
+    benefit_rule: entry.benefitRule ?? null,
   };
 }
 
@@ -147,6 +153,10 @@ export function entryFromRow(row: FoodEntryRow): FoodEntry {
   if (coffee) entry.coffee = coffee;
   if (row.points_value != null) entry.pointsValue = Number(row.points_value);
   if (row.points_model_version) entry.pointsModelVersion = row.points_model_version;
+  if (row.points_basis) entry.pointsBasis = row.points_basis;
+  if (row.reference_item_id) entry.referenceItemId = row.reference_item_id;
+  if (row.base_points != null) entry.basePoints = Number(row.base_points);
+  if (row.benefit_rule) entry.benefitRule = row.benefit_rule as FoodEntry["benefitRule"];
   if (row.created_at) entry.loggedAt = row.created_at;
   return entry;
 }
@@ -154,9 +164,17 @@ export function entryFromRow(row: FoodEntryRow): FoodEntry {
 // --- custom foods -----------------------------------------------------------
 const DEFAULT_CUSTOM_UNITS: Unit[] = ["יחידה", "גרם", "מנה"];
 
-/** Domain custom Food -> foods insert payload. */
-export function foodToRow(food: Food, householdId: string): FoodInsert {
-  return {
+/**
+ * Domain custom Food -> foods insert payload. `createdByProfileId` is the DB
+ * id of the person who created the food (owner scope, DEC-035); the confirmed
+ * portion value travels with it so the partner's device scores it the same way.
+ */
+export function foodToRow(
+  food: Food,
+  householdId: string,
+  createdByProfileId: string | null = null,
+): FoodInsert {
+  const row: FoodInsert = {
     id: food.id,
     household_id: householdId,
     name: food.name.trim(),
@@ -165,7 +183,14 @@ export function foodToRow(food: Food, householdId: string): FoodInsert {
     default_unit: food.defaultUnit ?? null,
     kind: food.kind ?? "generic",
     is_active: food.isActive ?? true,
+    portion_amount: food.portionAmount ?? null,
+    portion_unit: food.portionUnit ?? null,
+    points_per_portion: food.pointsStatus === "confirmed" ? (food.pointsPerPortion ?? null) : null,
+    points_status: food.pointsStatus === "confirmed" ? "confirmed" : "unscored",
   };
+  if (createdByProfileId) row.created_by_profile_id = createdByProfileId;
+  if (food.pointsStatus === "confirmed") row.points_confirmed_at = new Date().toISOString();
+  return row;
 }
 
 /**
@@ -174,8 +199,8 @@ export function foodToRow(food: Food, householdId: string): FoodInsert {
  * client-side default: the column does not exist in the schema, and a built-in
  * food's richer unit set is restored by `mergeCatalog`.
  */
-export function foodFromRow(row: FoodRow): Food {
-  return {
+export function foodFromRow(row: FoodRow, localProfileById?: Map<string, ProfileId>): Food {
+  const food: Food = {
     id: row.id,
     name: row.name,
     category: row.category ?? undefined,
@@ -184,6 +209,21 @@ export function foodFromRow(row: FoodRow): Food {
     kind: (row.kind as FoodKind) ?? "generic",
     isActive: row.is_active,
   };
+  // Columns added by 20260921120000 — absent on a database that has not
+  // applied it yet, so every read is defensive (the app must keep working).
+  if (row.portion_amount != null) food.portionAmount = Number(row.portion_amount);
+  if (row.portion_unit) food.portionUnit = row.portion_unit as Unit;
+  if (row.points_status === "confirmed" && row.points_per_portion != null) {
+    food.pointsStatus = "confirmed";
+    food.pointsPerPortion = Number(row.points_per_portion);
+  } else if (row.points_status) {
+    food.pointsStatus = "unscored";
+  }
+  const creator = row.created_by_profile_id
+    ? localProfileById?.get(row.created_by_profile_id)
+    : undefined;
+  if (creator) food.createdBy = creator;
+  return food;
 }
 
 export interface Preference {

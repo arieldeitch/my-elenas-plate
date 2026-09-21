@@ -9,6 +9,7 @@ import type {
   DayData,
   Food,
   MealSlotId,
+  ProfileId,
   StepLog,
   WeighIn,
   WorkoutFeeling,
@@ -388,7 +389,10 @@ export async function upsertWeighIn(
  * purpose: `mergeCatalog` needs them to hide a built-in food the household
  * archived. Filtering happens there, not here.
  */
-export async function loadFoods(householdId: string): Promise<Food[]> {
+export async function loadFoods(
+  householdId: string,
+  localProfileById?: Map<string, ProfileId>,
+): Promise<Food[]> {
   const sb = requireSupabase();
   const { data, error } = await sb
     .from("foods")
@@ -396,12 +400,16 @@ export async function loadFoods(householdId: string): Promise<Food[]> {
     .eq("household_id", householdId)
     .order("created_at");
   if (error) throw error;
-  return ((data ?? []) as FoodRow[]).map(foodFromRow);
+  return ((data ?? []) as FoodRow[]).map((row) => foodFromRow(row, localProfileById));
 }
 
-export async function upsertFood(householdId: string, food: Food): Promise<void> {
+export async function upsertFood(
+  householdId: string,
+  food: Food,
+  createdByProfileId: string | null = null,
+): Promise<void> {
   const sb = requireSupabase();
-  const { error } = await sb.from("foods").upsert(foodToRow(food, householdId));
+  const { error } = await sb.from("foods").upsert(foodToRow(food, householdId, createdByProfileId));
   if (error) throw error;
 }
 
