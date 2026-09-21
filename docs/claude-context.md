@@ -1,7 +1,7 @@
 # Claude Context
 
 Fast-start context for Claude Code. The latest user instruction always overrides older docs.
-Updated 2026-09-19 (DEC-034 points v2-il + personalised budget; migration 20260919100000 applied/verified in production; Lovable publish triggered; phone acceptance next).
+Updated 2026-09-21 (DEC-035 canonical points reference on branch `feat/points-reference-import`, PR open; migration 20260921120000 prepared + proven on PGlite, NOT applied to production; previous state: DEC-034 applied/verified, publish triggered).
 
 ## Start state
 
@@ -11,6 +11,18 @@ Updated 2026-09-19 (DEC-034 points v2-il + personalised budget; migration 202609
   M1 status: `docs/claude-tasks/M1_STATUS.md`; **M1 release entrypoint:**
   `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md`; latest run record:
   `docs/claude-tasks/RUN_2026-09-19_POINTS_V2_HARDENING.md` (previous: `RUN_2026-09-19_STEPS_UX.md`, `RUN_2026-09-18_RELIABILITY_HARDENING.md`).
+- **DEC-035 (2026-09-21) — canonical points reference (`docs/POINTS_REFERENCE.md`).** Elena's sheet
+  `docs/data/nutrition-points-source.xlsx` → `npm run points:import` → `src/data/points-reference/`
+  (audit `reference.v1.json` with verbatim `source_*`, runtime `reference.v1.runtime.json`, reports).
+  `src/lib/points-reference/` = parser, cleaning rules R01–R11, engine (exact → alias → same-family
+  scaling → blocked; half points; benefits base vs applied), runtime index (`withReference` links catalog
+  foods by exact normalised name and adds reference-only `r_*` foods). `scoreEntry(entry, food, ctx)` in
+  `points.ts`: reference row → confirmed custom portion → v2-il, basis stored on the entry. Conflict /
+  needs_review rows are never offered or scored. UI: result line, `VariantPicker`, reference-aware
+  `QuantitySelector`, `NewFoodForm` (confirm before save, `הצעה לבדיקה`). Migration
+  `20260921120000_points_reference` + `apply_points_reference_production.sql` + `verify_points_reference.sql`
+  (owner gate, `supabase/DEPLOY.md`). Never edit the JSON / seed by hand: edit the sheet, bump
+  `SOURCE_VERSION`, re-run the three `points:*` scripts.
 - **DEC-034 (2026-09-19) supersedes the v1 model.** `src/lib/points-config.ts` holds EVERY constant
   (category table, subjective multipliers, unit families/portions, nutrition weights, budget: Mifflin-St
   Jeor → 23 × BMR/1400, clamp 14–45, maintenance ×1.2, fallback 23, override 10–60); `src/lib/points.ts`
@@ -126,7 +138,7 @@ seeded. Nothing was ever broken in the migration.
 Not a repository audit, and not a migration:
 
 1. Read `docs/claude-context.md`.
-2. Read `docs/claude-tasks/RUN_2026-09-19_POINTS_V2_HARDENING.md` (latest run record) and
+2. Read `docs/claude-tasks/RUN_2026-09-21_POINTS_REFERENCE.md` (latest run record; previous `RUN_2026-09-19_POINTS_V2_HARDENING.md`) and
    `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md` (release state).
 3. Read `docs/project-status.md` and `docs/todo.md`.
 4. Check the current branch, HEAD and `git status` (read-only).

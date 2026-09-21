@@ -1,6 +1,6 @@
 # Project Status
 
-**Date:** 2026-09-19 (points model v2-il + personalised budget, DEC-034; production migration applied/verified; publish triggered)
+**Date:** 2026-09-21 (canonical points reference from `ניקוד.xlsx`, DEC-035; on branch `feat/points-reference-import`, PR open, migration `20260921120000` prepared + proven on PGlite, NOT applied to production)
 **Branch:** `main` — points v2-il (vegetables 0, fruit positive, calibrated/nutrition/category hierarchy) + personalised daily budget (Mifflin-St Jeor backbone) + keyboard/quantity fixes. Production schema `20260919100000` is applied/verified; Lovable publish of current main has been triggered.
 **Supabase project:** `rqgoiuztphkcvbwtbxbj` (production) · isolated branch `uyroeumwmjhrcbkesmgb`
 **Stage:** **Feature work paused. M1 = YELLOW only until live verification: DEC-031 + hardening are applied, owner reports Supabase "Allow anonymous sign-ins" = ON, and current main is published. Next: fresh-device smoke + §3b on two phones → M1 CLOSED → M2-7 (`M2_7_PILOT.md`).**
@@ -8,6 +8,24 @@
 **Pilot-ready code checkpoint:** tag `pilot-ready-2026-07-24` → `29ac1d5`.
 
 > Rule: nothing is listed as "working" unless it was actually run/verified.
+
+## 2026-09-21 (thirteenth run) — canonical points reference from `ניקוד.xlsx` (DEC-035)
+
+Full record: `docs/claude-tasks/RUN_2026-09-21_POINTS_REFERENCE.md` · manual `docs/POINTS_REFERENCE.md`.
+Elena's sheet (`docs/data/nutrition-points-source.xlsx`) → deterministic, idempotent pipeline
+(`npm run points:import`) → audit dataset with verbatim `source_*` provenance + runtime projection +
+reports. **1,394 rows: active 1,308 · needs_review 78 · conflict 6 (3 groups) · deprecated 2.**
+Engine: exact → alias → same-family scaling only (grams/ml/same count label) → blocked; half points kept;
+several portions → explicit picker; conflicts/review rows never offered or scored; benefits
+(`במסגרת 3 פירות`, `תוספת חלבון ב-0`) attached as base vs applied with per-day eligibility, not applied
+by the UI. UI: result line `portion · points · category`, VariantPicker, reference-aware QuantitySelector
+(blocked unit = disabled add with a reason), NewFoodForm with `הצעה לבדיקה` + explicit confirmation.
+Reconciliation of the 390-food catalog: 78 linked by exact name, 158 review candidates, 153 on v2-il.
+Migration `20260921120000_points_reference` (3 read-only shared tables, 6 + 4 additive columns, generated
+seed) + owner wrapper `apply_points_reference_production.sql` + `verify_points_reference.sql` — proven on
+PGlite (idempotent seed, RLS read-only, anon blocked, owner scope, snapshot immutable). Gate: typecheck 0 ·
+lint 0 errors · vitest 435/16 skipped · hermetic Playwright 9/9 (new phone-width spec) · build OK
+(client gzip 197 → 270 KB). **Not applied to production, not merged, not published** — owner gates.
 
 ## 2026-09-19 (twelfth run) — points v2-il, personalised budget, keyboard/quantity hardening (DEC-034)
 
