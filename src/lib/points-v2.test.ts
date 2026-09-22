@@ -235,12 +235,13 @@ describe("subjective multipliers are centralised and labelled", () => {
   });
 });
 
-describe("snapshots: persisted wins, new = v2-il, v1 never reinterpreted", () => {
+describe("snapshots: persisted wins; the v2-il model is history only (DEC-036)", () => {
   const bread = food("לחם ומאפים");
-  it("scoreEntry stamps v2-il; POINTS_MODEL_VERSION is v2-il", () => {
-    expect(POINTS_MODEL_VERSION).toBe(POINTS_MODEL_V2);
+  it("scoreEntry no longer uses the v2-il model: a food without a reference row is saved unscored", () => {
+    expect(POINTS_MODEL_VERSION).toBe(POINTS_MODEL_V2); // legacy constant, explains old snapshots
     const e = scoreEntry({ mode: "measured", amount: 2, unit: "פרוסה" }, bread);
-    expect(e).toMatchObject({ pointsValue: 6, pointsModelVersion: "v2-il" });
+    expect(e).toMatchObject({ pointsValue: null, pointsBasis: "unscored:no_reference" });
+    expect(calculatePointsV2({ mode: "measured", amount: 2, unit: "פרוסה" }, bread)).toBe(6); // what v2 WOULD have said
   });
   it("a persisted v1 snapshot is displayed as saved even where v2 would differ", () => {
     const fruitV1: FoodEntry = {
@@ -257,7 +258,7 @@ describe("snapshots: persisted wins, new = v2-il, v1 never reinterpreted", () =>
     expect(pointsForEntry(fruitV1, food("פירות"))).toBe(0); // still 0 on display
     expect(calculatePointsV2(fruitV1, food("פירות"))).toBe(1); // v2 would say 1
   });
-  it("an entry without any snapshot gets a v2 estimate for display only", () => {
+  it("an entry without any snapshot is unscored on display — never estimated (DEC-036)", () => {
     const old: FoodEntry = {
       id: "e0",
       foodId: "f",
@@ -266,7 +267,7 @@ describe("snapshots: persisted wins, new = v2-il, v1 never reinterpreted", () =>
       amount: 1,
       unit: "פרוסה",
     };
-    expect(pointsForEntry(old, bread)).toBe(3);
+    expect(pointsForEntry(old, bread)).toBeNull();
     expect(old.pointsValue).toBeUndefined();
   });
   it("pointsForDay sums per-entry values with the snapshot precedence", () => {
@@ -292,7 +293,7 @@ describe("snapshots: persisted wins, new = v2-il, v1 never reinterpreted", () =>
         },
       },
     } as unknown as Parameters<typeof pointsForDay>[0];
-    expect(pointsForDay(day, [bread])).toBe(4);
+    expect(pointsForDay(day, [bread])).toBe(1); // the snapshot only; the unscored entry adds nothing
   });
 });
 

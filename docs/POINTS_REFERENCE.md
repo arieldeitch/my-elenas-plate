@@ -1,11 +1,53 @@
 # Points reference (מאגר הניקוד) — how it works and how to change it
 
-DEC-035 (2026-09-21). The canonical scoring dataset of the app is derived from
-`docs/data/nutrition-points-source.xlsx` (the file Elena provided as `ניקוד.xlsx`).
-This page is the operating manual: what the pipeline does, what the app does with
-the result, and the exact steps to add or fix a food.
+DEC-035 (2026-09-21) + **DEC-036 (2026-09-22)**. The canonical scoring dataset of the
+app is derived from `docs/data/nutrition-points-source.xlsx` (the file Elena provided
+as `ניקוד.xlsx`). This page is the operating manual: what the pipeline does, what the
+app does with the result, and the exact steps to add or fix a food.
+
+## 0. Binding product decision (DEC-036 — project memory)
+
+> **`ניקוד.xlsx` and the points-reference imported from it are the ONLY source of
+> truth for the food list and the points values in the app.** Legacy catalog foods
+> that existed before the sheet was imported may NOT appear in search, lists,
+> favourites, recents or as a default suggestion unless they have a **verified**
+> link to an **active** reference row. Meal history is never deleted and historical
+> snapshots are never changed.
+
+Consequences, all enforced in code (`src/lib/points-reference/canonical.ts`):
+
+- the active list is built from the reference alone (`resolveCatalog`): one card per
+  reference food, one canonical id (`r_<group>`), plus the structured coffee editor;
+- a legacy food resolves only by (1) explicit link `foods.reference_group_key`,
+  (2) a verified alias in `src/data/points-reference/aliases.v1.json`, (3) an exact
+  normalised name — **never** by fuzzy similarity; anything else is hidden (history only);
+- `תפוח` (legacy) is a verified alias of `תפוח עץ`: one result, the reference card,
+  "נמצא לפי: תפוח" on its secondary line, 100 גרם = 2;
+- **every new points value comes from the reference**; there is no category, model,
+  manual or estimated fallback. An entry that cannot be resolved is saved **unscored**
+  (`points_value = null`, `points_basis = unscored:*`) and shown as "ללא ניקוד";
+- a "custom food" is a **personal alias** of a reference food (`PersonalAliasForm`):
+  it makes that food findable by the person's own name and takes portion, unit and
+  points from it. A name with no matching reference food cannot be saved as a scored
+  food — the form says so;
+- favourites and recents are resolved through the same resolver: a hidden legacy id
+  never comes back, a linked one is shown as its reference card, duplicates collapse;
+- editing / stepping a historical entry re-scores through the reference, so it is
+  offered only when the entry's food still resolves; otherwise the row says
+  "מאכל ישן, לא במאגר" and asks to choose the food again. Copying such an entry is
+  never silent: it is saved unscored, not with a legacy value.
+
+The coffee editor (DEC-014) stays and scores through the reference by a documented
+map (`coffeeReferenceGroup`): no milk → `אספרסו` (0 at any quantity); regular /
+lactose-free milk → `קפוצינו/הפוך 3% שומן`; low-fat → `קפוצינו/ הפוך 1% שומן`; any other
+milk (soy, almond, oat, "other") has no reference row → saved unscored, said in the editor.
 
 ## 1. The three layers (never mixed)
+
+Since DEC-036 the middle layer holds **personal aliases** only (`reference_group_key` set,
+no value of its own). The DEC-035 columns `portion_amount / portion_unit /
+points_per_portion / points_status / points_confirmed_at` are no longer written; rows
+that hold them are history.
 
 | layer                             | where                                                                                                                             | who writes                                  |
 | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
@@ -92,11 +134,20 @@ normalised name (or a verified alias).
 
 ## 4. Adding or fixing a food
 
-**A food that is simply missing (the usual case):** use the app. Type the name →
-`הוספת “…” כמאכל חדש` → the form asks for reference quantity, unit, category and
-points. Similar reference rows are offered as `הצעה לבדיקה` with their source
-and confidence; the person confirms. The food is saved once for the household
-with `created_by_profile_id` and reused by both from then on.
+**A name the app does not know (the usual case):** type it → `“…” לא במאגר — קישור לשם
+אישי` → pick the reference food it means → the name is saved as a personal alias
+(`foods.reference_group_key`, `created_by_profile_id`) and the reference food's quantity
+screen opens. No value is entered anywhere. If the reference has no such food, nothing
+can be saved with points: ask Elena to add a row to the sheet (§ below).
+
+**A legacy catalog name that should show again (e.g. `קוטג׳`):** add a verified alias to
+`src/data/points-reference/aliases.v1.json` (`alias`, `target` = the reference display
+name, a `note`; `safetyOverride` with a reason when `aliasSafetyIssues` flags it), then
+`npm run points:seed` (regenerates the alias seed + wrapper) and
+`npm run points:reconcile`. The alias test suite refuses an alias whose target is not a
+selectable reference food, a duplicate alias, or a flagged alias without a reason.
+Never alias across raw/cooked, regular/light, brand, size or recipe differences — hidden
+is the right state for those until Elena decides.
 
 **Fixing a value or a name in the canonical reference:**
 
@@ -117,22 +168,17 @@ with `created_by_profile_id` and reused by both from then on.
 delete the wrong row in the sheet, bump the version, re-run. Until then the food is
 hidden from search and can be logged only as a custom food with a confirmed value.
 
-**Linking a catalog food to a reference row by alias** (the review candidates in
-`docs/POINTS_REFERENCE_RECONCILIATION.md`): insert a row into
-`food_reference_aliases` (`alias`, `normalized_alias`, `item_id`, `verified = true`,
-`origin = 'manual'`) through a migration. `aliasSafetyIssues(alias, itemName)` must
-return `[]` for it (no raw↔cooked, light/diet or recipe difference). The runtime
-alias index (`buildReferenceIndex(dataset, aliases)`) is ready; the app does not
-load the table yet (v1 ships no aliases), so wiring `loadAliases` is the first
-step when the first alias is added.
+**Where aliases live:** the app uses the bundled `aliases.v1.json` (loaded into the
+reference index at build time); the same rows are seeded into `food_reference_aliases`
+by migration `20260922090000` as the shared audit copy (read-only for the app).
 
 ## 5. Tests
 
-| file                                                | covers                                                                                                                                    |
-| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/lib/points-reference/engine.test.ts`           | acceptance 1–8, 13, 14 + parser + suggestions                                                                                             |
-| `src/lib/points-reference/pipeline.test.ts`         | acceptance 15 (idempotent importer, seed up to date, counts, cleaning rules)                                                              |
-| `src/lib/points-reference/store-reference.test.tsx` | acceptance 9–12 (unknown food, confirmed custom food reuse, immutable snapshot, Ariel/Elena separation)                                   |
-| `src/lib/points-reference/migration.pg.test.ts`     | the real SQL on PGlite: DDL, idempotent seed, RLS read-only, owner scope, snapshot survives a reference edit, production wrapper + ledger |
-| `src/components/nutrition/PointsReference.test.tsx` | search line, variation picker, blocked unit, new-food confirmation                                                                        |
-| `e2e/hermetic/points-reference.spec.ts`             | acceptance 16 — the whole flow on a Pixel 7 viewport, no backend, no horizontal overflow                                                  |
+| file                                                | covers                                                                                                                                                                                                                                                                  |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/points-reference/engine.test.ts`           | acceptance 1–8, 13, 14 + parser + suggestions                                                                                                                                                                                                                           |
+| `src/lib/points-reference/pipeline.test.ts`         | acceptance 15 (idempotent importer, seed up to date, counts, cleaning rules)                                                                                                                                                                                            |
+| `src/lib/points-reference/store-reference.test.tsx` | **DEC-036 acceptance 1–15** (hidden legacy, alias = one card, favourites/recents filtered, personal alias only, scaling, blocked units, half points, hidden statuses, history untouched, copy of an unlinked entry, no duplicates) + alias file validation + coffee map |
+| `src/lib/points-reference/migration.pg.test.ts`     | the real SQL on PGlite: DDL, idempotent seed, RLS read-only, owner scope, snapshot survives a reference edit, production wrapper + ledger                                                                                                                               |
+| `src/components/nutrition/PointsReference.test.tsx` | search line, variation picker, blocked unit, new-food confirmation                                                                                                                                                                                                      |
+| `e2e/hermetic/points-reference.spec.ts`             | acceptance 16 — the whole flow on a Pixel 7 viewport, no backend, no horizontal overflow                                                                                                                                                                                |

@@ -1,149 +1,145 @@
 /**
- * Reconciliation of the existing built-in catalog (390 foods, DEC-019) against
+ * Reconciliation of the legacy built-in catalog (390 foods, DEC-019) against
  * the canonical points reference — `npm run points:reconcile`.
  *
- * Exact normalized-name matches are the ONLY automatic links (the app applies
- * the same rule at runtime in `withReference`). Everything else is a review
- * candidate: reported with its similarity, never linked. Output:
+ * DEC-036: the reference is the ONLY source of the active list. This script
+ * runs the same resolver the app uses (`resolveCatalog`) and reports, for
+ * every legacy food, how it resolved — explicit link / verified alias / exact
+ * name — or that it is HIDDEN (history only), with the closest reference rows
+ * as review candidates (never linked automatically). Output:
  *   src/data/points-reference/reconciliation.v1.json (machine-readable)
- *   docs/POINTS_REFERENCE_RECONCILIATION.md          (human-readable)
- * Nothing in the catalog, the database or any history is modified.
+ *   docs/POINTS_REFERENCE_RECONCILIATION.md          (human-readable, before/after)
+ * Nothing in the catalog, the database or any meal history is modified.
  */
 import { writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BUILT_IN_FOODS } from "../../src/lib/food-catalog.ts";
-import { normalizeFoodName } from "../../src/lib/food-normalize.ts";
 import {
   aliasSafetyIssues,
   buildReferenceIndex,
+  BUNDLED_ALIASES,
+  resolveCatalog,
   suggestSimilar,
 } from "../../src/lib/points-reference/index.ts";
 import { formatPortion } from "../../src/lib/points-reference/quantity-parse.ts";
-import dataset from "../../src/data/points-reference/reference.v1.json";
-import type { ReferenceDataset } from "../../src/lib/points-reference/types.ts";
+import dataset from "../../src/data/points-reference/reference.v1.runtime.json";
+import aliasFile from "../../src/data/points-reference/aliases.v1.json";
+import type { ReferenceRuntimeDataset } from "../../src/lib/points-reference/types.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const JSON_PATH = resolve(HERE, "../../src/data/points-reference/reconciliation.v1.json");
 const MD_PATH = resolve(HERE, "../../docs/POINTS_REFERENCE_RECONCILIATION.md");
 
-const index = buildReferenceIndex(dataset as ReferenceDataset);
+const data = dataset as ReferenceRuntimeDataset;
+const index = buildReferenceIndex(data, BUNDLED_ALIASES);
 const items = [...index.itemsById.values()];
 
-interface Link {
-  foodId: string;
-  foodName: string;
-  category: string;
-  groupKey: string;
-  portions: number;
-  points: string;
-}
-interface Candidate {
-  foodId: string;
-  foodName: string;
-  category: string;
-  candidates: Array<{
-    name: string;
-    portion: string;
-    points: number;
-    similarity: number;
-    issues: string[];
-  }>;
-}
+// "Before" = the DEC-035 behaviour: only exact names linked; every other legacy
+// food stayed a card of its own (with the internal model as its points source).
+const before = resolveCatalog(buildReferenceIndex(data, []), BUILT_IN_FOODS);
+// "After" = DEC-036: verified aliases + hidden legacy rows.
+const after = resolveCatalog(index, BUILT_IN_FOODS);
 
-const linked: Link[] = [];
-const review: Candidate[] = [];
-const unmatched: Array<{ foodId: string; foodName: string; category: string }> = [];
+const linked = after.resolutions
+  .filter((r) => r.canonicalId)
+  .map((r) => {
+    const card = after.active.find((f) => f.canonicalId === r.canonicalId)!;
+    return {
+      foodId: r.food.id,
+      foodName: r.food.name,
+      category: r.food.category ?? "",
+      link: r.link,
+      canonicalName: card.name,
+      canonicalId: r.canonicalId,
+    };
+  });
 
-for (const food of BUILT_IN_FOODS) {
-  if (food.kind === "coffee") continue;
-  const key = normalizeFoodName(food.name);
-  const group = index.groupsByKey.get(key);
-  if (group && group.items.length > 0) {
-    const pts = group.items.map((i) => i.points);
-    linked.push({
-      foodId: food.id,
-      foodName: food.name,
-      category: food.category ?? "",
-      groupKey: group.key,
-      portions: group.items.length,
-      points: pts.length === 1 ? String(pts[0]) : `${Math.min(...pts)}–${Math.max(...pts)}`,
-    });
-    continue;
-  }
-  const suggestions = suggestSimilar(items, food.name, 3).filter((s) => s.similarity >= 0.34);
-  if (suggestions.length > 0) {
-    review.push({
-      foodId: food.id,
-      foodName: food.name,
-      category: food.category ?? "",
-      candidates: suggestions.map((s) => ({
-        name: s.item.displayName,
-        portion: formatPortion(s.item.portion),
-        points: s.item.points,
-        similarity: Math.round(s.similarity * 100) / 100,
-        issues: aliasSafetyIssues(food.name, s.item.displayName),
-      })),
-    });
-  } else {
-    unmatched.push({ foodId: food.id, foodName: food.name, category: food.category ?? "" });
-  }
-}
+const hidden = after.hidden.map((food) => ({
+  foodId: food.id,
+  foodName: food.name,
+  category: food.category ?? "",
+  candidates: suggestSimilar(items, food.name, 3)
+    .filter((s) => s.similarity >= 0.34)
+    .map((s) => ({
+      name: s.item.displayName,
+      portion: formatPortion(s.item.portion),
+      points: s.item.points,
+      similarity: Math.round(s.similarity * 100) / 100,
+      issues: aliasSafetyIssues(food.name, s.item.displayName),
+    })),
+}));
 
 const summary = {
-  referenceVersion: dataset.source.version,
-  catalogFoods: BUILT_IN_FOODS.length,
-  linkedExact: linked.length,
-  reviewCandidates: review.length,
-  unmatched: unmatched.length,
-  referenceGroupsActive: index.groups.filter((g) => g.items.length > 0).length,
-  referenceGroupsClaimedByCatalog: new Set(linked.map((l) => l.groupKey)).size,
+  referenceVersion: data.source.version,
+  aliasesVersion: aliasFile.version,
+  before: {
+    activeCards:
+      before.summary.activeReferenceFoods + before.summary.legacyFoods - before.summary.linkedExact,
+    referenceFoods: before.summary.activeReferenceFoods,
+    legacyCardsShown: before.summary.legacyFoods - before.summary.linkedExact,
+    legacyLinkedExact: before.summary.linkedExact,
+  },
+  after: {
+    activeCards: after.active.length,
+    referenceFoods: after.summary.activeReferenceFoods,
+    coffeeEditorEntry: after.active.length - after.summary.activeReferenceFoods,
+    legacyFoods: after.summary.legacyFoods,
+    linkedExplicit: after.summary.linkedExplicit,
+    linkedAlias: after.summary.linkedAlias,
+    linkedExact: after.summary.linkedExact,
+    hidden: after.summary.hidden,
+    duplicatesCollapsed: after.summary.duplicatesCollapsed,
+    verifiedAliases: aliasFile.aliases.length,
+  },
 };
 
-writeFileSync(JSON_PATH, JSON.stringify({ summary, linked, review, unmatched }, null, 1) + "\n");
+writeFileSync(JSON_PATH, JSON.stringify({ summary, linked, hidden }, null, 1) + "\n");
 
 const md = [
-  "# Reconciliation — built-in catalog × points reference",
+  "# Reconciliation — legacy catalog × points reference (DEC-036)",
   "",
-  `Generated by \`npm run points:reconcile\` from reference **${summary.referenceVersion}**. Read-only: nothing in the catalog, the database or any meal history is changed.`,
+  `Generated by \`npm run points:reconcile\` from reference **${summary.referenceVersion}** and aliases **${summary.aliasesVersion}**. Read-only: nothing in the catalog, the database or any meal history is changed.`,
   "",
-  "| metric | value |",
-  "| --- | ---: |",
-  `| built-in catalog foods | ${summary.catalogFoods} |`,
-  `| linked automatically (exact normalized name) | ${summary.linkedExact} |`,
-  `| review candidates (similar name, NOT linked) | ${summary.reviewCandidates} |`,
-  `| no plausible reference row | ${summary.unmatched} |`,
-  `| active reference groups | ${summary.referenceGroupsActive} |`,
-  `| … of which claimed by a catalog food | ${summary.referenceGroupsClaimedByCatalog} |`,
+  "## Before / after",
   "",
-  "Rule: a catalog food is linked only when its normalized name equals a reference name (the same rule the app applies at runtime, `withReference`). A linked food scores through the reference from now on; entries logged before keep their stored snapshot.",
+  "| metric | before (DEC-035) | after (DEC-036) |",
+  "| --- | ---: | ---: |",
+  `| cards in the active list | ${summary.before.activeCards} | ${summary.after.activeCards} |`,
+  `| … reference foods | ${summary.before.referenceFoods} | ${summary.after.referenceFoods} |`,
+  `| … legacy catalog cards of their own | ${summary.before.legacyCardsShown} | 0 |`,
+  `| … coffee editor entry | 1 | ${summary.after.coffeeEditorEntry} |`,
+  `| legacy foods linked by exact name | ${summary.before.legacyLinkedExact} | ${summary.after.linkedExact} |`,
+  `| legacy foods linked by verified alias | 0 | ${summary.after.linkedAlias} |`,
+  `| legacy foods linked explicitly (personal aliases) | 0 | ${summary.after.linkedExplicit} |`,
+  `| legacy foods hidden (history only) | 0 | ${summary.after.hidden} |`,
+  `| duplicate cards collapsed onto one reference food | 0 | ${summary.after.duplicatesCollapsed} |`,
+  `| verified aliases shipped | 0 | ${summary.after.verifiedAliases} |`,
   "",
-  "## Linked automatically",
+  "Rule (DEC-036): a legacy food appears only through a verified link — explicit `reference_group_key`, an alias in `aliases.v1.json`, or an exact normalised name — and then only as the reference food (one card, one canonical id). Everything else is hidden from search, chips, favourites and recents; meal history keeps its snapshots.",
   "",
-  "| catalog food | category | reference portions | points |",
-  "| --- | --- | ---: | --- |",
-  ...linked.map((l) => `| ${l.foodName} | ${l.category} | ${l.portions} | ${l.points} |`),
+  "## Linked (shown as the reference food)",
   "",
-  "## Review candidates (not linked — a person decides)",
+  "| legacy food | category | via | reference food |",
+  "| --- | --- | --- | --- |",
+  ...linked.map((l) => `| ${l.foodName} | ${l.category} | ${l.link} | ${l.canonicalName} |`),
   "",
-  "Each candidate lists the alias-safety issues the engine would raise (`cooking_state_differs`, `light_or_diet_variant_differs`, `recipe_vs_ingredient`). To link one, add a verified alias (see `docs/POINTS_REFERENCE.md`).",
+  "## Hidden (no verified link — history only, review candidates NOT linked)",
   "",
-  "| catalog food | category | candidate | portion | points | similarity | issues |",
+  "Candidates list the alias-safety issues the engine raises. To link one, add it to `src/data/points-reference/aliases.v1.json` with a reviewer note (see `docs/POINTS_REFERENCE.md §4`). Rows without candidates need a new reference row from Elena.",
+  "",
+  "| legacy food | category | candidate | portion | points | similarity | issues |",
   "| --- | --- | --- | --- | ---: | ---: | --- |",
-  ...review.flatMap((r) =>
-    r.candidates.map(
-      (c) =>
-        `| ${r.foodName} | ${r.category} | ${c.name} | ${c.portion} | ${c.points} | ${c.similarity} | ${c.issues.join(", ") || "—"} |`,
-    ),
+  ...hidden.flatMap((h) =>
+    h.candidates.length === 0
+      ? [`| ${h.foodName} | ${h.category} | — | | | | no plausible reference row |`]
+      : h.candidates.map(
+          (c) =>
+            `| ${h.foodName} | ${h.category} | ${c.name} | ${c.portion} | ${c.points} | ${c.similarity} | ${c.issues.join(", ") || "—"} |`,
+        ),
   ),
-  "",
-  "## No plausible reference row",
-  "",
-  "These keep the internal v2-il model (DEC-034) until a reference row or a confirmed value exists.",
-  "",
-  ...unmatched.map((u) => `- ${u.foodName} (${u.category})`),
   "",
 ].join("\n");
 writeFileSync(MD_PATH, md);
 
-console.log(summary);
+console.log(JSON.stringify(summary, null, 2));

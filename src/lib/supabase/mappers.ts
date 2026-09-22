@@ -183,13 +183,12 @@ export function foodToRow(
     default_unit: food.defaultUnit ?? null,
     kind: food.kind ?? "generic",
     is_active: food.isActive ?? true,
-    portion_amount: food.portionAmount ?? null,
-    portion_unit: food.portionUnit ?? null,
-    points_per_portion: food.pointsStatus === "confirmed" ? (food.pointsPerPortion ?? null) : null,
-    points_status: food.pointsStatus === "confirmed" ? "confirmed" : "unscored",
+    // DEC-036: a custom food is a personal alias of a reference food; it never
+    // carries a value of its own (the DEC-035 columns stay null from now on).
+    points_status: "unscored",
   };
+  if (food.referenceGroupKey) row.reference_group_key = food.referenceGroupKey;
   if (createdByProfileId) row.created_by_profile_id = createdByProfileId;
-  if (food.pointsStatus === "confirmed") row.points_confirmed_at = new Date().toISOString();
   return row;
 }
 
@@ -223,6 +222,8 @@ export function foodFromRow(row: FoodRow, localProfileById?: Map<string, Profile
     ? localProfileById?.get(row.created_by_profile_id)
     : undefined;
   if (creator) food.createdBy = creator;
+  // DEC-036 explicit link (column added by 20260922090000; absent before).
+  if (row.reference_group_key) food.referenceGroupKey = row.reference_group_key;
   return food;
 }
 

@@ -403,6 +403,25 @@ export async function loadFoods(
   return ((data ?? []) as FoodRow[]).map((row) => foodFromRow(row, localProfileById));
 }
 
+/**
+ * Whether the cloud `foods` table has `reference_group_key` (migration
+ * 20260922090000). One cheap request on activation; a missing column answers
+ * with SQLSTATE 42703, which is the only "no" — network errors stay unknown.
+ */
+export async function foodsSchemaSupportsReferenceLink(
+  householdId: string,
+): Promise<boolean | null> {
+  const sb = requireSupabase();
+  const { error } = await sb
+    .from("foods")
+    .select("reference_group_key")
+    .eq("household_id", householdId)
+    .limit(1);
+  if (!error) return true;
+  if (error.code === "42703") return false;
+  return null;
+}
+
 export async function upsertFood(
   householdId: string,
   food: Food,

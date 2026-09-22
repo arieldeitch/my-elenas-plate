@@ -11,6 +11,7 @@ import {
   portionAsQuantity,
   resolvableUnits,
   resolveReferenceItem,
+  selectableItems,
   type ReferenceRuntimeItem as ReferenceItem,
 } from "@/lib/points-reference";
 import { cn } from "@/lib/utils";
@@ -31,8 +32,6 @@ const BASIS_LABEL: Record<string, string> = {
   "reference:exact": "לפי המאגר · מנת ייחוס",
   "reference:scaled": "לפי המאגר · חישוב יחסי",
   "reference:any": "לפי המאגר · 0 בכל כמות",
-  "custom:confirmed": "לפי הערך שאושר למאכל",
-  "model:v2-il": "הערכה לפי המודל הפנימי",
 };
 
 export function QuantitySelector({
@@ -50,7 +49,8 @@ export function QuantitySelector({
     if (referenceItem) return referenceItem;
     if (initial?.referenceItemId) return index.itemsById.get(initial.referenceItemId);
     const group = groupForFood(index, food);
-    return group?.items.length === 1 ? group.items[0] : undefined;
+    const rows = group ? selectableItems(group) : [];
+    return rows.length === 1 ? rows[0] : undefined;
   }, [referenceItem, initial?.referenceItemId, food, index]);
   const portionQuantity = item ? portionAsQuantity(item.portion) : null;
 
@@ -82,14 +82,17 @@ export function QuantitySelector({
     { reference: index },
   );
   const resolution = item ? resolveReferenceItem(item, quantity) : null;
+  // DEC-036: no reference row → nothing can be saved with a value here.
   const blockedMessage =
     preview.pointsBasis === "reference:blocked"
       ? resolution?.reason
         ? BLOCK_MESSAGES[resolution.reason]
         : BLOCK_MESSAGES.no_portion
-      : preview.pointsBasis === "custom:blocked"
-        ? BLOCK_MESSAGES.count_unit_mismatch
-        : null;
+      : preview.pointsBasis === "unscored:ambiguous"
+        ? "למאכל כמה מנות ייחוס במאגר — יש לבחור אחת מהן."
+        : preview.pointsBasis === "unscored:no_reference"
+          ? "למאכל אין רשומה במאגר הניקוד — לא ניתן להוסיף אותו עם ניקוד."
+          : null;
 
   function handleSubmit() {
     if (blockedMessage) {
@@ -123,12 +126,6 @@ export function QuantitySelector({
           <div className="mt-0.5 text-xs text-muted-foreground" data-testid="reference-line">
             מנת ייחוס: {formatPortion(item.portion)} = {formatPoints(item.points)} נק׳
             {item.category ? ` · ${item.category}` : ""}
-          </div>
-        )}
-        {!item && food.pointsStatus === "confirmed" && food.pointsPerPortion != null && (
-          <div className="mt-0.5 text-xs text-muted-foreground" data-testid="reference-line">
-            ערך שאושר: {food.portionAmount ?? 1} {food.portionUnit ?? food.defaultUnit} ={" "}
-            {formatPoints(food.pointsPerPortion)} נק׳
           </div>
         )}
       </div>

@@ -36,19 +36,20 @@ test("log as Elena in a few taps, see it on Ariel's partner card, never mixed up
   await expect(page.getByRole("tab", { name: "מדידה" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByTestId("points-preview")).toBeVisible();
   await page.getByRole("button", { name: "הוספת המאכל" }).click();
-  await expect(page.getByTestId("meal-entries").getByText("סלט ירקות")).toBeVisible();
+  // DEC-036: "סלט ירקות" is a verified alias of the reference food ירקות (0 at any quantity).
+  await expect(page.getByTestId("meal-entries").getByText("ירקות")).toBeVisible();
   await expect(page.getByLabel("חיפוש מאכל")).toHaveValue("");
   await expect(page.getByRole("button", { name: "הוספת המאכל" })).toHaveCount(0);
 
   // Quick add: the recent chip adds the second one in ONE tap (same rule as the result).
-  await dialog.getByRole("button", { name: "סלט ירקות, הוספה של 1 קערה" }).click();
-  await expect(page.getByTestId("meal-entries").getByText("סלט ירקות")).toHaveCount(2);
+  await dialog.getByRole("button", { name: "ירקות, הוספה של 1 מנה" }).click();
+  await expect(page.getByTestId("meal-entries").getByText("ירקות")).toHaveCount(2);
   await expect(page.getByRole("button", { name: "הוספת המאכל" })).toHaveCount(0);
   await page.getByRole("button", { name: "סיום" }).click();
 
   // ME block reflects it; latest activity names the food and the slot.
   await expect(page.getByTestId("today-count")).toContainText("1/6");
-  await expect(page.getByTestId("today-latest")).toContainText("לאחרונה: סלט ירקות · ארוחה מרכזית");
+  await expect(page.getByTestId("today-latest")).toContainText("לאחרונה: ירקות · ארוחה מרכזית");
 
   // The partner card opens his Day Review (read-only); switching to Ariel is the
   // explicit step at its bottom. His day is empty, her card shows her food.
@@ -60,7 +61,7 @@ test("log as Elena in a few taps, see it on Ariel's partner card, never mixed up
   await expect(page.getByTestId("today-count")).toContainText("0/6");
   const partner = page.getByTestId("partner-glance");
   await expect(partner).toHaveAttribute("data-partner", "elena");
-  await expect(partner).toContainText("לאחרונה: סלט ירקות · ארוחה מרכזית");
+  await expect(partner).toContainText("לאחרונה: ירקות · ארוחה מרכזית");
   await expect(partner.locator("[data-slot='lunch']")).toHaveAttribute("data-status", "logged");
 
   // The FAB logs into Ariel's first empty slot, as Ariel.

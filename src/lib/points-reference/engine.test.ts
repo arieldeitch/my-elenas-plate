@@ -14,7 +14,7 @@ import {
   resolveReferenceItem,
   scalePoints,
   suggestSimilar,
-  withReference,
+  resolveCatalog,
   type ReferenceRuntimeItem as ReferenceItem,
 } from "./index";
 import { parseQuantityText } from "./quantity-parse";
@@ -184,7 +184,7 @@ describe("6. no cup→gram conversion without an explicit reference", () => {
       referenceItemId: cupOnly.id,
     });
     expect(scored.pointsBasis).toBe("reference:blocked");
-    expect(scored.pointsValue).toBe(0);
+    expect(scored.pointsValue).toBeNull(); // unscored, never estimated
   });
 });
 
@@ -196,10 +196,11 @@ describe("7. several variations of the same food", () => {
       "100 גרם=19",
     ]);
     // Unresolved group (no chosen row) → blocked, never "the first one".
-    const food = withReference([{ id: "f_x", name: "אגוז ברזיל" }], index)[0];
+    const food = resolveCatalog(index, []).active.find((f) => f.name === "אגוז ברזיל")!;
     expect(food.referenceGroupKey).toBe(g.key);
     const ambiguous = scoreDetails({ mode: "measured", amount: 2, unit: "יחידה" }, food);
-    expect(ambiguous.pointsBasis).toBe("reference:blocked");
+    expect(ambiguous.pointsBasis).toBe("unscored:ambiguous");
+    expect(ambiguous.pointsValue).toBeNull();
     // Chosen row → scored against that row only.
     const chosen = scoreDetails(
       { mode: "measured", amount: 4, unit: "יחידה", referenceItemId: g.items[0].id },
@@ -228,7 +229,9 @@ describe("8. conflicting rows", () => {
     expect(g.items).toHaveLength(0); // nothing offered as a default
     expect(g.hiddenCount).toBe(2);
     // conflict-only groups are not turned into searchable foods
-    expect(withReference([], index).some((f) => f.name === yogurt[0].displayName)).toBe(false);
+    expect(resolveCatalog(index, []).active.some((f) => f.name === yogurt[0].displayName)).toBe(
+      false,
+    );
     const rice = [byRow(794), byRow(795)];
     expect(rice.map((i) => i.status)).toEqual(["conflict", "conflict"]);
     expect(new Set(rice.map((i) => i.category)).size).toBe(2);

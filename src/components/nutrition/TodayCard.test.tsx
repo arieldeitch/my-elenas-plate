@@ -63,7 +63,7 @@ describe("TodayCard (M2 home — ME)", () => {
     act(() => store!.addEntry("lunch", apple));
     expect(screen.getByTestId("today-count")).toHaveTextContent("2/6");
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "2");
-    expect(screen.getByTestId("today-latest")).toHaveTextContent(/לאחרונה: תפוח · ארוחה מרכזית/);
+    expect(screen.getByTestId("today-latest")).toHaveTextContent(/לאחרונה: תפוח עץ · ארוחה מרכזית/);
 
     // Switching to the partner shows HER (empty) day, not mine.
     act(() => store!.setActiveProfile("elena"));

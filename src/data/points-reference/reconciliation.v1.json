@@ -1,654 +1,1261 @@
 {
  "summary": {
   "referenceVersion": "v1-2026-09-21",
-  "catalogFoods": 390,
-  "linkedExact": 78,
-  "reviewCandidates": 158,
-  "unmatched": 153,
-  "referenceGroupsActive": 1120,
-  "referenceGroupsClaimedByCatalog": 78
+  "aliasesVersion": "aliases-v1-2026-09-22",
+  "before": {
+   "activeCards": 1431,
+   "referenceFoods": 1120,
+   "legacyCardsShown": 311,
+   "legacyLinkedExact": 78
+  },
+  "after": {
+   "activeCards": 1121,
+   "referenceFoods": 1120,
+   "coffeeEditorEntry": 1,
+   "legacyFoods": 389,
+   "linkedExplicit": 0,
+   "linkedAlias": 76,
+   "linkedExact": 78,
+   "hidden": 235,
+   "duplicatesCollapsed": 18,
+   "verifiedAliases": 76
+  }
  },
  "linked": [
   {
    "foodId": "f_cucumber",
    "foodName": "מלפפון",
    "category": "ירקות ועשבי תיבול",
-   "groupKey": "מלפפון",
-   "portions": 1,
-   "points": "0"
+   "link": "exact",
+   "canonicalName": "מלפפון",
+   "canonicalId": "r_e07e234b"
+  },
+  {
+   "foodId": "f_tomato",
+   "foodName": "עגבנייה",
+   "category": "ירקות ועשבי תיבול",
+   "link": "alias",
+   "canonicalName": "עגבניות",
+   "canonicalId": "r_e08dd6d4"
+  },
+  {
+   "foodId": "f_cherry_tomato",
+   "foodName": "עגבניות שרי",
+   "category": "ירקות ועשבי תיבול",
+   "link": "alias",
+   "canonicalName": "עגבניות",
+   "canonicalId": "r_e08dd6d4"
+  },
+  {
+   "foodId": "f_pepper_red",
+   "foodName": "פלפל אדום",
+   "category": "ירקות ועשבי תיבול",
+   "link": "alias",
+   "canonicalName": "פלפל אדום ירוק או צהוב",
+   "canonicalId": "r_f9e2aa18"
+  },
+  {
+   "foodId": "f_pepper_green",
+   "foodName": "פלפל ירוק",
+   "category": "ירקות ועשבי תיבול",
+   "link": "alias",
+   "canonicalName": "פלפל אדום ירוק או צהוב",
+   "canonicalId": "r_f9e2aa18"
+  },
+  {
+   "foodId": "f_pepper_yellow",
+   "foodName": "פלפל צהוב",
+   "category": "ירקות ועשבי תיבול",
+   "link": "alias",
+   "canonicalName": "פלפל אדום ירוק או צהוב",
+   "canonicalId": "r_f9e2aa18"
   },
   {
    "foodId": "f_carrot",
    "foodName": "גזר",
    "category": "ירקות ועשבי תיבול",
-   "groupKey": "גזר",
-   "portions": 1,
-   "points": "0"
+   "link": "exact",
+   "canonicalName": "גזר",
+   "canonicalId": "r_2eab05a3"
+  },
+  {
+   "foodId": "f_onion",
+   "foodName": "בצל",
+   "category": "ירקות ועשבי תיבול",
+   "link": "alias",
+   "canonicalName": "בצל יבש",
+   "canonicalId": "r_5356243b"
   },
   {
    "foodId": "f_scallion",
    "foodName": "בצל ירוק",
    "category": "ירקות ועשבי תיבול",
-   "groupKey": "בצל ירוק",
-   "portions": 1,
-   "points": "0"
+   "link": "exact",
+   "canonicalName": "בצל ירוק",
+   "canonicalId": "r_869fc3c7"
   },
   {
    "foodId": "f_garlic",
    "foodName": "שום",
    "category": "ירקות ועשבי תיבול",
-   "groupKey": "שום",
-   "portions": 1,
-   "points": "0"
+   "link": "exact",
+   "canonicalName": "שום",
+   "canonicalId": "r_eea5f3ba"
   },
   {
    "foodId": "f_lettuce",
    "foodName": "חסה",
    "category": "ירקות ועשבי תיבול",
-   "groupKey": "חסה",
-   "portions": 1,
-   "points": "0"
+   "link": "exact",
+   "canonicalName": "חסה",
+   "canonicalId": "r_d96811d3"
   },
   {
    "foodId": "f_cabbage",
    "foodName": "כרוב",
    "category": "ירקות ועשבי תיבול",
-   "groupKey": "כרוב",
-   "portions": 1,
-   "points": "0"
+   "link": "exact",
+   "canonicalName": "כרוב",
+   "canonicalId": "r_e195ff78"
+  },
+  {
+   "foodId": "f_cabbage_red",
+   "foodName": "כרוב סגול",
+   "category": "ירקות ועשבי תיבול",
+   "link": "alias",
+   "canonicalName": "כרוב",
+   "canonicalId": "r_e195ff78"
   },
   {
    "foodId": "f_cauliflower",
    "foodName": "כרובית",
    "category": "ירקות ועשבי תיבול",
-   "groupKey": "כרובית",
-   "portions": 1,
-   "points": "0"
+   "link": "exact",
+   "canonicalName": "כרובית",
+   "canonicalId": "r_013b7adb"
   },
   {
    "foodId": "f_broccoli",
    "foodName": "ברוקולי",
    "category": "ירקות ועשבי תיבול",
-   "groupKey": "ברוקולי",
-   "portions": 1,
-   "points": "0"
+   "link": "exact",
+   "canonicalName": "ברוקולי",
+   "canonicalId": "r_2c5b40bc"
   },
   {
    "foodId": "f_zucchini",
    "foodName": "קישוא",
    "category": "ירקות ועשבי תיבול",
-   "groupKey": "קישוא",
-   "portions": 1,
-   "points": "0"
+   "link": "exact",
+   "canonicalName": "קישוא",
+   "canonicalId": "r_3b1bc3f1"
   },
   {
    "foodId": "f_eggplant",
    "foodName": "חציל",
    "category": "ירקות ועשבי תיבול",
-   "groupKey": "חציל",
-   "portions": 1,
-   "points": "0"
+   "link": "exact",
+   "canonicalName": "חציל",
+   "canonicalId": "r_989f6215"
   },
   {
    "foodId": "f_potato",
    "foodName": "תפוח אדמה",
    "category": "ירקות ועשבי תיבול",
-   "groupKey": "תפוח אדמה",
-   "portions": 1,
-   "points": "4"
+   "link": "exact",
+   "canonicalName": "תפוח אדמה",
+   "canonicalId": "r_1554595e"
   },
   {
    "foodId": "f_sweet_potato",
    "foodName": "בטטה",
    "category": "ירקות ועשבי תיבול",
-   "groupKey": "בטטה",
-   "portions": 1,
-   "points": "2"
+   "link": "exact",
+   "canonicalName": "בטטה",
+   "canonicalId": "r_bc9b70d8"
   },
   {
    "foodId": "f_beet",
    "foodName": "סלק",
    "category": "ירקות ועשבי תיבול",
-   "groupKey": "סלק",
-   "portions": 1,
-   "points": "0"
+   "link": "exact",
+   "canonicalName": "סלק",
+   "canonicalId": "r_c4e1de15"
+  },
+  {
+   "foodId": "f_radish",
+   "foodName": "צנון",
+   "category": "ירקות ועשבי תיבול",
+   "link": "alias",
+   "canonicalName": "צנון / צנונית",
+   "canonicalId": "r_dd1efd15"
+  },
+  {
+   "foodId": "f_kohlrabi",
+   "foodName": "קולורבי",
+   "category": "ירקות ועשבי תיבול",
+   "link": "alias",
+   "canonicalName": "קולרבי",
+   "canonicalId": "r_260e253f"
   },
   {
    "foodId": "f_mushrooms",
    "foodName": "פטריות",
    "category": "ירקות ועשבי תיבול",
-   "groupKey": "פטריות",
-   "portions": 1,
-   "points": "0"
+   "link": "exact",
+   "canonicalName": "פטריות",
+   "canonicalId": "r_96f1f219"
+  },
+  {
+   "foodId": "f_peas",
+   "foodName": "אפונה",
+   "category": "ירקות ועשבי תיבול",
+   "link": "alias",
+   "canonicalName": "אפונה ירוקה",
+   "canonicalId": "r_699471b7"
+  },
+  {
+   "foodId": "f_spinach",
+   "foodName": "תרד",
+   "category": "ירקות ועשבי תיבול",
+   "link": "alias",
+   "canonicalName": "תרד טרי/קפוא",
+   "canonicalId": "r_6b408653"
+  },
+  {
+   "foodId": "f_chard",
+   "foodName": "מנגולד",
+   "category": "ירקות ועשבי תיבול",
+   "link": "alias",
+   "canonicalName": "עלי מנגולד (חמציץ סלק)",
+   "canonicalId": "r_b1e91871"
   },
   {
    "foodId": "f_asparagus",
    "foodName": "אספרגוס",
    "category": "ירקות ועשבי תיבול",
-   "groupKey": "אספרגוס",
-   "portions": 1,
-   "points": "0"
+   "link": "exact",
+   "canonicalName": "אספרגוס",
+   "canonicalId": "r_49b8601e"
   },
   {
    "foodId": "f_pumpkin",
    "foodName": "דלעת",
    "category": "ירקות ועשבי תיבול",
-   "groupKey": "דלעת",
-   "portions": 1,
-   "points": "0"
+   "link": "exact",
+   "canonicalName": "דלעת",
+   "canonicalId": "r_df8709e6"
   },
   {
    "foodId": "f_butternut",
    "foodName": "דלורית",
    "category": "ירקות ועשבי תיבול",
-   "groupKey": "דלורית",
-   "portions": 1,
-   "points": "1"
+   "link": "exact",
+   "canonicalName": "דלורית",
+   "canonicalId": "r_834908f8"
   },
   {
    "foodId": "f_avocado",
    "foodName": "אבוקדו",
    "category": "ירקות ועשבי תיבול",
-   "groupKey": "אבוקדו",
-   "portions": 1,
-   "points": "1"
+   "link": "exact",
+   "canonicalName": "אבוקדו",
+   "canonicalId": "r_bc56f816"
   },
   {
    "foodId": "f_parsley",
    "foodName": "פטרוזיליה",
    "category": "ירקות ועשבי תיבול",
-   "groupKey": "פטרוזיליה",
-   "portions": 1,
-   "points": "0"
+   "link": "exact",
+   "canonicalName": "פטרוזיליה",
+   "canonicalId": "r_f8156444"
   },
   {
    "foodId": "f_cilantro",
    "foodName": "כוסברה",
    "category": "ירקות ועשבי תיבול",
-   "groupKey": "כוסברה",
-   "portions": 1,
-   "points": "0"
+   "link": "exact",
+   "canonicalName": "כוסברה",
+   "canonicalId": "r_aebc3cd3"
   },
   {
    "foodId": "f_dill",
    "foodName": "שמיר",
    "category": "ירקות ועשבי תיבול",
-   "groupKey": "שמיר",
-   "portions": 1,
-   "points": "0"
+   "link": "exact",
+   "canonicalName": "שמיר",
+   "canonicalId": "r_eefb3647"
   },
   {
    "foodId": "f_mint",
    "foodName": "נענע",
    "category": "ירקות ועשבי תיבול",
-   "groupKey": "נענע",
-   "portions": 1,
-   "points": "0"
+   "link": "exact",
+   "canonicalName": "נענע",
+   "canonicalId": "r_52d888a5"
   },
   {
    "foodId": "f_olives",
    "foodName": "זיתים",
    "category": "ירקות ועשבי תיבול",
-   "groupKey": "זיתים",
-   "portions": 2,
-   "points": "1–5"
+   "link": "exact",
+   "canonicalName": "זיתים",
+   "canonicalId": "r_43ba4678"
+  },
+  {
+   "foodId": "f_pickle",
+   "foodName": "מלפפון חמוץ",
+   "category": "ירקות ועשבי תיבול",
+   "link": "alias",
+   "canonicalName": "ירקות מוחמצים",
+   "canonicalId": "r_0f33e906"
+  },
+  {
+   "foodId": "f_sauerkraut",
+   "foodName": "כרוב כבוש",
+   "category": "ירקות ועשבי תיבול",
+   "link": "alias",
+   "canonicalName": "ירקות מוחמצים",
+   "canonicalId": "r_0f33e906"
+  },
+  {
+   "foodId": "f_apple",
+   "foodName": "תפוח",
+   "category": "פירות",
+   "link": "alias",
+   "canonicalName": "תפוח עץ",
+   "canonicalId": "r_7ce30580"
   },
   {
    "foodId": "f_banana",
    "foodName": "בננה",
    "category": "פירות",
-   "groupKey": "בננה",
-   "portions": 1,
-   "points": "2"
+   "link": "exact",
+   "canonicalName": "בננה",
+   "canonicalId": "r_4e404058"
   },
   {
    "foodId": "f_orange",
    "foodName": "תפוז",
    "category": "פירות",
-   "groupKey": "תפוז",
-   "portions": 1,
-   "points": "2"
+   "link": "exact",
+   "canonicalName": "תפוז",
+   "canonicalId": "r_8f01ecd4"
   },
   {
    "foodId": "f_clementine",
    "foodName": "קלמנטינה",
    "category": "פירות",
-   "groupKey": "קלמנטינה",
-   "portions": 1,
-   "points": "2"
+   "link": "exact",
+   "canonicalName": "קלמנטינה",
+   "canonicalId": "r_6ff62fe7"
+  },
+  {
+   "foodId": "f_grapefruit",
+   "foodName": "אשכולית",
+   "category": "פירות",
+   "link": "alias",
+   "canonicalName": "אשכולית קלופה",
+   "canonicalId": "r_74c111df"
+  },
+  {
+   "foodId": "f_pomelo",
+   "foodName": "פומלה",
+   "category": "פירות",
+   "link": "alias",
+   "canonicalName": "פומלה קלופה",
+   "canonicalId": "r_befae4e6"
+  },
+  {
+   "foodId": "f_lemon",
+   "foodName": "לימון",
+   "category": "פירות",
+   "link": "alias",
+   "canonicalName": "לימון/ ליים",
+   "canonicalId": "r_0b531cf6"
   },
   {
    "foodId": "f_pear",
    "foodName": "אגס",
    "category": "פירות",
-   "groupKey": "אגס",
-   "portions": 1,
-   "points": "2"
+   "link": "exact",
+   "canonicalName": "אגס",
+   "canonicalId": "r_46f9b772"
   },
   {
    "foodId": "f_peach",
    "foodName": "אפרסק",
    "category": "פירות",
-   "groupKey": "אפרסק",
-   "portions": 1,
-   "points": "2"
+   "link": "exact",
+   "canonicalName": "אפרסק",
+   "canonicalId": "r_7ad28d8b"
   },
   {
    "foodId": "f_nectarine",
    "foodName": "נקטרינה",
    "category": "פירות",
-   "groupKey": "נקטרינה",
-   "portions": 1,
-   "points": "2"
+   "link": "exact",
+   "canonicalName": "נקטרינה",
+   "canonicalId": "r_3c938f37"
   },
   {
    "foodId": "f_plum",
    "foodName": "שזיף",
    "category": "פירות",
-   "groupKey": "שזיף",
-   "portions": 1,
-   "points": "2"
+   "link": "exact",
+   "canonicalName": "שזיף",
+   "canonicalId": "r_7559d45a"
+  },
+  {
+   "foodId": "f_apricot",
+   "foodName": "משמש",
+   "category": "פירות",
+   "link": "alias",
+   "canonicalName": "משמש טרי",
+   "canonicalId": "r_becebd06"
   },
   {
    "foodId": "f_grapes",
    "foodName": "ענבים",
    "category": "פירות",
-   "groupKey": "ענבים",
-   "portions": 1,
-   "points": "2"
+   "link": "exact",
+   "canonicalName": "ענבים",
+   "canonicalId": "r_430ef19c"
   },
   {
    "foodId": "f_watermelon",
    "foodName": "אבטיח",
    "category": "פירות",
-   "groupKey": "אבטיח",
-   "portions": 1,
-   "points": "2"
+   "link": "exact",
+   "canonicalName": "אבטיח",
+   "canonicalId": "r_27e1bb2e"
   },
   {
    "foodId": "f_melon",
    "foodName": "מלון",
    "category": "פירות",
-   "groupKey": "מלון",
-   "portions": 1,
-   "points": "2"
+   "link": "exact",
+   "canonicalName": "מלון",
+   "canonicalId": "r_a35a2fcb"
   },
   {
    "foodId": "f_strawberry",
    "foodName": "תות שדה",
    "category": "פירות",
-   "groupKey": "תות שדה",
-   "portions": 1,
-   "points": "2"
+   "link": "exact",
+   "canonicalName": "תות שדה",
+   "canonicalId": "r_8afe77d6"
+  },
+  {
+   "foodId": "f_cherries",
+   "foodName": "דובדבנים",
+   "category": "פירות",
+   "link": "alias",
+   "canonicalName": "דובדבנים טריים",
+   "canonicalId": "r_b245ec94"
   },
   {
    "foodId": "f_mango",
    "foodName": "מנגו",
    "category": "פירות",
-   "groupKey": "מנגו",
-   "portions": 1,
-   "points": "2"
+   "link": "exact",
+   "canonicalName": "מנגו",
+   "canonicalId": "r_4f7aef92"
+  },
+  {
+   "foodId": "f_pineapple",
+   "foodName": "אננס",
+   "category": "פירות",
+   "link": "alias",
+   "canonicalName": "אננס טרי",
+   "canonicalId": "r_96d5aa0d"
   },
   {
    "foodId": "f_kiwi",
    "foodName": "קיווי",
    "category": "פירות",
-   "groupKey": "קיוי",
-   "portions": 1,
-   "points": "2"
+   "link": "exact",
+   "canonicalName": "קיווי",
+   "canonicalId": "r_29a8d483"
   },
   {
    "foodId": "f_pomegranate",
    "foodName": "רימון",
    "category": "פירות",
-   "groupKey": "רימון",
-   "portions": 1,
-   "points": "0.5"
+   "link": "exact",
+   "canonicalName": "רימון",
+   "canonicalId": "r_80ffcefc"
   },
   {
    "foodId": "f_persimmon",
    "foodName": "אפרסמון",
    "category": "פירות",
-   "groupKey": "אפרסמון",
-   "portions": 1,
-   "points": "2"
+   "link": "exact",
+   "canonicalName": "אפרסמון",
+   "canonicalId": "r_49b507e0"
+  },
+  {
+   "foodId": "f_fig",
+   "foodName": "תאנה",
+   "category": "פירות",
+   "link": "alias",
+   "canonicalName": "תאנה טריה",
+   "canonicalId": "r_ebb84644"
+  },
+  {
+   "foodId": "f_guava",
+   "foodName": "גויאבה",
+   "category": "פירות",
+   "link": "alias",
+   "canonicalName": "גויאבה יחידה",
+   "canonicalId": "r_319f8264"
   },
   {
    "foodId": "f_lychee",
    "foodName": "ליצ׳י",
    "category": "פירות",
-   "groupKey": "ליצי",
-   "portions": 1,
-   "points": "2"
+   "link": "exact",
+   "canonicalName": "ליצי",
+   "canonicalId": "r_e4b0135b"
   },
   {
    "foodId": "f_passionfruit",
    "foodName": "פסיפלורה",
    "category": "פירות",
-   "groupKey": "פסיפלורה",
-   "portions": 1,
-   "points": "2"
+   "link": "exact",
+   "canonicalName": "פסיפלורה",
+   "canonicalId": "r_d1a45bf4"
   },
   {
    "foodId": "f_raisins",
    "foodName": "צימוקים",
    "category": "פירות",
-   "groupKey": "צימוקים",
-   "portions": 2,
-   "points": "2–8"
+   "link": "exact",
+   "canonicalName": "צימוקים",
+   "canonicalId": "r_9e3a9f18"
   },
   {
    "foodId": "f_dried_apricot",
    "foodName": "משמש מיובש",
    "category": "פירות",
-   "groupKey": "משמש מיובש",
-   "portions": 2,
-   "points": "2–7"
+   "link": "exact",
+   "canonicalName": "משמש מיובש",
+   "canonicalId": "r_32fc03a7"
   },
   {
    "foodId": "f_dried_cranberry",
    "foodName": "חמוציות מיובשות",
    "category": "פירות",
-   "groupKey": "חמוציות מיובשות",
-   "portions": 2,
-   "points": "1–9"
+   "link": "exact",
+   "canonicalName": "חמוציות מיובשות",
+   "canonicalId": "r_f880f564"
   },
   {
    "foodId": "f_dried_banana",
    "foodName": "בננה מיובשת",
    "category": "פירות",
-   "groupKey": "בננה מיובשת",
-   "portions": 1,
-   "points": "10"
+   "link": "exact",
+   "canonicalName": "בננה מיובשת",
+   "canonicalId": "r_f57906d0"
   },
   {
    "foodId": "f_dried_fruit_mix",
    "foodName": "פירות יבשים",
    "category": "פירות",
-   "groupKey": "פירות יבשים",
-   "portions": 1,
-   "points": "3"
+   "link": "exact",
+   "canonicalName": "פירות יבשים",
+   "canonicalId": "r_d3c0c1ea"
+  },
+  {
+   "foodId": "f_goat_milk",
+   "foodName": "חלב עיזים",
+   "category": "מוצרי חלב ותחליפים",
+   "link": "alias",
+   "canonicalName": "חלב עיזים 3.7% שומן",
+   "canonicalId": "r_627d129f"
+  },
+  {
+   "foodId": "f_coconut_milk",
+   "foodName": "חלב קוקוס",
+   "category": "מוצרי חלב ותחליפים",
+   "link": "alias",
+   "canonicalName": "חלב קוקוס משומר",
+   "canonicalId": "r_b39a6f64"
   },
   {
    "foodId": "f_butter",
    "foodName": "חמאה",
    "category": "מוצרי חלב ותחליפים",
-   "groupKey": "חמאה",
-   "portions": 2,
-   "points": "1–21"
+   "link": "exact",
+   "canonicalName": "חמאה",
+   "canonicalId": "r_517d13e4"
+  },
+  {
+   "foodId": "f_boiled_egg",
+   "foodName": "ביצה קשה",
+   "category": "ביצים",
+   "link": "alias",
+   "canonicalName": "ביצה",
+   "canonicalId": "r_27b0b4dd"
+  },
+  {
+   "foodId": "f_soft_egg",
+   "foodName": "ביצה רכה",
+   "category": "ביצים",
+   "link": "alias",
+   "canonicalName": "ביצה",
+   "canonicalId": "r_27b0b4dd"
+  },
+  {
+   "foodId": "f_egg_white",
+   "foodName": "חלבון ביצה",
+   "category": "ביצים",
+   "link": "alias",
+   "canonicalName": "ביצה - חלבון",
+   "canonicalId": "r_b8c7f0a3"
+  },
+  {
+   "foodId": "f_white_bread",
+   "foodName": "לחם לבן",
+   "category": "לחם ומאפים",
+   "link": "alias",
+   "canonicalName": "לחם אחיד - לבן שחור",
+   "canonicalId": "r_48e4f2ad"
   },
   {
    "foodId": "f_spelt_bread",
    "foodName": "לחם כוסמין",
    "category": "לחם ומאפים",
-   "groupKey": "לחם כוסמין",
-   "portions": 2,
-   "points": "1.5–5"
+   "link": "exact",
+   "canonicalName": "לחם כוסמין",
+   "canonicalId": "r_e02314f2"
   },
   {
    "foodId": "f_rye_bread",
    "foodName": "לחם שיפון",
    "category": "לחם ומאפים",
-   "groupKey": "לחם שיפון",
-   "portions": 1,
-   "points": "1"
+   "link": "exact",
+   "canonicalName": "לחם שיפון",
+   "canonicalId": "r_10d07ead"
+  },
+  {
+   "foodId": "f_sourdough_bread",
+   "foodName": "לחם מחמצת",
+   "category": "לחם ומאפים",
+   "link": "alias",
+   "canonicalName": "לחם שיאור/מחמצת",
+   "canonicalId": "r_98f6820b"
   },
   {
    "foodId": "f_challah",
    "foodName": "חלה",
    "category": "לחם ומאפים",
-   "groupKey": "חלה",
-   "portions": 1,
-   "points": "3"
+   "link": "exact",
+   "canonicalName": "חלה",
+   "canonicalId": "r_2aef1b5e"
+  },
+  {
+   "foodId": "f_pita",
+   "foodName": "פיתה",
+   "category": "לחם ומאפים",
+   "link": "alias",
+   "canonicalName": "פיתה רגילה",
+   "canonicalId": "r_3e1380c5"
+  },
+  {
+   "foodId": "f_whole_pita",
+   "foodName": "פיתה מלאה",
+   "category": "לחם ומאפים",
+   "link": "alias",
+   "canonicalName": "פיתה מחיטה מלאה",
+   "canonicalId": "r_ea22144c"
+  },
+  {
+   "foodId": "f_laffa",
+   "foodName": "לאפה",
+   "category": "לחם ומאפים",
+   "link": "alias",
+   "canonicalName": "לאפה - פיתה בלבד",
+   "canonicalId": "r_c6d91bff"
   },
   {
    "foodId": "f_tortilla",
    "foodName": "טורטייה",
    "category": "לחם ומאפים",
-   "groupKey": "טורטיה",
-   "portions": 1,
-   "points": "6"
+   "link": "exact",
+   "canonicalName": "טורטיה",
+   "canonicalId": "r_b886ffdb"
+  },
+  {
+   "foodId": "f_rice_cake",
+   "foodName": "פריכית אורז",
+   "category": "לחם ומאפים",
+   "link": "alias",
+   "canonicalName": "פריכית יחידה גדולה",
+   "canonicalId": "r_9119ddec"
   },
   {
    "foodId": "f_matza",
    "foodName": "מצה",
    "category": "לחם ומאפים",
-   "groupKey": "מצה",
-   "portions": 1,
-   "points": "3"
+   "link": "exact",
+   "canonicalName": "מצה",
+   "canonicalId": "r_001a7163"
   },
   {
    "foodId": "f_malawach",
    "foodName": "מלאווח",
    "category": "לחם ומאפים",
-   "groupKey": "מלאוח",
-   "portions": 1,
-   "points": "18"
+   "link": "exact",
+   "canonicalName": "מלאווח",
+   "canonicalId": "r_535f93b5"
+  },
+  {
+   "foodId": "f_jachnun",
+   "foodName": "ג׳חנון",
+   "category": "לחם ומאפים",
+   "link": "alias",
+   "canonicalName": "ג'חנון , 100 ג'",
+   "canonicalId": "r_24929fdb"
+  },
+  {
+   "foodId": "f_cheese_burekas",
+   "foodName": "בורקס גבינה",
+   "category": "לחם ומאפים",
+   "link": "alias",
+   "canonicalName": "בורקס פילו גבינה / תפוח\"א",
+   "canonicalId": "r_ca654a61"
+  },
+  {
+   "foodId": "f_potato_burekas",
+   "foodName": "בורקס תפוח אדמה",
+   "category": "לחם ומאפים",
+   "link": "alias",
+   "canonicalName": "בורקס פילו גבינה / תפוח\"א",
+   "canonicalId": "r_ca654a61"
+  },
+  {
+   "foodId": "f_oats",
+   "foodName": "שיבולת שועל",
+   "category": "דגנים ופחמימות",
+   "link": "alias",
+   "canonicalName": "קוואקר שיבולת שועל",
+   "canonicalId": "r_a078afc2"
+  },
+  {
+   "foodId": "f_granola",
+   "foodName": "גרנולה",
+   "category": "דגנים ופחמימות",
+   "link": "alias",
+   "canonicalName": "גרנולה רגילה",
+   "canonicalId": "r_20513f6d"
+  },
+  {
+   "foodId": "f_chickpeas",
+   "foodName": "חומוס מבושל",
+   "category": "קטניות",
+   "link": "alias",
+   "canonicalName": "חומוס גרגירים מבושל",
+   "canonicalId": "r_f67b2e1d"
+  },
+  {
+   "foodId": "f_edamame",
+   "foodName": "אדממה",
+   "category": "קטניות",
+   "link": "alias",
+   "canonicalName": "אדממה, פולי סויה מבושלים לל",
+   "canonicalId": "r_fb52ea14"
   },
   {
    "foodId": "f_falafel",
    "foodName": "פלאפל",
    "category": "קטניות",
-   "groupKey": "פלאפל",
-   "portions": 1,
-   "points": "2"
+   "link": "exact",
+   "canonicalName": "פלאפל",
+   "canonicalId": "r_44cb608f"
+  },
+  {
+   "foodId": "f_grilled_chicken_breast",
+   "foodName": "חזה עוף בגריל",
+   "category": "עוף ובשר",
+   "link": "alias",
+   "canonicalName": "חזה עוף אחרי בישול",
+   "canonicalId": "r_0d21d1e8"
+  },
+  {
+   "foodId": "f_cooked_chicken_breast",
+   "foodName": "חזה עוף מבושל",
+   "category": "עוף ובשר",
+   "link": "alias",
+   "canonicalName": "חזה עוף אחרי בישול",
+   "canonicalId": "r_0d21d1e8"
+  },
+  {
+   "foodId": "f_chicken_drumstick",
+   "foodName": "שוק עוף",
+   "category": "עוף ובשר",
+   "link": "alias",
+   "canonicalName": "שוק עוף בינונית ללא עור",
+   "canonicalId": "r_c6547395"
+  },
+  {
+   "foodId": "f_chicken_thigh",
+   "foodName": "כרע עוף",
+   "category": "עוף ובשר",
+   "link": "alias",
+   "canonicalName": "כרע עוף בינונית שוק+ ירך ללא עו",
+   "canonicalId": "r_2c185069"
+  },
+  {
+   "foodId": "f_fried_schnitzel",
+   "foodName": "שניצל מטוגן",
+   "category": "עוף ובשר",
+   "link": "alias",
+   "canonicalName": "שניצל עוף מטוגן ביתי",
+   "canonicalId": "r_9e3b6738"
+  },
+  {
+   "foodId": "f_beef_fillet",
+   "foodName": "פילה בקר",
+   "category": "עוף ובשר",
+   "link": "alias",
+   "canonicalName": "בשר בקר סטייק פילה",
+   "canonicalId": "r_e2c9ad59"
+  },
+  {
+   "foodId": "f_hamburger",
+   "foodName": "המבורגר",
+   "category": "עוף ובשר",
+   "link": "alias",
+   "canonicalName": "המבורגר בשר בקר",
+   "canonicalId": "r_1623c95f"
+  },
+  {
+   "foodId": "f_beef_patties",
+   "foodName": "קציצות בקר",
+   "category": "עוף ובשר",
+   "link": "alias",
+   "canonicalName": "קציצות בשר בקר",
+   "canonicalId": "r_17ec0586"
+  },
+  {
+   "foodId": "f_turkey_shawarma",
+   "foodName": "שווארמה הודו",
+   "category": "עוף ובשר",
+   "link": "alias",
+   "canonicalName": "בשר הודו- שווארמה (מוצר מוכן)",
+   "canonicalId": "r_123f636a"
   },
   {
    "foodId": "f_sausage",
    "foodName": "נקניקייה",
    "category": "עוף ובשר",
-   "groupKey": "נקניקיה",
-   "portions": 1,
-   "points": "2"
+   "link": "exact",
+   "canonicalName": "נקניקיה",
+   "canonicalId": "r_b20e51b1"
+  },
+  {
+   "foodId": "f_salami",
+   "foodName": "סלמי",
+   "category": "עוף ובשר",
+   "link": "alias",
+   "canonicalName": "נקניק יבש- סלמי / קוניאק/ תה",
+   "canonicalId": "r_f2611ad7"
+  },
+  {
+   "foodId": "f_tuna_water",
+   "foodName": "טונה במים",
+   "category": "דגים",
+   "link": "alias",
+   "canonicalName": "דג טונה משומרת במים",
+   "canonicalId": "r_0b509a26"
+  },
+  {
+   "foodId": "f_seabass",
+   "foodName": "לברק",
+   "category": "דגים",
+   "link": "alias",
+   "canonicalName": "דג לברק",
+   "canonicalId": "r_d6c1d9c6"
+  },
+  {
+   "foodId": "f_veg_salad",
+   "foodName": "סלט ירקות",
+   "category": "מנות ותבשילים",
+   "link": "alias",
+   "canonicalName": "ירקות",
+   "canonicalId": "r_fdaaa27a"
+  },
+  {
+   "foodId": "f_lettuce_salad",
+   "foodName": "סלט חסה",
+   "category": "מנות ותבשילים",
+   "link": "alias",
+   "canonicalName": "חסה",
+   "canonicalId": "r_d96811d3"
+  },
+  {
+   "foodId": "f_cabbage_salad",
+   "foodName": "סלט כרוב",
+   "category": "מנות ותבשילים",
+   "link": "alias",
+   "canonicalName": "כרוב",
+   "canonicalId": "r_e195ff78"
+  },
+  {
+   "foodId": "f_veg_soup",
+   "foodName": "מרק ירקות",
+   "category": "מנות ותבשילים",
+   "link": "alias",
+   "canonicalName": "מרק ירקות חינמיים",
+   "canonicalId": "r_8e26bdef"
   },
   {
    "foodId": "f_almonds",
    "foodName": "שקדים",
    "category": "אגוזים, גרעינים וממרחים",
-   "groupKey": "שקדים",
-   "portions": 3,
-   "points": "2–18.5"
+   "link": "exact",
+   "canonicalName": "שקדים",
+   "canonicalId": "r_000af728"
+  },
+  {
+   "foodId": "f_walnuts",
+   "foodName": "אגוזי מלך",
+   "category": "אגוזים, גרעינים וממרחים",
+   "link": "alias",
+   "canonicalName": "אגוז מלך קלוף",
+   "canonicalId": "r_61079e03"
+  },
+  {
+   "foodId": "f_chia",
+   "foodName": "צ׳יה",
+   "category": "אגוזים, גרעינים וממרחים",
+   "link": "alias",
+   "canonicalName": "זרעי צ'יה",
+   "canonicalId": "r_f4bac169"
   },
   {
    "foodId": "f_flaxseed",
    "foodName": "זרעי פשתן",
    "category": "אגוזים, גרעינים וממרחים",
-   "groupKey": "זרעי פשתן",
-   "portions": 2,
-   "points": "1–10.5"
+   "link": "exact",
+   "canonicalName": "זרעי פשתן",
+   "canonicalId": "r_b9d33be2"
   },
   {
    "foodId": "f_sesame",
    "foodName": "שומשום",
    "category": "אגוזים, גרעינים וממרחים",
-   "groupKey": "שומשום",
-   "portions": 2,
-   "points": "1.5–15"
+   "link": "exact",
+   "canonicalName": "שומשום",
+   "canonicalId": "r_1c3633b0"
   },
   {
    "foodId": "f_raw_tahini",
    "foodName": "טחינה גולמית",
    "category": "אגוזים, גרעינים וממרחים",
-   "groupKey": "טחינה גולמית",
-   "portions": 4,
-   "points": "1–29"
+   "link": "exact",
+   "canonicalName": "טחינה גולמית",
+   "canonicalId": "r_417e0845"
   },
   {
    "foodId": "f_tahini",
    "foodName": "טחינה מוכנה",
    "category": "אגוזים, גרעינים וממרחים",
-   "groupKey": "טחינה מוכנה",
-   "portions": 2,
-   "points": "1–9"
+   "link": "exact",
+   "canonicalName": "טחינה מוכנה",
+   "canonicalId": "r_1bd36ce9"
   },
   {
    "foodId": "f_peanut_butter",
    "foodName": "חמאת בוטנים",
    "category": "אגוזים, גרעינים וממרחים",
-   "groupKey": "חמאת בוטנים",
-   "portions": 1,
-   "points": "16"
+   "link": "exact",
+   "canonicalName": "חמאת בוטנים",
+   "canonicalId": "r_8b518416"
   },
   {
    "foodId": "f_chocolate_spread",
    "foodName": "ממרח שוקולד",
    "category": "אגוזים, גרעינים וממרחים",
-   "groupKey": "ממרח שוקולד",
-   "portions": 1,
-   "points": "3"
+   "link": "exact",
+   "canonicalName": "ממרח שוקולד",
+   "canonicalId": "r_580f7d9f"
   },
   {
    "foodId": "f_honey",
    "foodName": "דבש",
    "category": "אגוזים, גרעינים וממרחים",
-   "groupKey": "דבש",
-   "portions": 4,
-   "points": "1–30"
+   "link": "exact",
+   "canonicalName": "דבש",
+   "canonicalId": "r_b274b5a0"
   },
   {
    "foodId": "f_silan",
    "foodName": "סילאן",
    "category": "אגוזים, גרעינים וממרחים",
-   "groupKey": "סילאן",
-   "portions": 3,
-   "points": "1–29"
+   "link": "exact",
+   "canonicalName": "סילאן",
+   "canonicalId": "r_2a63728c"
   },
   {
    "foodId": "f_date_spread",
    "foodName": "ממרח תמרים",
    "category": "אגוזים, גרעינים וממרחים",
-   "groupKey": "ממרח תמרים",
-   "portions": 4,
-   "points": "0.5–24"
+   "link": "exact",
+   "canonicalName": "ממרח תמרים",
+   "canonicalId": "r_c0666212"
+  },
+  {
+   "foodId": "f_pesto",
+   "foodName": "פסטו",
+   "category": "אגוזים, גרעינים וממרחים",
+   "link": "alias",
+   "canonicalName": "ממרח פסטו",
+   "canonicalId": "r_3e2eef10"
+  },
+  {
+   "foodId": "f_milk_chocolate",
+   "foodName": "שוקולד חלב",
+   "category": "חטיפים ומתוקים",
+   "link": "alias",
+   "canonicalName": "שוקולד חלב/מריר",
+   "canonicalId": "r_ee49e8d3"
+  },
+  {
+   "foodId": "f_dark_chocolate",
+   "foodName": "שוקולד מריר",
+   "category": "חטיפים ומתוקים",
+   "link": "alias",
+   "canonicalName": "שוקולד חלב/מריר",
+   "canonicalId": "r_ee49e8d3"
+  },
+  {
+   "foodId": "f_pretzels",
+   "foodName": "בייגלה",
+   "category": "חטיפים ומתוקים",
+   "link": "alias",
+   "canonicalName": "בייגלה חטיף",
+   "canonicalId": "r_50ff00a6"
   },
   {
    "foodId": "f_krembo",
    "foodName": "קרמבו",
    "category": "חטיפים ומתוקים",
-   "groupKey": "קרמבו",
-   "portions": 1,
-   "points": "3"
+   "link": "exact",
+   "canonicalName": "קרמבו",
+   "canonicalId": "r_8f6df646"
   },
   {
    "foodId": "f_halva",
    "foodName": "חלבה",
    "category": "חטיפים ומתוקים",
-   "groupKey": "חלבה",
-   "portions": 1,
-   "points": "14"
+   "link": "exact",
+   "canonicalName": "חלבה",
+   "canonicalId": "r_5e7a40cb"
   },
   {
    "foodId": "f_baklava",
    "foodName": "בקלאווה",
    "category": "חטיפים ומתוקים",
-   "groupKey": "בקלאוה",
-   "portions": 1,
-   "points": "10"
+   "link": "exact",
+   "canonicalName": "בקלאווה",
+   "canonicalId": "r_52f45a7c"
+  },
+  {
+   "foodId": "f_black_coffee",
+   "foodName": "קפה שחור",
+   "category": "משקאות",
+   "link": "alias",
+   "canonicalName": "אספרסו",
+   "canonicalId": "r_54a174d0"
+  },
+  {
+   "foodId": "f_instant_coffee",
+   "foodName": "קפה נמס",
+   "category": "משקאות",
+   "link": "alias",
+   "canonicalName": "אספרסו",
+   "canonicalId": "r_54a174d0"
   },
   {
    "foodId": "f_espresso",
    "foodName": "אספרסו",
    "category": "משקאות",
-   "groupKey": "אספרסו",
-   "portions": 1,
-   "points": "0"
+   "link": "exact",
+   "canonicalName": "אספרסו",
+   "canonicalId": "r_54a174d0"
+  },
+  {
+   "foodId": "f_americano",
+   "foodName": "אמריקנו",
+   "category": "משקאות",
+   "link": "alias",
+   "canonicalName": "אספרסו",
+   "canonicalId": "r_54a174d0"
+  },
+  {
+   "foodId": "f_tea",
+   "foodName": "תה",
+   "category": "משקאות",
+   "link": "alias",
+   "canonicalName": "תה, מכל סוג, ללא סוכר",
+   "canonicalId": "r_5fae0f97"
+  },
+  {
+   "foodId": "f_green_tea",
+   "foodName": "תה ירוק",
+   "category": "משקאות",
+   "link": "alias",
+   "canonicalName": "תה, מכל סוג, ללא סוכר",
+   "canonicalId": "r_5fae0f97"
+  },
+  {
+   "foodId": "f_herbal_tea",
+   "foodName": "תה צמחים",
+   "category": "משקאות",
+   "link": "alias",
+   "canonicalName": "תה, מכל סוג, ללא סוכר",
+   "canonicalId": "r_5fae0f97"
+  },
+  {
+   "foodId": "f_grape_juice",
+   "foodName": "מיץ ענבים",
+   "category": "משקאות",
+   "link": "alias",
+   "canonicalName": "מיץ ענבים (תירוש)",
+   "canonicalId": "r_a9182c81"
   },
   {
    "foodId": "f_soft_drink",
    "foodName": "משקה קל",
    "category": "משקאות",
-   "groupKey": "משקה קל",
-   "portions": 1,
-   "points": "3"
+   "link": "exact",
+   "canonicalName": "משקה קל",
+   "canonicalId": "r_66c0c1ea"
+  },
+  {
+   "foodId": "f_energy_drink",
+   "foodName": "משקה אנרגיה",
+   "category": "משקאות",
+   "link": "alias",
+   "canonicalName": "משקה אנרגיה רגיל",
+   "canonicalId": "r_2fc71339"
+  },
+  {
+   "foodId": "f_red_wine",
+   "foodName": "יין אדום",
+   "category": "משקאות",
+   "link": "alias",
+   "canonicalName": "יין אדום/לבן",
+   "canonicalId": "r_5eaddd34"
+  },
+  {
+   "foodId": "f_white_wine",
+   "foodName": "יין לבן",
+   "category": "משקאות",
+   "link": "alias",
+   "canonicalName": "יין אדום/לבן",
+   "canonicalId": "r_5eaddd34"
+  },
+  {
+   "foodId": "f_vodka",
+   "foodName": "וודקה",
+   "category": "משקאות",
+   "link": "alias",
+   "canonicalName": "ויסקי / וודקה כוסית",
+   "canonicalId": "r_dedb3761"
+  },
+  {
+   "foodId": "f_whiskey",
+   "foodName": "ויסקי",
+   "category": "משקאות",
+   "link": "alias",
+   "canonicalName": "ויסקי / וודקה כוסית",
+   "canonicalId": "r_dedb3761"
   },
   {
    "foodId": "f_soy_sauce",
    "foodName": "רוטב סויה",
    "category": "רטבים, שמנים ותבלינים",
-   "groupKey": "רוטב סויה",
-   "portions": 1,
-   "points": "1"
+   "link": "exact",
+   "canonicalName": "רוטב סויה",
+   "canonicalId": "r_060de9ac"
   },
   {
    "foodId": "f_teriyaki_sauce",
    "foodName": "רוטב טריאקי",
    "category": "רטבים, שמנים ותבלינים",
-   "groupKey": "רוטב טריאקי",
-   "portions": 2,
-   "points": "1–8"
+   "link": "exact",
+   "canonicalName": "רוטב טריאקי",
+   "canonicalId": "r_d6ab4b82"
   },
   {
    "foodId": "f_bbq_sauce",
    "foodName": "רוטב ברביקיו",
    "category": "רטבים, שמנים ותבלינים",
-   "groupKey": "רוטב ברביקיו",
-   "portions": 3,
-   "points": "1–3"
+   "link": "exact",
+   "canonicalName": "רוטב ברביקיו",
+   "canonicalId": "r_994aa2cb"
   },
   {
    "foodId": "f_thousand_island",
    "foodName": "רוטב אלף האיים",
    "category": "רטבים, שמנים ותבלינים",
-   "groupKey": "רוטב אלף האים",
-   "portions": 1,
-   "points": "3"
+   "link": "exact",
+   "canonicalName": "רוטב אלף האיים",
+   "canonicalId": "r_f7db8a1a"
   },
   {
    "foodId": "f_balsamic",
    "foodName": "חומץ בלסמי",
    "category": "רטבים, שמנים ותבלינים",
-   "groupKey": "חומץ בלסמי",
-   "portions": 1,
-   "points": "2"
+   "link": "exact",
+   "canonicalName": "חומץ בלסמי",
+   "canonicalId": "r_495977f5"
   },
   {
    "foodId": "f_mayonnaise",
    "foodName": "מיונז",
    "category": "רטבים, שמנים ותבלינים",
-   "groupKey": "מיונז",
-   "portions": 1,
-   "points": "2"
+   "link": "exact",
+   "canonicalName": "מיונז",
+   "canonicalId": "r_7130c4a9"
   },
   {
    "foodId": "f_ketchup",
    "foodName": "קטשופ",
    "category": "רטבים, שמנים ותבלינים",
-   "groupKey": "קטשופ",
-   "portions": 1,
-   "points": "1"
+   "link": "exact",
+   "canonicalName": "קטשופ",
+   "canonicalId": "r_bedae5b0"
+  },
+  {
+   "foodId": "f_mustard",
+   "foodName": "חרדל",
+   "category": "רטבים, שמנים ותבלינים",
+   "link": "alias",
+   "canonicalName": "חרדל מוכן",
+   "canonicalId": "r_7a62a0cc"
   },
   {
    "foodId": "f_amba",
    "foodName": "עמבה",
    "category": "רטבים, שמנים ותבלינים",
-   "groupKey": "עמבה",
-   "portions": 1,
-   "points": "0.5"
+   "link": "exact",
+   "canonicalName": "עמבה",
+   "canonicalId": "r_fa5c658c"
   },
   {
    "foodId": "f_schug",
    "foodName": "סחוג",
    "category": "רטבים, שמנים ותבלינים",
-   "groupKey": "סחוג",
-   "portions": 2,
-   "points": "0.5–4"
+   "link": "exact",
+   "canonicalName": "סחוג",
+   "canonicalId": "r_89cb4aca"
   }
  ],
- "review": [
-  {
-   "foodId": "f_cherry_tomato",
-   "foodName": "עגבניות שרי",
-   "category": "ירקות ועשבי תיבול",
-   "candidates": [
-    {
-     "name": "עגבניות",
-     "portion": "כל כמות",
-     "points": 0,
-     "similarity": 0.5,
-     "issues": []
-    }
-   ]
-  },
+ "hidden": [
   {
    "foodId": "f_sundried_tomato",
    "foodName": "עגבניות מיובשות",
@@ -678,97 +1285,16 @@
    ]
   },
   {
-   "foodId": "f_pepper_red",
-   "foodName": "פלפל אדום",
+   "foodId": "f_hot_pepper",
+   "foodName": "פלפל חריף",
    "category": "ירקות ועשבי תיבול",
-   "candidates": [
-    {
-     "name": "פלפל אדום ירוק או צהוב",
-     "portion": "כל כמות",
-     "points": 0,
-     "similarity": 0.4,
-     "issues": []
-    }
-   ]
+   "candidates": []
   },
   {
-   "foodId": "f_pepper_green",
-   "foodName": "פלפל ירוק",
+   "foodId": "f_onion_red",
+   "foodName": "בצל סגול",
    "category": "ירקות ועשבי תיבול",
-   "candidates": [
-    {
-     "name": "פלפל אדום ירוק או צהוב",
-     "portion": "כל כמות",
-     "points": 0,
-     "similarity": 0.4,
-     "issues": []
-    }
-   ]
-  },
-  {
-   "foodId": "f_pepper_yellow",
-   "foodName": "פלפל צהוב",
-   "category": "ירקות ועשבי תיבול",
-   "candidates": [
-    {
-     "name": "פלפל אדום ירוק או צהוב",
-     "portion": "כל כמות",
-     "points": 0,
-     "similarity": 0.4,
-     "issues": []
-    }
-   ]
-  },
-  {
-   "foodId": "f_onion",
-   "foodName": "בצל",
-   "category": "ירקות ועשבי תיבול",
-   "candidates": [
-    {
-     "name": "בצל יבש",
-     "portion": "כל כמות",
-     "points": 0,
-     "similarity": 0.5,
-     "issues": [
-      "cooking_state_differs"
-     ]
-    },
-    {
-     "name": "בצל ירוק",
-     "portion": "כל כמות",
-     "points": 0,
-     "similarity": 0.5,
-     "issues": []
-    }
-   ]
-  },
-  {
-   "foodId": "f_cabbage_red",
-   "foodName": "כרוב סגול",
-   "category": "ירקות ועשבי תיבול",
-   "candidates": [
-    {
-     "name": "כרוב",
-     "portion": "כל כמות",
-     "points": 0,
-     "similarity": 0.5,
-     "issues": []
-    }
-   ]
-  },
-  {
-   "foodId": "f_radish",
-   "foodName": "צנון",
-   "category": "ירקות ועשבי תיבול",
-   "candidates": [
-    {
-     "name": "צנון / צנונית",
-     "portion": "כל כמות",
-     "points": 0,
-     "similarity": 0.5,
-     "issues": []
-    }
-   ]
+   "candidates": []
   },
   {
    "foodId": "f_celery",
@@ -807,34 +1333,6 @@
      "name": "קמח תירס",
      "portion": "1 כף",
      "points": 1,
-     "similarity": 0.5,
-     "issues": []
-    }
-   ]
-  },
-  {
-   "foodId": "f_peas",
-   "foodName": "אפונה",
-   "category": "ירקות ועשבי תיבול",
-   "candidates": [
-    {
-     "name": "אפונה וגזר",
-     "portion": "100 גרם",
-     "points": 1,
-     "similarity": 0.5,
-     "issues": []
-    },
-    {
-     "name": "אפונה ירוקה",
-     "portion": "100 גרם",
-     "points": 2,
-     "similarity": 0.5,
-     "issues": []
-    },
-    {
-     "name": "אפונה ירוקה",
-     "portion": "1 כוס",
-     "points": 2.5,
      "similarity": 0.5,
      "issues": []
     }
@@ -892,198 +1390,22 @@
    ]
   },
   {
-   "foodId": "f_pickle",
-   "foodName": "מלפפון חמוץ",
+   "foodId": "f_basil",
+   "foodName": "בזיליקום",
    "category": "ירקות ועשבי תיבול",
-   "candidates": [
-    {
-     "name": "מלפפון",
-     "portion": "כל כמות",
-     "points": 0,
-     "similarity": 0.5,
-     "issues": []
-    }
-   ]
+   "candidates": []
   },
   {
-   "foodId": "f_sauerkraut",
-   "foodName": "כרוב כבוש",
-   "category": "ירקות ועשבי תיבול",
-   "candidates": [
-    {
-     "name": "כרוב",
-     "portion": "כל כמות",
-     "points": 0,
-     "similarity": 0.5,
-     "issues": []
-    }
-   ]
-  },
-  {
-   "foodId": "f_apple",
-   "foodName": "תפוח",
+   "foodId": "f_blueberry",
+   "foodName": "אוכמניות",
    "category": "פירות",
-   "candidates": [
-    {
-     "name": "תפוח אדמה",
-     "portion": "200 גרם",
-     "points": 4,
-     "similarity": 0.5,
-     "issues": []
-    },
-    {
-     "name": "תפוח עץ",
-     "portion": "100 גרם",
-     "points": 2,
-     "similarity": 0.5,
-     "issues": []
-    }
-   ]
+   "candidates": []
   },
   {
-   "foodId": "f_grapefruit",
-   "foodName": "אשכולית",
+   "foodId": "f_raspberry",
+   "foodName": "פטל",
    "category": "פירות",
-   "candidates": [
-    {
-     "name": "אשכולית קלופה",
-     "portion": "200 גרם",
-     "points": 2,
-     "similarity": 0.5,
-     "issues": []
-    }
-   ]
-  },
-  {
-   "foodId": "f_pomelo",
-   "foodName": "פומלה",
-   "category": "פירות",
-   "candidates": [
-    {
-     "name": "פומלה קלופה",
-     "portion": "200 גרם",
-     "points": 2,
-     "similarity": 0.5,
-     "issues": []
-    }
-   ]
-  },
-  {
-   "foodId": "f_lemon",
-   "foodName": "לימון",
-   "category": "פירות",
-   "candidates": [
-    {
-     "name": "לימון/ ליים",
-     "portion": "כל כמות",
-     "points": 0,
-     "similarity": 0.5,
-     "issues": []
-    }
-   ]
-  },
-  {
-   "foodId": "f_apricot",
-   "foodName": "משמש",
-   "category": "פירות",
-   "candidates": [
-    {
-     "name": "משמש טרי",
-     "portion": "200 גרם",
-     "points": 2,
-     "similarity": 0.5,
-     "issues": [
-      "cooking_state_differs"
-     ]
-    },
-    {
-     "name": "משמש מיובש",
-     "portion": "100 גרם",
-     "points": 7,
-     "similarity": 0.5,
-     "issues": []
-    },
-    {
-     "name": "משמש מיובש",
-     "portion": "30 גרם",
-     "points": 2,
-     "similarity": 0.5,
-     "issues": []
-    }
-   ]
-  },
-  {
-   "foodId": "f_cherries",
-   "foodName": "דובדבנים",
-   "category": "פירות",
-   "candidates": [
-    {
-     "name": "דובדבנים טריים",
-     "portion": "200 גרם",
-     "points": 2,
-     "similarity": 0.5,
-     "issues": [
-      "cooking_state_differs"
-     ]
-    },
-    {
-     "name": "דובדבנים מסוכרים",
-     "portion": "100 גרם",
-     "points": 8,
-     "similarity": 0.5,
-     "issues": []
-    }
-   ]
-  },
-  {
-   "foodId": "f_pineapple",
-   "foodName": "אננס",
-   "category": "פירות",
-   "candidates": [
-    {
-     "name": "אננס טרי",
-     "portion": "100 גרם",
-     "points": 1,
-     "similarity": 0.5,
-     "issues": [
-      "cooking_state_differs"
-     ]
-    }
-   ]
-  },
-  {
-   "foodId": "f_fig",
-   "foodName": "תאנה",
-   "category": "פירות",
-   "candidates": [
-    {
-     "name": "תאנה טריה",
-     "portion": "100 גרם",
-     "points": 2,
-     "similarity": 0.5,
-     "issues": [
-      "cooking_state_differs"
-     ]
-    },
-    {
-     "name": "תאנה יבשה",
-     "portion": "1 יחידה",
-     "points": 1,
-     "similarity": 0.5,
-     "issues": [
-      "cooking_state_differs"
-     ]
-    },
-    {
-     "name": "תאנה יבשה",
-     "portion": "100 גרם",
-     "points": 6,
-     "similarity": 0.5,
-     "issues": [
-      "cooking_state_differs"
-     ]
-    }
-   ]
+   "candidates": []
   },
   {
    "foodId": "f_date",
@@ -1109,20 +1431,6 @@
     {
      "name": "תמר לח",
      "portion": "50 גרם",
-     "points": 2,
-     "similarity": 0.5,
-     "issues": []
-    }
-   ]
-  },
-  {
-   "foodId": "f_guava",
-   "foodName": "גויאבה",
-   "category": "פירות",
-   "candidates": [
-    {
-     "name": "גויאבה יחידה",
-     "portion": "200 גרם",
      "points": 2,
      "similarity": 0.5,
      "issues": []
@@ -1254,6 +1562,12 @@
    ]
   },
   {
+   "foodId": "f_soy_milk",
+   "foodName": "חלב סויה",
+   "category": "מוצרי חלב ותחליפים",
+   "candidates": []
+  },
+  {
    "foodId": "f_almond_milk",
    "foodName": "חלב שקדים",
    "category": "מוצרי חלב ותחליפים",
@@ -1310,36 +1624,6 @@
    ]
   },
   {
-   "foodId": "f_goat_milk",
-   "foodName": "חלב עיזים",
-   "category": "מוצרי חלב ותחליפים",
-   "candidates": [
-    {
-     "name": "חלב עיזים 3.7% שומן",
-     "portion": "1 כוס",
-     "points": 4.5,
-     "similarity": 0.67,
-     "issues": [
-      "light_or_diet_variant_differs"
-     ]
-    }
-   ]
-  },
-  {
-   "foodId": "f_coconut_milk",
-   "foodName": "חלב קוקוס",
-   "category": "מוצרי חלב ותחליפים",
-   "candidates": [
-    {
-     "name": "חלב קוקוס משומר",
-     "portion": "1 כוס",
-     "points": 15,
-     "similarity": 0.67,
-     "issues": []
-    }
-   ]
-  },
-  {
    "foodId": "f_yogurt",
    "foodName": "יוגורט טבעי",
    "category": "מוצרי חלב ותחליפים",
@@ -1372,6 +1656,12 @@
      ]
     }
    ]
+  },
+  {
+   "foodId": "f_greek_yogurt",
+   "foodName": "יוגורט יווני",
+   "category": "מוצרי חלב ותחליפים",
+   "candidates": []
   },
   {
    "foodId": "f_flavored_yogurt",
@@ -1420,6 +1710,18 @@
      ]
     }
    ]
+  },
+  {
+   "foodId": "f_dairy_dessert",
+   "foodName": "מעדן חלב",
+   "category": "מוצרי חלב ותחליפים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_cottage",
+   "foodName": "קוטג׳",
+   "category": "מוצרי חלב ותחליפים",
+   "candidates": []
   },
   {
    "foodId": "f_white_cheese",
@@ -1558,6 +1860,42 @@
    ]
   },
   {
+   "foodId": "f_feta",
+   "foodName": "פטה",
+   "category": "מוצרי חלב ותחליפים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_mozzarella",
+   "foodName": "מוצרלה",
+   "category": "מוצרי חלב ותחליפים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_parmesan",
+   "foodName": "פרמזן",
+   "category": "מוצרי חלב ותחליפים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_ricotta",
+   "foodName": "ריקוטה",
+   "category": "מוצרי חלב ותחליפים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_tsfatit",
+   "foodName": "צפתית",
+   "category": "מוצרי חלב ותחליפים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_labneh",
+   "foodName": "לאבנה",
+   "category": "מוצרי חלב ותחליפים",
+   "candidates": []
+  },
+  {
    "foodId": "f_goat_cheese",
    "foodName": "גבינת עיזים",
    "category": "מוצרי חלב ותחליפים",
@@ -1617,88 +1955,40 @@
    ]
   },
   {
-   "foodId": "f_boiled_egg",
-   "foodName": "ביצה קשה",
-   "category": "ביצים",
-   "candidates": [
-    {
-     "name": "ביצה",
-     "portion": "1 יחידה",
-     "points": 2,
-     "similarity": 0.5,
-     "issues": []
-    }
-   ]
+   "foodId": "f_sweet_cream",
+   "foodName": "שמנת מתוקה",
+   "category": "מוצרי חלב ותחליפים",
+   "candidates": []
   },
   {
-   "foodId": "f_soft_egg",
-   "foodName": "ביצה רכה",
+   "foodId": "f_fried_egg",
+   "foodName": "ביצת עין",
    "category": "ביצים",
-   "candidates": [
-    {
-     "name": "ביצה",
-     "portion": "1 יחידה",
-     "points": 2,
-     "similarity": 0.5,
-     "issues": []
-    }
-   ]
+   "candidates": []
   },
   {
-   "foodId": "f_egg_white",
-   "foodName": "חלבון ביצה",
+   "foodId": "f_omelette",
+   "foodName": "חביתה",
    "category": "ביצים",
-   "candidates": [
-    {
-     "name": "ביצה - חלבון",
-     "portion": "3 יחידה",
-     "points": 1,
-     "similarity": 1,
-     "issues": []
-    },
-    {
-     "name": "ביצה - חלבון",
-     "portion": "1 יחידה",
-     "points": 0,
-     "similarity": 1,
-     "issues": []
-    },
-    {
-     "name": "ביצה",
-     "portion": "1 יחידה",
-     "points": 2,
-     "similarity": 0.5,
-     "issues": []
-    }
-   ]
+   "candidates": []
   },
   {
-   "foodId": "f_white_bread",
-   "foodName": "לחם לבן",
+   "foodId": "f_scrambled_eggs",
+   "foodName": "ביצים מקושקשות",
+   "category": "ביצים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_shakshuka",
+   "foodName": "שקשוקה",
+   "category": "ביצים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_whole_bread",
+   "foodName": "לחם מלא",
    "category": "לחם ומאפים",
-   "candidates": [
-    {
-     "name": "לחם אחיד - לבן שחור",
-     "portion": "1 פרוסה (30 גרם)",
-     "points": 2,
-     "similarity": 0.5,
-     "issues": []
-    }
-   ]
-  },
-  {
-   "foodId": "f_sourdough_bread",
-   "foodName": "לחם מחמצת",
-   "category": "לחם ומאפים",
-   "candidates": [
-    {
-     "name": "לחם שיאור/מחמצת",
-     "portion": "1 פרוסה (30 גרם)",
-     "points": 1.5,
-     "similarity": 0.67,
-     "issues": []
-    }
-   ]
+   "candidates": []
   },
   {
    "foodId": "f_light_bread",
@@ -1717,46 +2007,10 @@
    ]
   },
   {
-   "foodId": "f_pita",
-   "foodName": "פיתה",
+   "foodId": "f_bread_slice",
+   "foodName": "פרוסת לחם",
    "category": "לחם ומאפים",
-   "candidates": [
-    {
-     "name": "פיתה דרוזית",
-     "portion": "1 יחידה",
-     "points": 12,
-     "similarity": 0.5,
-     "issues": []
-    },
-    {
-     "name": "פיתה קלה",
-     "portion": "1 יחידה (80 גרם)",
-     "points": 3,
-     "similarity": 0.5,
-     "issues": []
-    },
-    {
-     "name": "פיתה רגילה",
-     "portion": "1 יחידה",
-     "points": 6,
-     "similarity": 0.5,
-     "issues": []
-    }
-   ]
-  },
-  {
-   "foodId": "f_whole_pita",
-   "foodName": "פיתה מלאה",
-   "category": "לחם ומאפים",
-   "candidates": [
-    {
-     "name": "פיתה מחיטה מלאה",
-     "portion": "1 יחידה (75 גרם)",
-     "points": 5,
-     "similarity": 0.67,
-     "issues": []
-    }
-   ]
+   "candidates": []
   },
   {
    "foodId": "f_roll",
@@ -1771,6 +2025,36 @@
      "issues": []
     }
    ]
+  },
+  {
+   "foodId": "f_baguette",
+   "foodName": "בגט",
+   "category": "לחם ומאפים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_ciabatta",
+   "foodName": "ג׳בטה",
+   "category": "לחם ומאפים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_cracker",
+   "foodName": "קרקר",
+   "category": "לחם ומאפים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_whole_cracker",
+   "foodName": "קרקר מלא",
+   "category": "לחם ומאפים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_corn_cake",
+   "foodName": "פריכית תירס",
+   "category": "לחם ומאפים",
+   "candidates": []
   },
   {
    "foodId": "f_bagel",
@@ -1801,46 +2085,16 @@
    ]
   },
   {
-   "foodId": "f_jachnun",
-   "foodName": "ג׳חנון",
+   "foodId": "f_jerusalem_pretzel",
+   "foodName": "בייגלה ירושלמי",
    "category": "לחם ומאפים",
-   "candidates": [
-    {
-     "name": "ג'חנון , 100 ג'",
-     "portion": "100 גרם",
-     "points": 8,
-     "similarity": 0.5,
-     "issues": []
-    }
-   ]
+   "candidates": []
   },
   {
-   "foodId": "f_cheese_burekas",
-   "foodName": "בורקס גבינה",
+   "foodId": "f_croissant",
+   "foodName": "קרואסון",
    "category": "לחם ומאפים",
-   "candidates": [
-    {
-     "name": "בורקס פילו גבינה / תפוח\"א",
-     "portion": "1 יחידה (60 גרם)",
-     "points": 5,
-     "similarity": 0.5,
-     "issues": []
-    }
-   ]
-  },
-  {
-   "foodId": "f_potato_burekas",
-   "foodName": "בורקס תפוח אדמה",
-   "category": "לחם ומאפים",
-   "candidates": [
-    {
-     "name": "תפוח אדמה",
-     "portion": "200 גרם",
-     "points": 4,
-     "similarity": 0.67,
-     "issues": []
-    }
-   ]
+   "candidates": []
   },
   {
    "foodId": "f_rice",
@@ -1925,6 +2179,24 @@
    ]
   },
   {
+   "foodId": "f_jasmine_rice",
+   "foodName": "אורז יסמין",
+   "category": "דגנים ופחמימות",
+   "candidates": []
+  },
+  {
+   "foodId": "f_ptitim",
+   "foodName": "פתיתים",
+   "category": "דגנים ופחמימות",
+   "candidates": []
+  },
+  {
+   "foodId": "f_couscous",
+   "foodName": "קוסקוס",
+   "category": "דגנים ופחמימות",
+   "candidates": []
+  },
+  {
    "foodId": "f_bulgur",
    "foodName": "בורגול",
    "category": "דגנים ופחמימות",
@@ -1955,64 +2227,16 @@
    ]
   },
   {
-   "foodId": "f_oats",
-   "foodName": "שיבולת שועל",
+   "foodId": "f_buckwheat",
+   "foodName": "כוסמת",
    "category": "דגנים ופחמימות",
-   "candidates": [
-    {
-     "name": "סובין שיבולת שועל",
-     "portion": "1 כף",
-     "points": 0.5,
-     "similarity": 0.67,
-     "issues": []
-    },
-    {
-     "name": "סובין שיבולת שועל",
-     "portion": "100 גרם",
-     "points": 9,
-     "similarity": 0.67,
-     "issues": []
-    },
-    {
-     "name": "קוואקר שיבולת שועל",
-     "portion": "100 גרם",
-     "points": 9,
-     "similarity": 0.67,
-     "issues": []
-    }
-   ]
+   "candidates": []
   },
   {
-   "foodId": "f_granola",
-   "foodName": "גרנולה",
+   "foodId": "f_cornflakes",
+   "foodName": "קורנפלקס",
    "category": "דגנים ופחמימות",
-   "candidates": [
-    {
-     "name": "גרנולה לייט",
-     "portion": "100 גרם",
-     "points": 7,
-     "similarity": 0.5,
-     "issues": [
-      "light_or_diet_variant_differs"
-     ]
-    },
-    {
-     "name": "גרנולה לייט",
-     "portion": "1 כף (20 גרם)",
-     "points": 1,
-     "similarity": 0.5,
-     "issues": [
-      "light_or_diet_variant_differs"
-     ]
-    },
-    {
-     "name": "גרנולה רגילה",
-     "portion": "2 כף (30 גרם)",
-     "points": 3,
-     "similarity": 0.5,
-     "issues": []
-    }
-   ]
+   "candidates": []
   },
   {
    "foodId": "f_pasta",
@@ -2041,6 +2265,18 @@
      "issues": []
     }
    ]
+  },
+  {
+   "foodId": "f_penne",
+   "foodName": "פנה",
+   "category": "דגנים ופחמימות",
+   "candidates": []
+  },
+  {
+   "foodId": "f_noodles",
+   "foodName": "נודלס",
+   "category": "דגנים ופחמימות",
+   "candidates": []
   },
   {
    "foodId": "f_rice_noodles",
@@ -2075,6 +2311,24 @@
      ]
     }
    ]
+  },
+  {
+   "foodId": "f_polenta",
+   "foodName": "פולנטה",
+   "category": "דגנים ופחמימות",
+   "candidates": []
+  },
+  {
+   "foodId": "f_semolina",
+   "foodName": "סולת",
+   "category": "דגנים ופחמימות",
+   "candidates": []
+  },
+  {
+   "foodId": "f_mashed_potato",
+   "foodName": "פירה",
+   "category": "דגנים ופחמימות",
+   "candidates": []
   },
   {
    "foodId": "f_baked_potato",
@@ -2146,38 +2400,6 @@
    ]
   },
   {
-   "foodId": "f_chickpeas",
-   "foodName": "חומוס מבושל",
-   "category": "קטניות",
-   "candidates": [
-    {
-     "name": "חומוס גרגירים מבושל",
-     "portion": "1 כוס (150 גרם)",
-     "points": 6,
-     "similarity": 0.67,
-     "issues": []
-    },
-    {
-     "name": "חומוס גרגירים מבושל/קפוא",
-     "portion": "100 גרם",
-     "points": 4,
-     "similarity": 0.5,
-     "issues": [
-      "cooking_state_differs"
-     ]
-    },
-    {
-     "name": "חומוס גרגירים מבושל/קפוא",
-     "portion": "1 כף (30 גרם)",
-     "points": 1,
-     "similarity": 0.5,
-     "issues": [
-      "cooking_state_differs"
-     ]
-    }
-   ]
-  },
-  {
    "foodId": "f_hummus_spread",
    "foodName": "ממרח חומוס",
    "category": "קטניות",
@@ -2192,6 +2414,24 @@
      ]
     }
    ]
+  },
+  {
+   "foodId": "f_hummus_tahini",
+   "foodName": "טחינה עם חומוס",
+   "category": "קטניות",
+   "candidates": []
+  },
+  {
+   "foodId": "f_green_lentils",
+   "foodName": "עדשים ירוקות",
+   "category": "קטניות",
+   "candidates": []
+  },
+  {
+   "foodId": "f_red_lentils",
+   "foodName": "עדשים כתומות",
+   "category": "קטניות",
+   "candidates": []
   },
   {
    "foodId": "f_black_lentils",
@@ -2220,6 +2460,24 @@
      "issues": []
     }
    ]
+  },
+  {
+   "foodId": "f_red_beans",
+   "foodName": "שעועית אדומה",
+   "category": "קטניות",
+   "candidates": []
+  },
+  {
+   "foodId": "f_black_beans",
+   "foodName": "שעועית שחורה",
+   "category": "קטניות",
+   "candidates": []
+  },
+  {
+   "foodId": "f_fava_beans",
+   "foodName": "פול",
+   "category": "קטניות",
+   "candidates": []
   },
   {
    "foodId": "f_black_eyed_peas",
@@ -2332,56 +2590,6 @@
    ]
   },
   {
-   "foodId": "f_grilled_chicken_breast",
-   "foodName": "חזה עוף בגריל",
-   "category": "עוף ובשר",
-   "candidates": [
-    {
-     "name": "חזה עוף אחרי בישול",
-     "portion": "100 גרם",
-     "points": 4,
-     "similarity": 0.4,
-     "issues": [
-      "cooking_state_differs"
-     ]
-    },
-    {
-     "name": "חזה עוף לפני בישול",
-     "portion": "100 גרם",
-     "points": 3,
-     "similarity": 0.4,
-     "issues": [
-      "cooking_state_differs"
-     ]
-    }
-   ]
-  },
-  {
-   "foodId": "f_cooked_chicken_breast",
-   "foodName": "חזה עוף מבושל",
-   "category": "עוף ובשר",
-   "candidates": [
-    {
-     "name": "חזה עוף אחרי בישול",
-     "portion": "100 גרם",
-     "points": 4,
-     "similarity": 0.4,
-     "issues": [
-      "cooking_state_differs"
-     ]
-    },
-    {
-     "name": "חזה עוף לפני בישול",
-     "portion": "100 גרם",
-     "points": 3,
-     "similarity": 0.4,
-     "issues": [
-      "cooking_state_differs"
-     ]
-    }
-   ]
-  },
-  {
    "foodId": "f_pargiyot",
    "foodName": "פרגית",
    "category": "עוף ובשר",
@@ -2396,18 +2604,22 @@
    ]
   },
   {
-   "foodId": "f_chicken_drumstick",
-   "foodName": "שוק עוף",
+   "foodId": "f_chicken_wings",
+   "foodName": "כנפי עוף",
    "category": "עוף ובשר",
-   "candidates": [
-    {
-     "name": "שוק עוף בינונית ללא עור",
-     "portion": "1 יחידה",
-     "points": 2,
-     "similarity": 0.4,
-     "issues": []
-    }
-   ]
+   "candidates": []
+  },
+  {
+   "foodId": "f_roast_chicken",
+   "foodName": "עוף בתנור",
+   "category": "עוף ובשר",
+   "candidates": []
+  },
+  {
+   "foodId": "f_grilled_chicken",
+   "foodName": "עוף בגריל",
+   "category": "עוף ובשר",
+   "candidates": []
   },
   {
    "foodId": "f_chicken_schnitzel",
@@ -2440,18 +2652,10 @@
    ]
   },
   {
-   "foodId": "f_fried_schnitzel",
-   "foodName": "שניצל מטוגן",
+   "foodId": "f_baked_schnitzel",
+   "foodName": "שניצל אפוי",
    "category": "עוף ובשר",
-   "candidates": [
-    {
-     "name": "שניצל עוף מטוגן ביתי",
-     "portion": "100 גרם",
-     "points": 8,
-     "similarity": 0.5,
-     "issues": []
-    }
-   ]
+   "candidates": []
   },
   {
    "foodId": "f_turkey",
@@ -2512,25 +2716,22 @@
    ]
   },
   {
-   "foodId": "f_beef_fillet",
-   "foodName": "פילה בקר",
+   "foodId": "f_steak",
+   "foodName": "סטייק",
    "category": "עוף ובשר",
-   "candidates": [
-    {
-     "name": "סטייק- פילה בקר",
-     "portion": "200 גרם",
-     "points": 11,
-     "similarity": 0.67,
-     "issues": []
-    },
-    {
-     "name": "בשר בקר סטייק פילה",
-     "portion": "100 גרם",
-     "points": 4,
-     "similarity": 0.5,
-     "issues": []
-    }
-   ]
+   "candidates": []
+  },
+  {
+   "foodId": "f_entrecote",
+   "foodName": "אנטריקוט",
+   "category": "עוף ובשר",
+   "candidates": []
+  },
+  {
+   "foodId": "f_sirloin",
+   "foodName": "סינטה",
+   "category": "עוף ובשר",
+   "candidates": []
   },
   {
    "foodId": "f_ground_meat",
@@ -2563,32 +2764,28 @@
    ]
   },
   {
-   "foodId": "f_beef_patties",
-   "foodName": "קציצות בקר",
+   "foodId": "f_kebab",
+   "foodName": "קבב",
    "category": "עוף ובשר",
-   "candidates": [
-    {
-     "name": "קציצות בשר בקר",
-     "portion": "2 יחידה (70 גרם)",
-     "points": 4,
-     "similarity": 0.67,
-     "issues": []
-    }
-   ]
+   "candidates": []
   },
   {
-   "foodId": "f_turkey_shawarma",
-   "foodName": "שווארמה הודו",
+   "foodId": "f_chicken_shawarma",
+   "foodName": "שווארמה עוף",
    "category": "עוף ובשר",
-   "candidates": [
-    {
-     "name": "בשר הודו- שווארמה (מוצר מוכן)",
-     "portion": "100 גרם",
-     "points": 4,
-     "similarity": 0.4,
-     "issues": []
-    }
-   ]
+   "candidates": []
+  },
+  {
+   "foodId": "f_beef_shawarma",
+   "foodName": "שווארמה בקר",
+   "category": "עוף ובשר",
+   "candidates": []
+  },
+  {
+   "foodId": "f_asado",
+   "foodName": "אסאדו",
+   "category": "עוף ובשר",
+   "candidates": []
   },
   {
    "foodId": "f_beef_roast",
@@ -2621,18 +2818,28 @@
    ]
   },
   {
-   "foodId": "f_tuna_water",
-   "foodName": "טונה במים",
+   "foodId": "f_lamb",
+   "foodName": "כבש",
+   "category": "עוף ובשר",
+   "candidates": []
+  },
+  {
+   "foodId": "f_deli_sausage",
+   "foodName": "נקניק",
+   "category": "עוף ובשר",
+   "candidates": []
+  },
+  {
+   "foodId": "f_salmon",
+   "foodName": "סלמון",
    "category": "דגים",
-   "candidates": [
-    {
-     "name": "דג טונה משומרת במים",
-     "portion": "1 קופסה",
-     "points": 2.5,
-     "similarity": 0.5,
-     "issues": []
-    }
-   ]
+   "candidates": []
+  },
+  {
+   "foodId": "f_tuna",
+   "foodName": "טונה",
+   "category": "דגים",
+   "candidates": []
   },
   {
    "foodId": "f_tuna_oil",
@@ -2649,18 +2856,58 @@
    ]
   },
   {
-   "foodId": "f_seabass",
-   "foodName": "לברק",
+   "foodId": "f_white_fish",
+   "foodName": "דג לבן",
    "category": "דגים",
-   "candidates": [
-    {
-     "name": "דג לברק",
-     "portion": "100 גרם",
-     "points": 2,
-     "similarity": 0.5,
-     "issues": []
-    }
-   ]
+   "candidates": []
+  },
+  {
+   "foodId": "f_tilapia",
+   "foodName": "אמנון",
+   "category": "דגים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_denis",
+   "foodName": "דניס",
+   "category": "דגים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_cod",
+   "foodName": "בקלה",
+   "category": "דגים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_sardines",
+   "foodName": "סרדינים",
+   "category": "דגים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_mackerel",
+   "foodName": "מקרל",
+   "category": "דגים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_trout",
+   "foodName": "פורל",
+   "category": "דגים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_chraime",
+   "foodName": "חריימה",
+   "category": "דגים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_fish_patties",
+   "foodName": "קציצות דגים",
+   "category": "דגים",
+   "candidates": []
   },
   {
    "foodId": "f_fried_fish_fillet",
@@ -2729,80 +2976,40 @@
    ]
   },
   {
-   "foodId": "f_veg_salad",
-   "foodName": "סלט ירקות",
-   "category": "מנות ותבשילים",
-   "candidates": [
-    {
-     "name": "ירקות",
-     "portion": "כל כמות",
-     "points": 0,
-     "similarity": 0.5,
-     "issues": []
-    },
-    {
-     "name": "סלט ירקות - מתכון שומרי משקל",
-     "portion": "1 מנה",
-     "points": 0.5,
-     "similarity": 0.4,
-     "issues": [
-      "recipe_vs_ingredient"
-     ]
-    },
-    {
-     "name": "סלט ירקות איטלקי - מתכון שומר",
-     "portion": "1 מנה",
-     "points": 2,
-     "similarity": 0.4,
-     "issues": [
-      "recipe_vs_ingredient"
-     ]
-    }
-   ]
+   "foodId": "f_shrimp",
+   "foodName": "שרימפס",
+   "category": "דגים",
+   "candidates": []
   },
   {
-   "foodId": "f_lettuce_salad",
-   "foodName": "סלט חסה",
-   "category": "מנות ותבשילים",
-   "candidates": [
-    {
-     "name": "חסה",
-     "portion": "כל כמות",
-     "points": 0,
-     "similarity": 0.5,
-     "issues": []
-    }
-   ]
+   "foodId": "f_salmon_sushi",
+   "foodName": "סושי סלמון",
+   "category": "דגים",
+   "candidates": []
   },
   {
-   "foodId": "f_cabbage_salad",
-   "foodName": "סלט כרוב",
+   "foodId": "f_tuna_sushi",
+   "foodName": "סושי טונה",
+   "category": "דגים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_sashimi",
+   "foodName": "סשימי",
+   "category": "דגים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_israeli_salad",
+   "foodName": "סלט ישראלי",
    "category": "מנות ותבשילים",
-   "candidates": [
-    {
-     "name": "כרוב",
-     "portion": "כל כמות",
-     "points": 0,
-     "similarity": 0.5,
-     "issues": []
-    },
-    {
-     "name": "סלט כרוב אדום במיונז",
-     "portion": "1 כף (15 גרם)",
-     "points": 1,
-     "similarity": 0.5,
-     "issues": []
-    },
-    {
-     "name": "סלט כרוב - מתכון שומרי משקל",
-     "portion": "1 מנה",
-     "points": 0.5,
-     "similarity": 0.4,
-     "issues": [
-      "recipe_vs_ingredient"
-     ]
-    }
-   ]
+   "candidates": []
+  },
+  {
+   "foodId": "f_greek_salad",
+   "foodName": "סלט יווני",
+   "category": "מנות ותבשילים",
+   "candidates": []
   },
   {
    "foodId": "f_tuna_salad",
@@ -2837,6 +3044,12 @@
    ]
   },
   {
+   "foodId": "f_egg_salad",
+   "foodName": "סלט ביצים",
+   "category": "מנות ותבשילים",
+   "candidates": []
+  },
+  {
    "foodId": "f_quinoa_salad",
    "foodName": "סלט קינואה",
    "category": "מנות ותבשילים",
@@ -2851,34 +3064,10 @@
    ]
   },
   {
-   "foodId": "f_veg_soup",
-   "foodName": "מרק ירקות",
+   "foodId": "f_pasta_salad",
+   "foodName": "סלט פסטה",
    "category": "מנות ותבשילים",
-   "candidates": [
-    {
-     "name": "מרק ירקות חינמיים",
-     "portion": "כל כמות",
-     "points": 0,
-     "similarity": 0.67,
-     "issues": []
-    },
-    {
-     "name": "ירקות",
-     "portion": "כל כמות",
-     "points": 0,
-     "similarity": 0.5,
-     "issues": []
-    },
-    {
-     "name": "מרק ירקות - מתכון שומרי משקל",
-     "portion": "1 מנה",
-     "points": 0.5,
-     "similarity": 0.4,
-     "issues": [
-      "recipe_vs_ingredient"
-     ]
-    }
-   ]
+   "candidates": []
   },
   {
    "foodId": "f_chicken_soup",
@@ -3011,6 +3200,12 @@
    ]
   },
   {
+   "foodId": "f_pea_soup",
+   "foodName": "מרק אפונה",
+   "category": "מנות ותבשילים",
+   "candidates": []
+  },
+  {
    "foodId": "f_couscous_veg",
    "foodName": "קוסקוס עם ירקות",
    "category": "מנות ותבשילים",
@@ -3023,6 +3218,12 @@
      "issues": []
     }
    ]
+  },
+  {
+   "foodId": "f_mujadara",
+   "foodName": "מג׳דרה",
+   "category": "מנות ותבשילים",
+   "candidates": []
   },
   {
    "foodId": "f_rice_chicken",
@@ -3044,6 +3245,12 @@
      "issues": []
     }
    ]
+  },
+  {
+   "foodId": "f_ptitim_veg",
+   "foodName": "פתיתים עם ירקות",
+   "category": "מנות ותבשילים",
+   "candidates": []
   },
   {
    "foodId": "f_pasta_tomato",
@@ -3074,6 +3281,12 @@
    ]
   },
   {
+   "foodId": "f_pasta_cream",
+   "foodName": "פסטה ברוטב שמנת",
+   "category": "מנות ותבשילים",
+   "candidates": []
+  },
+  {
    "foodId": "f_lasagna",
    "foodName": "לזניה",
    "category": "מנות ותבשילים",
@@ -3086,6 +3299,24 @@
      "issues": []
     }
    ]
+  },
+  {
+   "foodId": "f_ravioli",
+   "foodName": "רביולי",
+   "category": "מנות ותבשילים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_gnocchi",
+   "foodName": "ניוקי",
+   "category": "מנות ותבשילים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_moussaka",
+   "foodName": "מוסקה",
+   "category": "מנות ותבשילים",
+   "candidates": []
   },
   {
    "foodId": "f_stuffed_veg",
@@ -3146,6 +3377,12 @@
    ]
   },
   {
+   "foodId": "f_grape_leaves",
+   "foodName": "עלי גפן",
+   "category": "מנות ותבשילים",
+   "candidates": []
+  },
+  {
    "foodId": "f_patties_sauce",
    "foodName": "קציצות ברוטב",
    "category": "מנות ותבשילים",
@@ -3181,6 +3418,42 @@
    ]
   },
   {
+   "foodId": "f_veg_patties",
+   "foodName": "קציצות ירק",
+   "category": "מנות ותבשילים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_levivot",
+   "foodName": "לביבות",
+   "category": "מנות ותבשילים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_pashtida",
+   "foodName": "פשטידה",
+   "category": "מנות ותבשילים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_quiche",
+   "foodName": "קיש",
+   "category": "מנות ותבשילים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_chamin",
+   "foodName": "חמין",
+   "category": "מנות ותבשילים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_goulash",
+   "foodName": "גולאש",
+   "category": "מנות ותבשילים",
+   "candidates": []
+  },
+  {
    "foodId": "f_stirfry_veg",
    "foodName": "מוקפץ ירקות",
    "category": "מנות ותבשילים",
@@ -3193,6 +3466,24 @@
      "issues": []
     }
    ]
+  },
+  {
+   "foodId": "f_stirfry_chicken",
+   "foodName": "מוקפץ עוף",
+   "category": "מנות ותבשילים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_stirfry_noodles",
+   "foodName": "נודלס מוקפץ",
+   "category": "מנות ותבשילים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_sabich",
+   "foodName": "סביח",
+   "category": "מנות ותבשילים",
+   "candidates": []
   },
   {
    "foodId": "f_falafel_pita",
@@ -3209,6 +3500,42 @@
    ]
   },
   {
+   "foodId": "f_shawarma_pita",
+   "foodName": "שווארמה בפיתה",
+   "category": "מנות ותבשילים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_hummus_pita",
+   "foodName": "חומוס עם פיתה",
+   "category": "מנות ותבשילים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_cheese_toast",
+   "foodName": "טוסט גבינה",
+   "category": "מנות ותבשילים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_sandwich",
+   "foodName": "כריך",
+   "category": "מנות ותבשילים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_tuna_sandwich",
+   "foodName": "כריך טונה",
+   "category": "מנות ותבשילים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_omelette_sandwich",
+   "foodName": "כריך חביתה",
+   "category": "מנות ותבשילים",
+   "candidates": []
+  },
+  {
    "foodId": "f_pizza",
    "foodName": "פיצה",
    "category": "מנות ותבשילים",
@@ -3223,6 +3550,12 @@
      ]
     }
    ]
+  },
+  {
+   "foodId": "f_burger_bun",
+   "foodName": "המבורגר בלחמנייה",
+   "category": "מנות ותבשילים",
+   "candidates": []
   },
   {
    "foodId": "f_hotdog",
@@ -3269,6 +3602,30 @@
    ]
   },
   {
+   "foodId": "f_poke",
+   "foodName": "פוקי",
+   "category": "מנות ותבשילים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_taco",
+   "foodName": "טאקו",
+   "category": "מנות ותבשילים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_cashew",
+   "foodName": "קשיו",
+   "category": "אגוזים, גרעינים וממרחים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_pistachio",
+   "foodName": "פיסטוק",
+   "category": "אגוזים, גרעינים וממרחים",
+   "candidates": []
+  },
+  {
    "foodId": "f_peanuts",
    "foodName": "בוטנים",
    "category": "אגוזים, גרעינים וממרחים",
@@ -3311,6 +3668,12 @@
      ]
     }
    ]
+  },
+  {
+   "foodId": "f_pecan",
+   "foodName": "פקאן",
+   "category": "אגוזים, גרעינים וממרחים",
+   "candidates": []
   },
   {
    "foodId": "f_sunflower_seeds",
@@ -3362,27 +3725,6 @@
    ]
   },
   {
-   "foodId": "f_chia",
-   "foodName": "צ׳יה",
-   "category": "אגוזים, גרעינים וממרחים",
-   "candidates": [
-    {
-     "name": "זרעי צ'יה",
-     "portion": "100 גרם",
-     "points": 11.5,
-     "similarity": 0.5,
-     "issues": []
-    },
-    {
-     "name": "זרעי ציה",
-     "portion": "1 כף",
-     "points": 1,
-     "similarity": 0.5,
-     "issues": []
-    }
-   ]
-  },
-  {
    "foodId": "f_almond_butter",
    "foodName": "חמאת שקדים",
    "category": "אגוזים, גרעינים וממרחים",
@@ -3427,67 +3769,10 @@
    ]
   },
   {
-   "foodId": "f_pesto",
-   "foodName": "פסטו",
-   "category": "אגוזים, גרעינים וממרחים",
-   "candidates": [
-    {
-     "name": "ממרח פסטו",
-     "portion": "1 כף",
-     "points": 2,
-     "similarity": 0.5,
-     "issues": []
-    },
-    {
-     "name": "ממרח פסטו",
-     "portion": "100 גרם",
-     "points": 9,
-     "similarity": 0.5,
-     "issues": []
-    }
-   ]
-  },
-  {
-   "foodId": "f_milk_chocolate",
-   "foodName": "שוקולד חלב",
+   "foodId": "f_white_chocolate",
+   "foodName": "שוקולד לבן",
    "category": "חטיפים ומתוקים",
-   "candidates": [
-    {
-     "name": "שוקולד חלב/מריר",
-     "portion": "100 גרם",
-     "points": 14,
-     "similarity": 0.67,
-     "issues": []
-    },
-    {
-     "name": "שוקולד חלב/מריר",
-     "portion": "4 קובייה (16 גרם)",
-     "points": 2,
-     "similarity": 0.67,
-     "issues": []
-    }
-   ]
-  },
-  {
-   "foodId": "f_dark_chocolate",
-   "foodName": "שוקולד מריר",
-   "category": "חטיפים ומתוקים",
-   "candidates": [
-    {
-     "name": "שוקולד חלב/מריר",
-     "portion": "100 גרם",
-     "points": 14,
-     "similarity": 0.67,
-     "issues": []
-    },
-    {
-     "name": "שוקולד חלב/מריר",
-     "portion": "4 קובייה (16 גרם)",
-     "points": 2,
-     "similarity": 0.67,
-     "issues": []
-    }
-   ]
+   "candidates": []
   },
   {
    "foodId": "f_cookie",
@@ -3646,6 +3931,12 @@
    ]
   },
   {
+   "foodId": "f_popsicle",
+   "foodName": "ארטיק",
+   "category": "חטיפים ומתוקים",
+   "candidates": []
+  },
+  {
    "foodId": "f_chocolate_bar",
    "foodName": "חטיף שוקולד",
    "category": "חטיפים ומתוקים",
@@ -3660,25 +3951,52 @@
    ]
   },
   {
-   "foodId": "f_pretzels",
-   "foodName": "בייגלה",
+   "foodId": "f_energy_bar",
+   "foodName": "חטיף אנרגיה",
    "category": "חטיפים ומתוקים",
-   "candidates": [
-    {
-     "name": "בייגלה חטיף",
-     "portion": "100 גרם",
-     "points": 10,
-     "similarity": 0.5,
-     "issues": []
-    },
-    {
-     "name": "בייגלה חטיף",
-     "portion": "30 גרם",
-     "points": 3,
-     "similarity": 0.5,
-     "issues": []
-    }
-   ]
+   "candidates": []
+  },
+  {
+   "foodId": "f_protein_bar",
+   "foodName": "חטיף חלבון",
+   "category": "חטיפים ומתוקים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_bisli",
+   "foodName": "ביסלי",
+   "category": "חטיפים ומתוקים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_bamba",
+   "foodName": "במבה",
+   "category": "חטיפים ומתוקים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_potato_chips",
+   "foodName": "תפוצ׳יפס",
+   "category": "חטיפים ומתוקים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_doritos",
+   "foodName": "דוריטוס",
+   "category": "חטיפים ומתוקים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_popcorn",
+   "foodName": "פופקורן",
+   "category": "חטיפים ומתוקים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_malabi",
+   "foodName": "מלבי",
+   "category": "חטיפים ומתוקים",
+   "candidates": []
   },
   {
    "foodId": "f_pudding",
@@ -3695,6 +4013,30 @@
    ]
   },
   {
+   "foodId": "f_chocolate_ball",
+   "foodName": "כדור שוקולד",
+   "category": "חטיפים ומתוקים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_candy",
+   "foodName": "סוכריות",
+   "category": "חטיפים ומתוקים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_water",
+   "foodName": "מים",
+   "category": "משקאות",
+   "candidates": []
+  },
+  {
+   "foodId": "f_sparkling_water",
+   "foodName": "מים מוגזים",
+   "category": "משקאות",
+   "candidates": []
+  },
+  {
    "foodId": "f_soda",
    "foodName": "סודה",
    "category": "משקאות",
@@ -3707,6 +4049,24 @@
      "issues": []
     }
    ]
+  },
+  {
+   "foodId": "f_cappuccino",
+   "foodName": "קפוצ׳ינו",
+   "category": "משקאות",
+   "candidates": []
+  },
+  {
+   "foodId": "f_hafuch",
+   "foodName": "קפה הפוך",
+   "category": "משקאות",
+   "candidates": []
+  },
+  {
+   "foodId": "f_latte",
+   "foodName": "לאטה",
+   "category": "משקאות",
+   "candidates": []
   },
   {
    "foodId": "f_choco",
@@ -3725,48 +4085,34 @@
    ]
   },
   {
-   "foodId": "f_grape_juice",
-   "foodName": "מיץ ענבים",
+   "foodId": "f_orange_juice",
+   "foodName": "מיץ תפוזים",
    "category": "משקאות",
-   "candidates": [
-    {
-     "name": "מיץ ענבים (תירוש)",
-     "portion": "1 כוס",
-     "points": 5,
-     "similarity": 0.67,
-     "issues": []
-    },
-    {
-     "name": "ענבים",
-     "portion": "100 גרם",
-     "points": 2,
-     "similarity": 0.5,
-     "issues": []
-    }
-   ]
+   "candidates": []
   },
   {
-   "foodId": "f_energy_drink",
-   "foodName": "משקה אנרגיה",
+   "foodId": "f_apple_juice",
+   "foodName": "מיץ תפוחים",
    "category": "משקאות",
-   "candidates": [
-    {
-     "name": "משקה אנרגיה דיאט",
-     "portion": "1 כוס",
-     "points": 0,
-     "similarity": 0.67,
-     "issues": [
-      "light_or_diet_variant_differs"
-     ]
-    },
-    {
-     "name": "משקה אנרגיה רגיל",
-     "portion": "1 כוס",
-     "points": 3,
-     "similarity": 0.67,
-     "issues": []
-    }
-   ]
+   "candidates": []
+  },
+  {
+   "foodId": "f_lemonade",
+   "foodName": "לימונדה",
+   "category": "משקאות",
+   "candidates": []
+  },
+  {
+   "foodId": "f_cola",
+   "foodName": "קולה",
+   "category": "משקאות",
+   "candidates": []
+  },
+  {
+   "foodId": "f_cola_zero",
+   "foodName": "קולה זירו",
+   "category": "משקאות",
+   "candidates": []
   },
   {
    "foodId": "f_fruit_shake",
@@ -3783,6 +4129,12 @@
      ]
     }
    ]
+  },
+  {
+   "foodId": "f_smoothie",
+   "foodName": "סמוזי",
+   "category": "משקאות",
+   "candidates": []
   },
   {
    "foodId": "f_beer",
@@ -3806,32 +4158,10 @@
    ]
   },
   {
-   "foodId": "f_red_wine",
-   "foodName": "יין אדום",
+   "foodId": "f_arak",
+   "foodName": "ערק",
    "category": "משקאות",
-   "candidates": [
-    {
-     "name": "יין אדום/לבן",
-     "portion": "1 כוסית",
-     "points": 3,
-     "similarity": 0.67,
-     "issues": []
-    }
-   ]
-  },
-  {
-   "foodId": "f_white_wine",
-   "foodName": "יין לבן",
-   "category": "משקאות",
-   "candidates": [
-    {
-     "name": "יין אדום/לבן",
-     "portion": "1 כוסית",
-     "points": 3,
-     "similarity": 0.67,
-     "issues": []
-    }
-   ]
+   "candidates": []
   },
   {
    "foodId": "f_olive_oil",
@@ -3846,6 +4176,12 @@
      "issues": []
     }
    ]
+  },
+  {
+   "foodId": "f_canola_oil",
+   "foodName": "שמן קנולה",
+   "category": "רטבים, שמנים ותבלינים",
+   "candidates": []
   },
   {
    "foodId": "f_tomato_sauce",
@@ -3890,38 +4226,22 @@
    ]
   },
   {
-   "foodId": "f_mustard",
-   "foodName": "חרדל",
+   "foodId": "f_vinaigrette",
+   "foodName": "ויניגרט",
    "category": "רטבים, שמנים ותבלינים",
-   "candidates": [
-    {
-     "name": "חרדל גרגירים",
-     "portion": "1 כף (15 גרם)",
-     "points": 0.5,
-     "similarity": 0.5,
-     "issues": [
-      "light_or_diet_variant_differs"
-     ]
-    },
-    {
-     "name": "חרדל גרגירים",
-     "portion": "100 גרם",
-     "points": 11,
-     "similarity": 0.5,
-     "issues": [
-      "light_or_diet_variant_differs"
-     ]
-    },
-    {
-     "name": "חרדל מוכן",
-     "portion": "1 כף (15 גרם)",
-     "points": 0.5,
-     "similarity": 0.5,
-     "issues": [
-      "light_or_diet_variant_differs"
-     ]
-    }
-   ]
+   "candidates": []
+  },
+  {
+   "foodId": "f_lemon_oil_dressing",
+   "foodName": "רוטב לימון ושמן זית",
+   "category": "רטבים, שמנים ותבלינים",
+   "candidates": []
+  },
+  {
+   "foodId": "f_salt",
+   "foodName": "מלח",
+   "category": "רטבים, שמנים ותבלינים",
+   "candidates": []
   },
   {
    "foodId": "f_sugar",
@@ -3950,773 +4270,6 @@
      "issues": []
     }
    ]
-  }
- ],
- "unmatched": [
-  {
-   "foodId": "f_tomato",
-   "foodName": "עגבנייה",
-   "category": "ירקות ועשבי תיבול"
-  },
-  {
-   "foodId": "f_hot_pepper",
-   "foodName": "פלפל חריף",
-   "category": "ירקות ועשבי תיבול"
-  },
-  {
-   "foodId": "f_onion_red",
-   "foodName": "בצל סגול",
-   "category": "ירקות ועשבי תיבול"
-  },
-  {
-   "foodId": "f_kohlrabi",
-   "foodName": "קולורבי",
-   "category": "ירקות ועשבי תיבול"
-  },
-  {
-   "foodId": "f_spinach",
-   "foodName": "תרד",
-   "category": "ירקות ועשבי תיבול"
-  },
-  {
-   "foodId": "f_chard",
-   "foodName": "מנגולד",
-   "category": "ירקות ועשבי תיבול"
-  },
-  {
-   "foodId": "f_basil",
-   "foodName": "בזיליקום",
-   "category": "ירקות ועשבי תיבול"
-  },
-  {
-   "foodId": "f_blueberry",
-   "foodName": "אוכמניות",
-   "category": "פירות"
-  },
-  {
-   "foodId": "f_raspberry",
-   "foodName": "פטל",
-   "category": "פירות"
-  },
-  {
-   "foodId": "f_soy_milk",
-   "foodName": "חלב סויה",
-   "category": "מוצרי חלב ותחליפים"
-  },
-  {
-   "foodId": "f_greek_yogurt",
-   "foodName": "יוגורט יווני",
-   "category": "מוצרי חלב ותחליפים"
-  },
-  {
-   "foodId": "f_dairy_dessert",
-   "foodName": "מעדן חלב",
-   "category": "מוצרי חלב ותחליפים"
-  },
-  {
-   "foodId": "f_cottage",
-   "foodName": "קוטג׳",
-   "category": "מוצרי חלב ותחליפים"
-  },
-  {
-   "foodId": "f_feta",
-   "foodName": "פטה",
-   "category": "מוצרי חלב ותחליפים"
-  },
-  {
-   "foodId": "f_mozzarella",
-   "foodName": "מוצרלה",
-   "category": "מוצרי חלב ותחליפים"
-  },
-  {
-   "foodId": "f_parmesan",
-   "foodName": "פרמזן",
-   "category": "מוצרי חלב ותחליפים"
-  },
-  {
-   "foodId": "f_ricotta",
-   "foodName": "ריקוטה",
-   "category": "מוצרי חלב ותחליפים"
-  },
-  {
-   "foodId": "f_tsfatit",
-   "foodName": "צפתית",
-   "category": "מוצרי חלב ותחליפים"
-  },
-  {
-   "foodId": "f_labneh",
-   "foodName": "לאבנה",
-   "category": "מוצרי חלב ותחליפים"
-  },
-  {
-   "foodId": "f_sweet_cream",
-   "foodName": "שמנת מתוקה",
-   "category": "מוצרי חלב ותחליפים"
-  },
-  {
-   "foodId": "f_fried_egg",
-   "foodName": "ביצת עין",
-   "category": "ביצים"
-  },
-  {
-   "foodId": "f_omelette",
-   "foodName": "חביתה",
-   "category": "ביצים"
-  },
-  {
-   "foodId": "f_scrambled_eggs",
-   "foodName": "ביצים מקושקשות",
-   "category": "ביצים"
-  },
-  {
-   "foodId": "f_shakshuka",
-   "foodName": "שקשוקה",
-   "category": "ביצים"
-  },
-  {
-   "foodId": "f_whole_bread",
-   "foodName": "לחם מלא",
-   "category": "לחם ומאפים"
-  },
-  {
-   "foodId": "f_bread_slice",
-   "foodName": "פרוסת לחם",
-   "category": "לחם ומאפים"
-  },
-  {
-   "foodId": "f_laffa",
-   "foodName": "לאפה",
-   "category": "לחם ומאפים"
-  },
-  {
-   "foodId": "f_baguette",
-   "foodName": "בגט",
-   "category": "לחם ומאפים"
-  },
-  {
-   "foodId": "f_ciabatta",
-   "foodName": "ג׳בטה",
-   "category": "לחם ומאפים"
-  },
-  {
-   "foodId": "f_cracker",
-   "foodName": "קרקר",
-   "category": "לחם ומאפים"
-  },
-  {
-   "foodId": "f_whole_cracker",
-   "foodName": "קרקר מלא",
-   "category": "לחם ומאפים"
-  },
-  {
-   "foodId": "f_rice_cake",
-   "foodName": "פריכית אורז",
-   "category": "לחם ומאפים"
-  },
-  {
-   "foodId": "f_corn_cake",
-   "foodName": "פריכית תירס",
-   "category": "לחם ומאפים"
-  },
-  {
-   "foodId": "f_jerusalem_pretzel",
-   "foodName": "בייגלה ירושלמי",
-   "category": "לחם ומאפים"
-  },
-  {
-   "foodId": "f_croissant",
-   "foodName": "קרואסון",
-   "category": "לחם ומאפים"
-  },
-  {
-   "foodId": "f_jasmine_rice",
-   "foodName": "אורז יסמין",
-   "category": "דגנים ופחמימות"
-  },
-  {
-   "foodId": "f_ptitim",
-   "foodName": "פתיתים",
-   "category": "דגנים ופחמימות"
-  },
-  {
-   "foodId": "f_couscous",
-   "foodName": "קוסקוס",
-   "category": "דגנים ופחמימות"
-  },
-  {
-   "foodId": "f_buckwheat",
-   "foodName": "כוסמת",
-   "category": "דגנים ופחמימות"
-  },
-  {
-   "foodId": "f_cornflakes",
-   "foodName": "קורנפלקס",
-   "category": "דגנים ופחמימות"
-  },
-  {
-   "foodId": "f_penne",
-   "foodName": "פנה",
-   "category": "דגנים ופחמימות"
-  },
-  {
-   "foodId": "f_noodles",
-   "foodName": "נודלס",
-   "category": "דגנים ופחמימות"
-  },
-  {
-   "foodId": "f_polenta",
-   "foodName": "פולנטה",
-   "category": "דגנים ופחמימות"
-  },
-  {
-   "foodId": "f_semolina",
-   "foodName": "סולת",
-   "category": "דגנים ופחמימות"
-  },
-  {
-   "foodId": "f_mashed_potato",
-   "foodName": "פירה",
-   "category": "דגנים ופחמימות"
-  },
-  {
-   "foodId": "f_hummus_tahini",
-   "foodName": "טחינה עם חומוס",
-   "category": "קטניות"
-  },
-  {
-   "foodId": "f_green_lentils",
-   "foodName": "עדשים ירוקות",
-   "category": "קטניות"
-  },
-  {
-   "foodId": "f_red_lentils",
-   "foodName": "עדשים כתומות",
-   "category": "קטניות"
-  },
-  {
-   "foodId": "f_red_beans",
-   "foodName": "שעועית אדומה",
-   "category": "קטניות"
-  },
-  {
-   "foodId": "f_black_beans",
-   "foodName": "שעועית שחורה",
-   "category": "קטניות"
-  },
-  {
-   "foodId": "f_fava_beans",
-   "foodName": "פול",
-   "category": "קטניות"
-  },
-  {
-   "foodId": "f_edamame",
-   "foodName": "אדממה",
-   "category": "קטניות"
-  },
-  {
-   "foodId": "f_chicken_thigh",
-   "foodName": "כרע עוף",
-   "category": "עוף ובשר"
-  },
-  {
-   "foodId": "f_chicken_wings",
-   "foodName": "כנפי עוף",
-   "category": "עוף ובשר"
-  },
-  {
-   "foodId": "f_roast_chicken",
-   "foodName": "עוף בתנור",
-   "category": "עוף ובשר"
-  },
-  {
-   "foodId": "f_grilled_chicken",
-   "foodName": "עוף בגריל",
-   "category": "עוף ובשר"
-  },
-  {
-   "foodId": "f_baked_schnitzel",
-   "foodName": "שניצל אפוי",
-   "category": "עוף ובשר"
-  },
-  {
-   "foodId": "f_steak",
-   "foodName": "סטייק",
-   "category": "עוף ובשר"
-  },
-  {
-   "foodId": "f_entrecote",
-   "foodName": "אנטריקוט",
-   "category": "עוף ובשר"
-  },
-  {
-   "foodId": "f_sirloin",
-   "foodName": "סינטה",
-   "category": "עוף ובשר"
-  },
-  {
-   "foodId": "f_hamburger",
-   "foodName": "המבורגר",
-   "category": "עוף ובשר"
-  },
-  {
-   "foodId": "f_kebab",
-   "foodName": "קבב",
-   "category": "עוף ובשר"
-  },
-  {
-   "foodId": "f_chicken_shawarma",
-   "foodName": "שווארמה עוף",
-   "category": "עוף ובשר"
-  },
-  {
-   "foodId": "f_beef_shawarma",
-   "foodName": "שווארמה בקר",
-   "category": "עוף ובשר"
-  },
-  {
-   "foodId": "f_asado",
-   "foodName": "אסאדו",
-   "category": "עוף ובשר"
-  },
-  {
-   "foodId": "f_lamb",
-   "foodName": "כבש",
-   "category": "עוף ובשר"
-  },
-  {
-   "foodId": "f_deli_sausage",
-   "foodName": "נקניק",
-   "category": "עוף ובשר"
-  },
-  {
-   "foodId": "f_salami",
-   "foodName": "סלמי",
-   "category": "עוף ובשר"
-  },
-  {
-   "foodId": "f_salmon",
-   "foodName": "סלמון",
-   "category": "דגים"
-  },
-  {
-   "foodId": "f_tuna",
-   "foodName": "טונה",
-   "category": "דגים"
-  },
-  {
-   "foodId": "f_white_fish",
-   "foodName": "דג לבן",
-   "category": "דגים"
-  },
-  {
-   "foodId": "f_tilapia",
-   "foodName": "אמנון",
-   "category": "דגים"
-  },
-  {
-   "foodId": "f_denis",
-   "foodName": "דניס",
-   "category": "דגים"
-  },
-  {
-   "foodId": "f_cod",
-   "foodName": "בקלה",
-   "category": "דגים"
-  },
-  {
-   "foodId": "f_sardines",
-   "foodName": "סרדינים",
-   "category": "דגים"
-  },
-  {
-   "foodId": "f_mackerel",
-   "foodName": "מקרל",
-   "category": "דגים"
-  },
-  {
-   "foodId": "f_trout",
-   "foodName": "פורל",
-   "category": "דגים"
-  },
-  {
-   "foodId": "f_chraime",
-   "foodName": "חריימה",
-   "category": "דגים"
-  },
-  {
-   "foodId": "f_fish_patties",
-   "foodName": "קציצות דגים",
-   "category": "דגים"
-  },
-  {
-   "foodId": "f_shrimp",
-   "foodName": "שרימפס",
-   "category": "דגים"
-  },
-  {
-   "foodId": "f_salmon_sushi",
-   "foodName": "סושי סלמון",
-   "category": "דגים"
-  },
-  {
-   "foodId": "f_tuna_sushi",
-   "foodName": "סושי טונה",
-   "category": "דגים"
-  },
-  {
-   "foodId": "f_sashimi",
-   "foodName": "סשימי",
-   "category": "דגים"
-  },
-  {
-   "foodId": "f_israeli_salad",
-   "foodName": "סלט ישראלי",
-   "category": "מנות ותבשילים"
-  },
-  {
-   "foodId": "f_greek_salad",
-   "foodName": "סלט יווני",
-   "category": "מנות ותבשילים"
-  },
-  {
-   "foodId": "f_egg_salad",
-   "foodName": "סלט ביצים",
-   "category": "מנות ותבשילים"
-  },
-  {
-   "foodId": "f_pasta_salad",
-   "foodName": "סלט פסטה",
-   "category": "מנות ותבשילים"
-  },
-  {
-   "foodId": "f_pea_soup",
-   "foodName": "מרק אפונה",
-   "category": "מנות ותבשילים"
-  },
-  {
-   "foodId": "f_mujadara",
-   "foodName": "מג׳דרה",
-   "category": "מנות ותבשילים"
-  },
-  {
-   "foodId": "f_ptitim_veg",
-   "foodName": "פתיתים עם ירקות",
-   "category": "מנות ותבשילים"
-  },
-  {
-   "foodId": "f_pasta_cream",
-   "foodName": "פסטה ברוטב שמנת",
-   "category": "מנות ותבשילים"
-  },
-  {
-   "foodId": "f_ravioli",
-   "foodName": "רביולי",
-   "category": "מנות ותבשילים"
-  },
-  {
-   "foodId": "f_gnocchi",
-   "foodName": "ניוקי",
-   "category": "מנות ותבשילים"
-  },
-  {
-   "foodId": "f_moussaka",
-   "foodName": "מוסקה",
-   "category": "מנות ותבשילים"
-  },
-  {
-   "foodId": "f_grape_leaves",
-   "foodName": "עלי גפן",
-   "category": "מנות ותבשילים"
-  },
-  {
-   "foodId": "f_veg_patties",
-   "foodName": "קציצות ירק",
-   "category": "מנות ותבשילים"
-  },
-  {
-   "foodId": "f_levivot",
-   "foodName": "לביבות",
-   "category": "מנות ותבשילים"
-  },
-  {
-   "foodId": "f_pashtida",
-   "foodName": "פשטידה",
-   "category": "מנות ותבשילים"
-  },
-  {
-   "foodId": "f_quiche",
-   "foodName": "קיש",
-   "category": "מנות ותבשילים"
-  },
-  {
-   "foodId": "f_chamin",
-   "foodName": "חמין",
-   "category": "מנות ותבשילים"
-  },
-  {
-   "foodId": "f_goulash",
-   "foodName": "גולאש",
-   "category": "מנות ותבשילים"
-  },
-  {
-   "foodId": "f_stirfry_chicken",
-   "foodName": "מוקפץ עוף",
-   "category": "מנות ותבשילים"
-  },
-  {
-   "foodId": "f_stirfry_noodles",
-   "foodName": "נודלס מוקפץ",
-   "category": "מנות ותבשילים"
-  },
-  {
-   "foodId": "f_sabich",
-   "foodName": "סביח",
-   "category": "מנות ותבשילים"
-  },
-  {
-   "foodId": "f_shawarma_pita",
-   "foodName": "שווארמה בפיתה",
-   "category": "מנות ותבשילים"
-  },
-  {
-   "foodId": "f_hummus_pita",
-   "foodName": "חומוס עם פיתה",
-   "category": "מנות ותבשילים"
-  },
-  {
-   "foodId": "f_cheese_toast",
-   "foodName": "טוסט גבינה",
-   "category": "מנות ותבשילים"
-  },
-  {
-   "foodId": "f_sandwich",
-   "foodName": "כריך",
-   "category": "מנות ותבשילים"
-  },
-  {
-   "foodId": "f_tuna_sandwich",
-   "foodName": "כריך טונה",
-   "category": "מנות ותבשילים"
-  },
-  {
-   "foodId": "f_omelette_sandwich",
-   "foodName": "כריך חביתה",
-   "category": "מנות ותבשילים"
-  },
-  {
-   "foodId": "f_burger_bun",
-   "foodName": "המבורגר בלחמנייה",
-   "category": "מנות ותבשילים"
-  },
-  {
-   "foodId": "f_poke",
-   "foodName": "פוקי",
-   "category": "מנות ותבשילים"
-  },
-  {
-   "foodId": "f_taco",
-   "foodName": "טאקו",
-   "category": "מנות ותבשילים"
-  },
-  {
-   "foodId": "f_walnuts",
-   "foodName": "אגוזי מלך",
-   "category": "אגוזים, גרעינים וממרחים"
-  },
-  {
-   "foodId": "f_cashew",
-   "foodName": "קשיו",
-   "category": "אגוזים, גרעינים וממרחים"
-  },
-  {
-   "foodId": "f_pistachio",
-   "foodName": "פיסטוק",
-   "category": "אגוזים, גרעינים וממרחים"
-  },
-  {
-   "foodId": "f_pecan",
-   "foodName": "פקאן",
-   "category": "אגוזים, גרעינים וממרחים"
-  },
-  {
-   "foodId": "f_white_chocolate",
-   "foodName": "שוקולד לבן",
-   "category": "חטיפים ומתוקים"
-  },
-  {
-   "foodId": "f_popsicle",
-   "foodName": "ארטיק",
-   "category": "חטיפים ומתוקים"
-  },
-  {
-   "foodId": "f_energy_bar",
-   "foodName": "חטיף אנרגיה",
-   "category": "חטיפים ומתוקים"
-  },
-  {
-   "foodId": "f_protein_bar",
-   "foodName": "חטיף חלבון",
-   "category": "חטיפים ומתוקים"
-  },
-  {
-   "foodId": "f_bisli",
-   "foodName": "ביסלי",
-   "category": "חטיפים ומתוקים"
-  },
-  {
-   "foodId": "f_bamba",
-   "foodName": "במבה",
-   "category": "חטיפים ומתוקים"
-  },
-  {
-   "foodId": "f_potato_chips",
-   "foodName": "תפוצ׳יפס",
-   "category": "חטיפים ומתוקים"
-  },
-  {
-   "foodId": "f_doritos",
-   "foodName": "דוריטוס",
-   "category": "חטיפים ומתוקים"
-  },
-  {
-   "foodId": "f_popcorn",
-   "foodName": "פופקורן",
-   "category": "חטיפים ומתוקים"
-  },
-  {
-   "foodId": "f_malabi",
-   "foodName": "מלבי",
-   "category": "חטיפים ומתוקים"
-  },
-  {
-   "foodId": "f_chocolate_ball",
-   "foodName": "כדור שוקולד",
-   "category": "חטיפים ומתוקים"
-  },
-  {
-   "foodId": "f_candy",
-   "foodName": "סוכריות",
-   "category": "חטיפים ומתוקים"
-  },
-  {
-   "foodId": "f_water",
-   "foodName": "מים",
-   "category": "משקאות"
-  },
-  {
-   "foodId": "f_sparkling_water",
-   "foodName": "מים מוגזים",
-   "category": "משקאות"
-  },
-  {
-   "foodId": "f_black_coffee",
-   "foodName": "קפה שחור",
-   "category": "משקאות"
-  },
-  {
-   "foodId": "f_instant_coffee",
-   "foodName": "קפה נמס",
-   "category": "משקאות"
-  },
-  {
-   "foodId": "f_americano",
-   "foodName": "אמריקנו",
-   "category": "משקאות"
-  },
-  {
-   "foodId": "f_cappuccino",
-   "foodName": "קפוצ׳ינו",
-   "category": "משקאות"
-  },
-  {
-   "foodId": "f_hafuch",
-   "foodName": "קפה הפוך",
-   "category": "משקאות"
-  },
-  {
-   "foodId": "f_latte",
-   "foodName": "לאטה",
-   "category": "משקאות"
-  },
-  {
-   "foodId": "f_tea",
-   "foodName": "תה",
-   "category": "משקאות"
-  },
-  {
-   "foodId": "f_green_tea",
-   "foodName": "תה ירוק",
-   "category": "משקאות"
-  },
-  {
-   "foodId": "f_herbal_tea",
-   "foodName": "תה צמחים",
-   "category": "משקאות"
-  },
-  {
-   "foodId": "f_orange_juice",
-   "foodName": "מיץ תפוזים",
-   "category": "משקאות"
-  },
-  {
-   "foodId": "f_apple_juice",
-   "foodName": "מיץ תפוחים",
-   "category": "משקאות"
-  },
-  {
-   "foodId": "f_lemonade",
-   "foodName": "לימונדה",
-   "category": "משקאות"
-  },
-  {
-   "foodId": "f_cola",
-   "foodName": "קולה",
-   "category": "משקאות"
-  },
-  {
-   "foodId": "f_cola_zero",
-   "foodName": "קולה זירו",
-   "category": "משקאות"
-  },
-  {
-   "foodId": "f_smoothie",
-   "foodName": "סמוזי",
-   "category": "משקאות"
-  },
-  {
-   "foodId": "f_arak",
-   "foodName": "ערק",
-   "category": "משקאות"
-  },
-  {
-   "foodId": "f_vodka",
-   "foodName": "וודקה",
-   "category": "משקאות"
-  },
-  {
-   "foodId": "f_whiskey",
-   "foodName": "ויסקי",
-   "category": "משקאות"
-  },
-  {
-   "foodId": "f_canola_oil",
-   "foodName": "שמן קנולה",
-   "category": "רטבים, שמנים ותבלינים"
-  },
-  {
-   "foodId": "f_vinaigrette",
-   "foodName": "ויניגרט",
-   "category": "רטבים, שמנים ותבלינים"
-  },
-  {
-   "foodId": "f_lemon_oil_dressing",
-   "foodName": "רוטב לימון ושמן זית",
-   "category": "רטבים, שמנים ותבלינים"
-  },
-  {
-   "foodId": "f_salt",
-   "foodName": "מלח",
-   "category": "רטבים, שמנים ותבלינים"
   }
  ]
 }

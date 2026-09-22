@@ -109,7 +109,8 @@ describe("active cloud path (hermetic)", () => {
     expect(queue.pending()).toHaveLength(0);
     const rows = fake.rows("food_entries");
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ profile_id: ARIEL, log_date: today(), food_name: "תפוח" });
+    // DEC-036: the legacy id f_apple resolves to the reference food תפוח עץ (verified alias).
+    expect(rows[0]).toMatchObject({ profile_id: ARIEL, log_date: today(), food_name: "תפוח עץ" });
     // Narrow writes only: no whole-day read/delete happened.
     expect(fake.log.filter((l) => l.action === "delete")).toHaveLength(0);
     hook.unmount();

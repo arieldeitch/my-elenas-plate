@@ -426,6 +426,7 @@ export type Database = {
           points_confirmed_at: string | null
           points_per_portion: number | null
           points_status: string
+          reference_group_key: string | null
           portion_amount: number | null
           portion_unit: string | null
           created_by_profile_id: string | null
@@ -444,6 +445,7 @@ export type Database = {
           points_confirmed_at?: string | null
           points_per_portion?: number | null
           points_status?: string
+          reference_group_key?: string | null
           portion_amount?: number | null
           portion_unit?: string | null
           created_by_profile_id?: string | null
@@ -462,6 +464,7 @@ export type Database = {
           points_confirmed_at?: string | null
           points_per_portion?: number | null
           points_status?: string
+          reference_group_key?: string | null
           portion_amount?: number | null
           portion_unit?: string | null
           created_by_profile_id?: string | null

@@ -30,13 +30,13 @@ function renderEditor() {
   );
 }
 const iso = () => toISODate(new Date());
-const measured = (name: string, unit: "יחידה" | "פרוסה" | "גרם" | "כוס", amount = 1) => ({
-  foodId: `f_${name}`,
-  foodName: name,
-  mode: "measured" as const,
-  amount,
-  unit,
-});
+// DEC-036: entries reference canonical reference foods (looked up by name in
+// the active list); the stepper exists only for entries whose food resolves.
+const measured = (name: string, unit: "יחידה" | "פרוסה" | "גרם" | "כוס", amount = 1) => {
+  const food = store!.foods.find((f) => f.name === name);
+  if (!food) throw new Error(`reference food missing in the active list: ${name}`);
+  return { foodId: food.id, foodName: name, mode: "measured" as const, amount, unit };
+};
 const row = (name: string) =>
   screen.getAllByTestId("meal-entry").find((r) => within(r).queryByText(name))! as HTMLElement;
 
@@ -50,64 +50,68 @@ describe("MealEditor — inline quantity stepper (M2-5)", () => {
   it("+ and − change only that row, with Hebrew plurals; − stops at 1 and never deletes", async () => {
     const user = userEvent.setup();
     renderEditor();
-    act(() => store!.addEntry("dinner", measured("ביצה קשה", "יחידה")));
-    act(() => store!.addEntry("dinner", measured("לחם", "פרוסה")));
+    act(() => store!.addEntry("dinner", measured("ביצה", "יחידה")));
+    act(() => store!.addEntry("dinner", measured("לחם דגנים", "פרוסה")));
 
-    const egg = row("ביצה קשה");
+    const egg = row("ביצה");
     expect(egg).toHaveAttribute("data-quantity", "1 יחידה");
-    expect(within(egg).getByRole("button", { name: "פחות ביצה קשה" })).toBeDisabled();
+    expect(within(egg).getByRole("button", { name: "פחות ביצה" })).toBeDisabled();
 
-    await user.click(within(egg).getByRole("button", { name: "עוד ביצה קשה" }));
+    await user.click(within(egg).getByRole("button", { name: "עוד ביצה" }));
     expect(egg).toHaveAttribute("data-quantity", "2 יחידות");
     expect(within(egg).getByTestId("qty-value")).toHaveTextContent("2 יחידות");
     // The other row is untouched.
-    expect(row("לחם")).toHaveAttribute("data-quantity", "1 פרוסה");
+    expect(row("לחם דגנים")).toHaveAttribute("data-quantity", "1 פרוסה");
 
-    await user.click(within(egg).getByRole("button", { name: "פחות ביצה קשה" }));
+    await user.click(within(egg).getByRole("button", { name: "פחות ביצה" }));
     expect(egg).toHaveAttribute("data-quantity", "1 יחידה");
-    expect(within(egg).getByRole("button", { name: "פחות ביצה קשה" })).toBeDisabled();
+    expect(within(egg).getByRole("button", { name: "פחות ביצה" })).toBeDisabled();
     // Still two entries — the floor never deletes.
     expect(store!.getDay("me", iso()).meals.dinner.entries).toHaveLength(2);
-    expect(screen.getByRole("button", { name: "מחיקה: ביצה קשה" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "מחיקה: ביצה" })).toBeInTheDocument();
   });
 
   it("writes to the correct person / date / slot / entry, and the partner's day is unaffected", async () => {
     const user = userEvent.setup();
     renderEditor();
     act(() => store!.setActiveProfile("elena"));
-    act(() => store!.addEntry("dinner", measured("ביצה קשה", "יחידה")));
-    act(() => store!.addEntry("lunch", measured("ביצה קשה", "יחידה")));
+    act(() => store!.addEntry("dinner", measured("ביצה", "יחידה")));
+    act(() => store!.addEntry("lunch", measured("ביצה", "יחידה")));
 
-    await user.click(within(row("ביצה קשה")).getByRole("button", { name: "עוד ביצה קשה" }));
-    await user.click(within(row("ביצה קשה")).getByRole("button", { name: "עוד ביצה קשה" }));
+    await user.click(within(row("ביצה")).getByRole("button", { name: "עוד ביצה" }));
+    await user.click(within(row("ביצה")).getByRole("button", { name: "עוד ביצה" }));
 
     const elena = store!.getDay("elena", iso());
-    expect(elena.meals.dinner.entries[0]).toMatchObject({ foodName: "ביצה קשה", amount: 3 });
+    expect(elena.meals.dinner.entries[0]).toMatchObject({ foodName: "ביצה", amount: 3 });
     expect(elena.meals.lunch.entries[0]).toMatchObject({ amount: 1 }); // other slot untouched
     expect(store!.getDay("me", iso()).meals.dinner.entries).toHaveLength(0); // partner untouched
   });
 
   it("grams / subjective / coffee keep the full editor instead of a stepper", async () => {
     renderEditor();
-    act(() => store!.addEntry("dinner", measured("אורז", "גרם", 150)));
+    act(() => store!.addEntry("dinner", measured("אבוקדו", "גרם", 150)));
     act(() =>
       store!.addEntry("dinner", {
-        foodId: "f_salad",
-        foodName: "סלט",
+        foodId: store!.foods.find((f) => f.name === "ירקות")!.id,
+        foodName: "ירקות",
         mode: "subjective",
         subjective: "הרבה",
       }),
     );
     act(() =>
       store!.addEntry("dinner", {
-        ...measured("קפה", "כוס"),
+        foodId: "f_coffee",
+        foodName: "קפה",
+        mode: "measured" as const,
+        amount: 1,
+        unit: "כוס" as const,
         coffee: { type: "אמריקנו", milk: "ללא חלב" },
       }),
     );
-    expect(within(row("אורז")).queryByTestId("qty-plus")).toBeNull();
-    expect(within(row("אורז")).getByText("150 גרם")).toBeInTheDocument();
-    expect(within(row("סלט")).queryByTestId("qty-plus")).toBeNull();
-    expect(within(row("סלט")).getByText("הרבה")).toBeInTheDocument();
+    expect(within(row("אבוקדו")).queryByTestId("qty-plus")).toBeNull();
+    expect(within(row("אבוקדו")).getByText("150 גרם")).toBeInTheDocument();
+    expect(within(row("ירקות")).queryByTestId("qty-plus")).toBeNull();
+    expect(within(row("ירקות")).getByText("הרבה")).toBeInTheDocument();
     // Coffee in cups IS a count unit: it steps, and the summary stays visible.
     expect(within(row("קפה")).getByTestId("qty-plus")).toBeInTheDocument();
     expect(within(row("קפה")).getByText(/אמריקנו · ללא חלב/)).toBeInTheDocument();
@@ -118,26 +122,26 @@ describe("MealEditor — inline quantity stepper (M2-5)", () => {
   it("keeps fractions: 1,5 כוסות → 2,5 → 1,5, and refuses below 1", async () => {
     const user = userEvent.setup();
     renderEditor();
-    act(() => store!.addEntry("dinner", measured("תה", "כוס", 1.5)));
-    const tea = row("תה");
+    act(() => store!.addEntry("dinner", measured("תה, מכל סוג, ללא סוכר", "כוס", 1.5)));
+    const tea = row("תה, מכל סוג, ללא סוכר");
     expect(tea).toHaveAttribute("data-quantity", "1,5 כוסות");
-    await user.click(within(tea).getByRole("button", { name: "עוד תה" }));
+    await user.click(within(tea).getByRole("button", { name: "עוד תה, מכל סוג, ללא סוכר" }));
     expect(tea).toHaveAttribute("data-quantity", "2,5 כוסות");
-    await user.click(within(tea).getByRole("button", { name: "פחות תה" }));
+    await user.click(within(tea).getByRole("button", { name: "פחות תה, מכל סוג, ללא סוכר" }));
     expect(tea).toHaveAttribute("data-quantity", "1,5 כוסות");
-    expect(within(tea).getByRole("button", { name: "פחות תה" })).toBeDisabled(); // 0.5 < 1
+    expect(within(tea).getByRole("button", { name: "פחות תה, מכל סוג, ללא סוכר" })).toBeDisabled(); // 0.5 < 1
   });
 
   it("rapid taps end in the right state and survive a reload (demo persistence)", async () => {
     const user = userEvent.setup();
     renderEditor();
-    act(() => store!.addEntry("dinner", measured("ביצה קשה", "יחידה")));
-    const plus = () => within(row("ביצה קשה")).getByRole("button", { name: "עוד ביצה קשה" });
+    act(() => store!.addEntry("dinner", measured("ביצה", "יחידה")));
+    const plus = () => within(row("ביצה")).getByRole("button", { name: "עוד ביצה" });
     await user.click(plus());
     await user.click(plus());
     await user.click(plus());
     await user.click(plus());
-    expect(row("ביצה קשה")).toHaveAttribute("data-quantity", "5 יחידות");
+    expect(row("ביצה")).toHaveAttribute("data-quantity", "5 יחידות");
     expect(store!.getDay("me", iso()).meals.dinner.entries).toHaveLength(1);
 
     // "Reload": a fresh provider reads the persisted demo state.
@@ -145,24 +149,26 @@ describe("MealEditor — inline quantity stepper (M2-5)", () => {
     store = null;
     renderEditor();
     expect(store!.getDay("me", iso()).meals.dinner.entries[0]).toMatchObject({ amount: 5 });
-    expect(row("ביצה קשה")).toHaveAttribute("data-quantity", "5 יחידות");
+    expect(row("ביצה")).toHaveAttribute("data-quantity", "5 יחידות");
   });
 
   it("the just-added row is highlighted and the toast names the usual quantity", async () => {
     const user = userEvent.setup();
     renderEditor();
     // Typed search deliberately opens quantity; trusted recent chips keep one-tap quick add.
-    await user.type(screen.getByRole("textbox", { name: "חיפוש מאכל" }), "תפוח");
-    await user.click((await screen.findAllByTestId("search-result"))[0]);
+    await user.type(screen.getByRole("textbox", { name: "חיפוש מאכל" }), "ביצה קשה");
+    const hit = (await screen.findAllByTestId("search-result"))[0];
+    expect(within(hit).getByText("ביצה")).toBeInTheDocument(); // the canonical card, via the alias
+    await user.click(hit);
     await user.click(screen.getByRole("button", { name: "הוספת המאכל" }));
     expect(screen.getAllByTestId("meal-entry")[0]).toHaveAttribute("data-quantity", "1 יחידה");
-    await user.click(screen.getByRole("button", { name: "תפוח, הוספה של 1 יחידה" }));
+    await user.click(screen.getByRole("button", { name: "ביצה, הוספה של 1 יחידה" }));
     const rows = screen.getAllByTestId("meal-entry");
     expect(rows).toHaveLength(2);
     expect(rows[1].className).toMatch(/border-primary/);
     expect(rows[0].className).not.toMatch(/border-primary/);
     // One tap fixes the usual quantity right there.
-    await user.click(within(rows[1]).getByRole("button", { name: "עוד תפוח" }));
+    await user.click(within(rows[1]).getByRole("button", { name: "עוד ביצה" }));
     expect(rows[1]).toHaveAttribute("data-quantity", "2 יחידות");
   });
 });

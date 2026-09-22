@@ -118,7 +118,8 @@ export function resolveReferenceItem(item: ReferenceRuntimeItem, q: RequestedQua
 /** Units the engine can resolve for a portion (what the quantity screen offers). */
 export function resolvableUnits(portion: ReferencePortion | null): Unit[] {
   if (!portion) return [];
-  if (portion.family === "any") return ["יחידה", "גרם", "כף", "כוס", "מנה", "קערה"];
+  // 0 at any quantity: a portion first (the natural one-tap unit), then the rest.
+  if (portion.family === "any") return ["מנה", "קערה", "יחידה", "כוס", "כף", "גרם"];
   const units: Unit[] = [];
   for (const m of [portion.primary, ...(portion.alternatives ?? [])]) {
     if (m?.family === "count" && m.appUnit && !units.includes(m.appUnit as Unit)) {

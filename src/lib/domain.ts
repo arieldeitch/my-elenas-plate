@@ -102,21 +102,19 @@ export interface Food {
    */
   isActive?: boolean;
   /**
-   * Canonical points reference (DEC-035): the reference group this food is
-   * linked to (exact name / verified alias), or the group a reference-only
-   * food represents. Scoring goes through the reference engine when set.
+   * Canonical points reference (DEC-035/036): the reference group (food) this
+   * row is linked to. For a canonical card it is the card's own group; for a
+   * personal alias (custom food) it is the EXPLICIT verified link — the only
+   * way a custom food may exist in the active list. Points come from there.
    */
   referenceGroupKey?: string;
-  /** Custom food: the portion its confirmed points describe. */
+  /** @deprecated DEC-035 custom portion value; read for history only, never written since DEC-036. */
   portionAmount?: number;
+  /** @deprecated see portionAmount. */
   portionUnit?: Unit;
-  /**
-   * Custom food scoring state: `confirmed` = the person approved
-   * `pointsPerPortion` for `portionAmount portionUnit`; `unscored` = no
-   * confirmed value (never scored silently).
-   */
+  /** @deprecated see portionAmount. */
   pointsStatus?: "unscored" | "confirmed";
-  /** Which person created a custom food (owner scope). */
+  /** Which person created a custom food / personal alias (owner scope). */
   createdBy?: ProfileId;
 }
 
@@ -188,8 +186,12 @@ export interface FoodEntry {
   subjective?: SubjectiveAmount;
   /** Present only for coffee entries. */
   coffee?: CoffeeMeta;
-  /** Snapshot from the transparent internal points model at log/edit time. */
-  pointsValue?: number;
+  /**
+   * Snapshot of the points at log/edit time (DEC-035/036: from the reference
+   * only). null = saved unscored (no reference row could be resolved); absent =
+   * a legacy entry logged before snapshots existed. Never estimated on display.
+   */
+  pointsValue?: number | null;
   /** Model version of the persisted snapshot ("v1" legacy or "v2-il"); never rewritten in place. */
   pointsModelVersion?: string;
   /**
@@ -200,7 +202,7 @@ export interface FoodEntry {
   /** The reference row the snapshot was derived from (chosen variation). */
   referenceItemId?: string;
   /** Base points before a conditional benefit; equals pointsValue when none applied. */
-  basePoints?: number;
+  basePoints?: number | null;
   /** The daily benefit applied to this entry, if any (one per entry). */
   benefitRule?: "zero_any_quantity" | "fruit_daily_allowance" | "protein_zero_allowance";
   /**

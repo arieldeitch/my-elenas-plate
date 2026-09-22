@@ -3,6 +3,7 @@ import type { CoffeeMeta, CoffeeType, FoodEntry, MilkChoice, MilkType, Unit } fr
 import { COFFEE_TYPES, COFFEE_UNITS, MILK_CHOICES, MILK_TYPES } from "@/lib/domain";
 import { COFFEE_FOOD_ID, DEFAULT_COFFEE, normalizeCoffee, validateCoffee } from "@/lib/coffee";
 import { parseAmount, validateMeasured } from "@/lib/quantity";
+import { formatPoints, scoreDetails } from "@/lib/points";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -29,6 +30,17 @@ export function CoffeeSelector({ initial, onSubmit, onCancel, submitLabel }: Pro
   );
   const [unit, setUnit] = useState<Unit>((initial?.unit as Unit) ?? "כוס");
   const [error, setError] = useState<string | null>(null);
+
+  // DEC-036: coffee scores through the reference row its milk choice maps to
+  // (black → אספרסו 0; regular / lactose-free milk → קפוצינו 3%; low-fat → 1%).
+  // A milk with no reference row is saved unscored — said here, not hidden.
+  const previewAmount = parseAmount(amount);
+  const preview = scoreDetails({
+    mode: "measured",
+    amount: Number.isFinite(previewAmount) ? previewAmount : 0,
+    unit,
+    coffee: { type, milk, milkType: milk === "עם חלב" ? milkType : undefined },
+  });
 
   function selectMilk(choice: MilkChoice) {
     setMilk(choice);
@@ -162,6 +174,30 @@ export function CoffeeSelector({ initial, onSubmit, onCancel, submitLabel }: Pro
           className="w-full rounded-xl border border-input bg-card px-3 py-3 text-base outline-none focus:ring-2 focus:ring-ring"
         />
       </Field>
+
+      <div
+        className="rounded-xl border border-border bg-secondary/55 px-3 py-2 text-sm text-muted-foreground"
+        data-testid="coffee-points-preview"
+        data-points={preview.pointsValue ?? "unscored"}
+        data-basis={preview.pointsBasis}
+        aria-live="polite"
+      >
+        {preview.pointsValue == null ? (
+          <>
+            אין רשומה במאגר לשילוב הזה — הקפה יישמר{" "}
+            <strong className="text-foreground">ללא ניקוד</strong>
+            {preview.pointsBasis === "reference:blocked"
+              ? " (בחרו יחידה שיש לה מנת ייחוס: כוס)"
+              : ""}
+          </>
+        ) : (
+          <>
+            נקודות לקפה הזה:{" "}
+            <strong className="text-foreground">{formatPoints(preview.pointsValue)} נק׳</strong>
+            <span className="block text-[11px]">לפי המאגר</span>
+          </>
+        )}
+      </div>
 
       {error && <div className="text-sm text-destructive">{error}</div>}
 

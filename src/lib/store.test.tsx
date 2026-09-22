@@ -111,51 +111,43 @@ describe("store", () => {
     expect(result.current.recents).toHaveLength(0);
   });
 
-  it("reuses an existing food instead of creating a normalized duplicate", () => {
+  it("a personal alias links a name to an EXISTING reference food and never creates a card (DEC-036)", () => {
     const { result } = renderHook(() => useStore(), { wrapper });
     const before = result.current.foods.length;
+    const target = result.current.foods.find((f) => f.name === "מלפפון")!;
 
-    // Same food, three ways a person might type it.
     let a: Food | undefined;
     let b: Food | undefined;
     act(() => {
-      a = result.current.addFood("קוטג'");
+      a = result.current.addPersonalAlias("המלפפון שלי", target.referenceGroupKey!);
     });
     act(() => {
-      b = result.current.addFood("  קוטג׳  ");
+      b = result.current.addPersonalAlias("  המלפפון  שלי ", target.referenceGroupKey!);
     });
-
-    expect(a!.name).toBe("קוטג׳");
-    expect(b!.id).toBe(a!.id);
+    // The alias returns the canonical food; the list did not grow; the name now finds it.
+    expect(a!.id).toBe(target.id);
+    expect(b!.id).toBe(target.id);
     expect(result.current.foods.length).toBe(before);
+    expect(result.current.foods.find((f) => f.id === target.id)!.searchNames).toContain(
+      "המלפפון שלי",
+    );
+    // A hidden legacy name cannot be revived by re-adding it as a "new food".
+    expect(result.current.foods.some((f) => f.name === "קוטג׳")).toBe(false);
   });
 
-  it("still creates a genuinely new custom food", () => {
+  it("refuses a personal alias without an active reference target", () => {
     const { result } = renderHook(() => useStore(), { wrapper });
-    const before = result.current.foods.length;
-
-    let created: Food | undefined;
-    act(() => {
-      created = result.current.addFood("תבשיל של סבתא");
-    });
-
-    expect(created!.name).toBe("תבשיל של סבתא");
-    expect(created!.id.startsWith("f_")).toBe(false); // custom id, syncs to Supabase
-    expect(result.current.foods.length).toBe(before + 1);
-
-    // ...and a second attempt at the same name does not duplicate it.
-    act(() => {
-      result.current.addFood("תבשיל  של   סבתא");
-    });
-    expect(result.current.foods.length).toBe(before + 1);
+    expect(() => result.current.addPersonalAlias("תבשיל של סבתא", "no such group")).toThrow();
+    expect(result.current.foods.some((f) => f.name === "תבשיל של סבתא")).toBe(false);
   });
 
   it("adds a favorite only when the user asks for one", () => {
     const { result } = renderHook(() => useStore(), { wrapper });
     expect(result.current.favorites).toEqual([]);
 
-    act(() => result.current.toggleFavorite("f_cucumber"));
-    expect(result.current.favorites).toEqual(["f_cucumber"]);
+    const cucumber = result.current.foods.find((f) => f.name === "מלפפון")!;
+    act(() => result.current.toggleFavorite(cucumber.id));
+    expect(result.current.favorites).toEqual([cucumber.id]);
 
     // Per profile: אלנה does not inherit אריאל's favorite.
     act(() => result.current.setActiveProfile("elena"));
@@ -166,9 +158,10 @@ describe("store", () => {
     const { result } = renderHook(() => useStore(), { wrapper });
     expect(result.current.recents).toEqual([]);
 
+    const cucumber = result.current.foods.find((f) => f.name === "מלפפון")!;
     act(() => {
       result.current.addEntry("lunch", {
-        foodId: "f_cucumber",
+        foodId: "f_cucumber", // a legacy id is mapped to the canonical food
         foodName: "מלפפון",
         mode: "measured",
         amount: 1,
@@ -176,7 +169,7 @@ describe("store", () => {
       });
     });
 
-    expect(result.current.recents).toEqual(["f_cucumber"]);
+    expect(result.current.recents).toEqual([cucumber.id]);
     act(() => result.current.setActiveProfile("elena"));
     expect(result.current.recents).toEqual([]);
   });
