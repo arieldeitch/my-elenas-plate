@@ -1,0 +1,104 @@
+{
+  "source": {
+    "id": "nikud-xlsx",
+    "version": "v1-2026-09-21",
+    "fileName": "docs/data/nutrition-points-source.xlsx",
+    "sha256": "e58501087865a0a8841376c06ed309bad86ba4fd1163ac91d60740eef6658ac4",
+    "sheet": "גיליון1"
+  },
+  "rowsInSheet": 1401,
+  "headerRows": 4,
+  "blankRows": 1,
+  "nonFoodRows": 2,
+  "foodRows": 1394,
+  "uniqueSourceNames": 1242,
+  "uniqueNames": 1240,
+  "namesWithVariants": 130,
+  "exactDuplicatesDeprecated": 2,
+  "conflicts": 6,
+  "conflictGroups": [
+    {
+      "name": "יוגורט טבעי 2.9% שומן -200ג, 2",
+      "quantity": "200 ג",
+      "rows": [
+        568,
+        569
+      ],
+      "values": [
+        "4 נק׳ · חלבון מהחי",
+        "5 נק׳ · חלבון מהחי"
+      ]
+    },
+    {
+      "name": "משקה אורז 1% שומן",
+      "quantity": "1 כוס / 250 מ\"",
+      "rows": [
+        794,
+        795
+      ],
+      "values": [
+        "2.5 נק׳ · משקאות",
+        "3 נק׳ · חלבון מהצומח"
+      ]
+    },
+    {
+      "name": "רביולי פטריות",
+      "quantity": "100 גרם",
+      "rows": [
+        1223,
+        1224
+      ],
+      "values": [
+        "6 נק׳ · אוכל בחוץ",
+        "6 נק׳ · דגנים ופחמימות"
+      ]
+    }
+  ],
+  "needsReview": 78,
+  "needsReviewByReason": {
+    "category_missing": 11,
+    "benefit_base_food_not_found": 9,
+    "name_truncated": 32,
+    "quantity_number_without_unit": 7,
+    "benefit_row_with_nonzero_points": 1,
+    "quantity_missing_with_points": 29
+  },
+  "active": 1308,
+  "benefitRowsAttached": 39,
+  "benefitRowsUnattached": 9,
+  "cleaningRuleCounts": {
+    "R01_first_four_columns": 1401,
+    "R04_non_food_row_skipped": 2,
+    "R02_header_row_skipped": 4,
+    "R10_protein_zero_allowance_conditional": 12,
+    "R08_zero_points_without_quantity_means_any_quantity": 65,
+    "R07_category_truncation_fix_חלבון_מהח": 1,
+    "R03_blank_row_skipped": 1,
+    "R05_exact_duplicate_deprecated": 2,
+    "R06_conflict_same_name_quantity": 6,
+    "R09_fruit_allowance_row_attached_to_base_food": 34
+  },
+  "categories": {
+    "שומנים": 74,
+    "פירות": 84,
+    "רטבים אבקות חלב ותבלינים": 96,
+    "(none)": 11,
+    "חטיפים ממרחים ומתוקים": 135,
+    "תוספת חלבון ב- 0 נקודות": 11,
+    "קטניות": 51,
+    "חלבון מהחי": 293,
+    "ירקות": 104,
+    "דגנים ופחמימות": 205,
+    "אוכל בחוץ": 71,
+    "משקאות": 50,
+    "סלטים מוכנים": 18,
+    "חטיפים מלוחים": 12,
+    "מוצרי חלב": 104,
+    "חלבון מהצומח": 75
+  },
+  "pointsPrecision": {
+    "integer": 1208,
+    "half": 186,
+    "other": 0
+  }
+}

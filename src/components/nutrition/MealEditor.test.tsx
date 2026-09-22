@@ -203,12 +203,20 @@ describe("MealEditor — direct add boundaries (M2-6)", () => {
     store = null;
   });
 
-  it("creating a custom food still goes through the quantity screen — never a guessed default", async () => {
+  it("creating a custom food confirms portion + points first, then goes through the quantity screen — never a guessed default", async () => {
     const user = userEvent.setup();
     renderEditor();
     await user.type(search(), "מאפין קינמון ביתי");
     await user.click(await screen.findByRole("button", { name: /כמאכל חדש/ }));
+    // DEC-035: an unknown food is never scored silently — the new-food form asks
+    // for the reference quantity, category and points, and the person confirms.
+    expect(screen.getByTestId("new-food-form")).toBeInTheDocument();
+    expect(store!.foods.some((f) => f.name === "מאפין קינמון ביתי")).toBe(false);
+    await user.selectOptions(screen.getByLabelText("קטגוריה"), "דגנים ופחמימות");
+    await user.type(screen.getByLabelText("נקודות לכמות הייחוס"), "5");
+    await user.click(screen.getByTestId("nf-confirm"));
     expect(screen.getByRole("button", { name: "הוספת המאכל" })).toBeInTheDocument();
+    expect(screen.getByTestId("points-preview")).toHaveAttribute("data-basis", "custom:confirmed");
     expect(store!.getDay("me", isoToday()).meals.dinner.entries).toHaveLength(0);
     await user.click(screen.getByRole("button", { name: "הוספת המאכל" }));
     expect(screen.getByTestId("meal-entry")).toHaveAttribute("data-quantity", "1 יחידה");

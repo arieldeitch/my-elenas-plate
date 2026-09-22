@@ -153,9 +153,11 @@ export async function applyOperation(ctx: HouseholdContext, op: Operation): Prom
       return;
     }
     case "food.upsert": {
-      // Built-in catalog foods are a client constant; only custom foods sync.
+      // Built-in catalog foods and reference-only foods are client constants;
+      // only custom foods sync, with their creator (owner scope).
       if (!isCustomFoodId(op.food.id)) return;
-      await upsertFood(householdId, op.food);
+      const creator = op.food.createdBy ? (profileIdFor(ctx, op.food.createdBy) ?? null) : null;
+      await upsertFood(householdId, op.food, creator);
       return;
     }
     case "pref.favorite": {
@@ -242,7 +244,12 @@ export async function pushDaySnapshotUNSAFE(
 
 /** Loads the household's custom foods. */
 export function hydrateFoods(ctx: HouseholdContext): Promise<Food[]> {
-  return loadFoods(ctx.householdId);
+  const localById = new Map<string, ProfileId>();
+  for (const local of ["me", "elena"] as ProfileId[]) {
+    const id = profileIdFor(ctx, local);
+    if (id) localById.set(id, local);
+  }
+  return loadFoods(ctx.householdId, localById);
 }
 
 /** Loads a profile's preference rows (favorites + recents). */

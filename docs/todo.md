@@ -1,12 +1,30 @@
 # TODO
 
 Status legend: Done / In Progress / Blocked / Deferred / Not Started.
-Updated 2026-09-19. **Production bootstrap is complete** — Supabase project `rqgoiuztphkcvbwtbxbj`
+Updated 2026-09-21. **Production bootstrap is complete** — Supabase project `rqgoiuztphkcvbwtbxbj`
 holds 1 household, 2 profiles (אריאל/אלנה), 6 meal slots, RLS on 10 tables and 390 active foods
 (status `READY`). Rollback code checkpoint: tag `pilot-ready-2026-07-24` (`29ac1d5`).
 **M1 code is Done and merged to `main`; owner release actions A/B/C are complete; live preflight PASS on the served `0cd3673` (2026-09-18). DEC-031 (2026-09-18) removed the login: production now needs the device-join migration + "Allow anonymous sign-ins" + a republish (`supabase/DEPLOY.md`), then the two-minute path §3b on both phones (`M1_RELEASE_ACCEPTANCE.md`).**
 **T-034 was split on 2026-08-01** (DEC-023): the backend half is **Done**, the browser-dependent half
 (**T-034-UI**) is **Blocked** until a browser automation capability exists.
+
+## DEC-035 — canonical points reference from `ניקוד.xlsx` (2026-09-21)
+
+- [x] Pipeline `points:import` / `points:seed` / `points:reconcile`: deterministic ids, verbatim provenance,
+      rules R01–R11, conflicts + duplicates + review, runtime projection, reports (`docs/POINTS_REFERENCE*.md`).
+- [x] Engine (exact → alias → same-family scaling → blocked; half points; benefits base vs applied with
+      eligibility) wired into `scoreEntry`; historical snapshots untouched.
+- [x] UI: reference line in results, VariantPicker, reference-aware quantity screen, NewFoodForm confirmation.
+- [x] 16 acceptance items covered (`docs/POINTS_REFERENCE.md §5`); hermetic Playwright on Pixel 7.
+- [x] Migration `20260921120000_points_reference` + owner wrapper + verify, proven on PGlite.
+- [ ] **Owner:** run `supabase/verify_points_reference.sql` → `apply_points_reference_production.sql` → verify
+      again on `rqgoiuztphkcvbwtbxbj` (`supabase/DEPLOY.md`).
+- [ ] **Owner:** merge PR `feat/points-reference-import` → Lovable publish → `npm run preflight -- --live`.
+- [ ] Elena: resolve the 3 conflicts and the 78 review rows in the sheet → bump `SOURCE_VERSION` → re-import
+      (new migration for the new version).
+- [ ] Review the 158 catalog candidates; add verified aliases (`food_reference_aliases`) + wire `loadAliases`.
+- [ ] Lazy-load the runtime dataset (client bundle +73 KB gzip).
+- [ ] Decide whether the fruit daily allowance should be applied in the UI (engine + eligibility exist).
 
 ## DEC-032 — daily steps and focused mobile UX
 

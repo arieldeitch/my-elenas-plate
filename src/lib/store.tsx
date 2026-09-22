@@ -43,6 +43,7 @@ import type {
 import { MEAL_SLOTS } from "./domain";
 import { FOOD_CATALOG, mergeCatalog } from "./food-catalog";
 import { normalizeFoodName } from "./food-normalize";
+import { getReferenceIndex, withReference } from "./points-reference";
 import {
   latestWeightKg,
   resolvePointsBudget,
@@ -93,8 +94,14 @@ interface StoreValue {
   getDay: (profile: ProfileId, iso: string) => DayData;
   getAllDays: (profile: ProfileId) => Record<string, DayData>;
 
+  /** The ONE searchable list: household foods linked to the reference + reference-only foods. */
   foods: Food[];
-  addFood: (name: string, category?: string) => Food;
+  /**
+   * Creates (or reuses) a custom food. A food created through the new-food
+   * flow carries its confirmed portion + points (DEC-035); the legacy
+   * two-argument form creates an `unscored` food that is never scored silently.
+   */
+  addFood: (name: string, category?: string, details?: NewFoodDetails) => Food;
   favorites: string[];
   recents: string[];
   toggleFavorite: (foodId: string) => void;
@@ -122,6 +129,15 @@ interface StoreValue {
 
   weighIns: WeighIn[];
   addWeighIn: (w: Omit<WeighIn, "id">) => void;
+}
+
+/** What the new-food form confirms before a custom food may score. */
+export interface NewFoodDetails {
+  portionAmount: number;
+  portionUnit: Food["portionUnit"];
+  pointsPerPortion: number;
+  /** Always "confirmed" from the form; kept explicit so the intent is visible at the call site. */
+  pointsStatus: "confirmed";
 }
 
 const StoreCtx = createContext<StoreValue | null>(null);
@@ -176,6 +192,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // The built-in catalog is the pre-hydration fallback; Supabase supersedes it
   // by normalized name once loaded (see `mergeCatalog`).
   const [foods, setFoods] = useState<Food[]>(FOOD_CATALOG);
+  // The searchable list = household foods linked to the canonical reference by
+  // exact name / verified alias + every unclaimed active reference group as a
+  // food of its own (DEC-035). Derived, never persisted: the reference is a
+  // client constant like the built-in catalog.
+  const catalog = useMemo(() => withReference(foods, getReferenceIndex()), [foods]);
 
   const iso = toISODate(selectedDate);
 
@@ -316,11 +337,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const dayCtx = { profile: activeProfile, iso };
 
+  /** Every entry of the active person's selected day (benefit eligibility). */
+  const dayEntriesNow = () => {
+    const current = days[activeProfile][iso];
+    return current ? Object.values(current.meals).flatMap((m) => m.entries) : [];
+  };
+
   const addEntry: StoreValue["addEntry"] = (slot, entry) => {
     const base: FoodEntry = { ...entry, id: genId("e"), loggedAt: new Date().toISOString() };
-    const food = foods.find((f) => f.id === base.foodId);
-    // Every NEW entry carries a v2-il snapshot.
-    const withId: FoodEntry = scoreEntry(base, food);
+    const food = catalog.find((f) => f.id === base.foodId);
+    // Every NEW entry carries a snapshot: reference row → confirmed custom
+    // portion → internal model (DEC-035 precedence), never rewritten later.
+    const withId: FoodEntry = scoreEntry(base, food, { dayEntries: dayEntriesNow() });
     mutateDay(activeProfile, iso, (d) => {
       const meal = d.meals[slot];
       meal.entries.push(withId);
@@ -333,10 +361,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const updateEntry: StoreValue["updateEntry"] = (slot, entry) => {
-    const food = foods.find((f) => f.id === entry.foodId);
-    // A deliberate edit re-scores under v2-il — this is the only path by which
-    // a legacy v1 snapshot changes (DEC-034 §S).
-    const scored: FoodEntry = scoreEntry(entry, food);
+    const food = catalog.find((f) => f.id === entry.foodId);
+    // A deliberate edit re-scores — this is the only path by which a legacy
+    // snapshot changes (DEC-034 §S). Editing a food in the reference or the
+    // catalog never touches an existing entry.
+    const scored: FoodEntry = scoreEntry(entry, food, { dayEntries: dayEntriesNow() });
     mutateDay(activeProfile, iso, (d) => {
       const meal = d.meals[slot];
       meal.entries = meal.entries.map((e) => (e.id === scored.id ? scored : e));
@@ -445,23 +474,36 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setProfileFacts({ pointsBudgetOverride: Math.max(10, Math.min(60, Math.round(budget))) });
   };
 
-  const addFood: StoreValue["addFood"] = (name, category) => {
+  const addFood: StoreValue["addFood"] = (name, category, details) => {
     const trimmed = name.trim();
     // Duplicate prevention: the DB enforces unique (household_id, normalized_name),
     // so creating a food that normalizes onto an existing one would fail to sync
     // and split favorites/recents across two ids. Reuse the existing food instead —
     // this is what makes "קוטג" resolve to קוטג׳ rather than creating a twin.
+    // The reference-only foods count too: a name the reference knows is that food.
     const key = normalizeFoodName(trimmed);
-    const existing = foods.find((f) => normalizeFoodName(f.name) === key);
+    const existing = catalog.find((f) => normalizeFoodName(f.name) === key);
     if (existing) return existing;
 
     const f: Food = {
       id: genId("f"),
       name: trimmed,
       category,
-      defaultUnit: "יחידה",
-      suggestedUnits: ["יחידה", "גרם", "מנה"],
+      defaultUnit: details?.portionUnit ?? "יחידה",
+      suggestedUnits: details?.portionUnit
+        ? [
+            details.portionUnit,
+            ...(["יחידה", "גרם", "מנה"] as const).filter((u) => u !== details.portionUnit),
+          ]
+        : ["יחידה", "גרם", "מנה"],
+      createdBy: activeProfile,
+      pointsStatus: details ? "confirmed" : "unscored",
     };
+    if (details) {
+      f.portionAmount = details.portionAmount;
+      f.portionUnit = details.portionUnit;
+      f.pointsPerPortion = details.pointsPerPortion;
+    }
     setFoods((prev) => [f, ...prev]);
     sync.enqueue([{ kind: "food.upsert", food: f }]);
     return f;
@@ -509,7 +551,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       discardFailedSync: sync.discardFailed,
       getDay,
       getAllDays,
-      foods,
+      foods: catalog,
       addFood,
       favorites: favoritesMap[activeProfile],
       recents: recentsMap[activeProfile],
@@ -543,7 +585,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       favoritesMap,
       recentsMap,
       profileFactsMap,
-      foods,
+      catalog,
     ],
   );
 

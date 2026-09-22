@@ -17,7 +17,10 @@
     "e2e:hermetic": "playwright test -c playwright.hermetic.config.ts",
     "catalog:seed": "vite-node -c vitest.config.ts scripts/generate-catalog-seed.ts",
     "preflight": "vite-node scripts/release-preflight.ts",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "points:import": "vite-node -c vitest.config.ts scripts/points-reference/import.ts",
+    "points:seed": "vite-node -c vitest.config.ts scripts/points-reference/generate-seed.ts",
+    "points:reconcile": "vite-node -c vitest.config.ts scripts/points-reference/reconcile.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -100,6 +103,7 @@
     "typescript-eslint": "^8.56.1",
     "vite": "^8.0.16",
     "vitest": "^3.2.7",
-    "vitest-axe": "^0.1.0"
+    "vitest-axe": "^0.1.0",
+    "xlsx": "0.18.5"
   }
 }

@@ -15,6 +15,16 @@
  */
 import type { DayData, Food, FoodEntry, SubjectiveAmount, Unit } from "./domain";
 import {
+  applyBenefit,
+  benefitEligibility,
+  getReferenceIndex,
+  resolvePortion,
+  resolveReferenceItem,
+  type ReferenceIndex,
+  type ReferencePortion,
+  type Resolution,
+} from "./points-reference";
+import {
   BUDGET_V2,
   CATEGORY_PORTION_POINTS_V2,
   COUNT_UNIT_PORTIONS,
@@ -146,16 +156,165 @@ export function calculatePointsV2(
   return Math.max(MIN_NONZERO_ENTRY_POINTS, roundTo(points * portions, POINTS_ROUNDING_STEP));
 }
 
+export type ScoreBasis =
+  | "reference:exact"
+  | "reference:scaled"
+  | "reference:any"
+  | "reference:blocked"
+  | "custom:confirmed"
+  | "custom:blocked"
+  | "model:v2-il"
+  | "zero:coffee";
+
+export interface ScoreContext {
+  reference?: ReferenceIndex;
+  /** Entries already logged on the same profile-day (benefit eligibility). */
+  dayEntries?: Array<{ id: string; benefitRule?: FoodEntry["benefitRule"] }>;
+}
+
+type ScorableEntry = EntryQuantity &
+  Partial<Pick<FoodEntry, "id" | "coffee" | "referenceItemId" | "benefitRule">>;
+
+export interface Scored {
+  pointsValue: number;
+  pointsModelVersion: string;
+  pointsBasis: ScoreBasis;
+  basePoints: number;
+  referenceItemId?: string;
+  benefitRule?: FoodEntry["benefitRule"];
+}
+
+function toRequested(entry: EntryQuantity) {
+  return entry.mode === "subjective"
+    ? ({ mode: "subjective", subjective: entry.subjective ?? "במידה" } as const)
+    : ({ mode: "measured", amount: Number(entry.amount ?? 0), unit: entry.unit as Unit } as const);
+}
+
+function blocked(basis: "reference:blocked" | "custom:blocked", referenceItemId?: string): Scored {
+  const out: Scored = {
+    pointsValue: 0,
+    pointsModelVersion: POINTS_MODEL_V2,
+    pointsBasis: basis,
+    basePoints: 0,
+  };
+  if (referenceItemId) out.referenceItemId = referenceItemId;
+  return out;
+}
+
+/**
+ * Where the points of an entry come from (DEC-035 precedence):
+ *   1. the chosen reference row (exact / scaled / any) — never a different row;
+ *   2. a custom food with a confirmed portion value, scaled the same safe way;
+ *   3. the internal v2-il model for foods that are neither (built-in catalog
+ *      foods without a reference match keep their DEC-034 behaviour).
+ * A reference-linked entry whose quantity cannot be converted safely is
+ * "blocked": nothing is invented, the UI must ask for a resolvable unit.
+ */
+export function scoreDetails(entry: ScorableEntry, food?: Food, ctx: ScoreContext = {}): Scored {
+  if (entry.coffee || food?.kind === "coffee") {
+    return {
+      pointsValue: 0,
+      pointsModelVersion: POINTS_MODEL_V2,
+      pointsBasis: "zero:coffee",
+      basePoints: 0,
+    };
+  }
+  const index = ctx.reference ?? getReferenceIndex();
+  const requested = toRequested(entry);
+
+  // 1. explicit reference row (chosen variation) or the single row of the linked group
+  let item = entry.referenceItemId ? index.itemsById.get(entry.referenceItemId) : undefined;
+  if (!item && food?.referenceGroupKey) {
+    const group = index.groupsByKey.get(food.referenceGroupKey);
+    if (group?.items.length === 1) item = group.items[0];
+  }
+  if (item) {
+    const r: Resolution = resolveReferenceItem(item, requested);
+    if (r.kind === "blocked" || r.points == null) return blocked("reference:blocked", item.id);
+    const benefit = item.benefits?.find((b) => b.rule === entry.benefitRule);
+    const eligibility =
+      benefit && benefit.rule !== "zero_any_quantity"
+        ? benefitEligibility(benefit.rule, ctx.dayEntries ?? [], entry.id)
+        : undefined;
+    const applied = applyBenefit(r.points, benefit, eligibility);
+    const scored: Scored = {
+      pointsValue: applied.appliedPoints,
+      pointsModelVersion: POINTS_MODEL_V2,
+      pointsBasis: `reference:${r.kind}` as ScoreBasis,
+      basePoints: applied.basePoints,
+      referenceItemId: item.id,
+    };
+    if (applied.benefitRule) scored.benefitRule = applied.benefitRule;
+    return scored;
+  }
+  // Linked to a group with several variations but none chosen → ambiguous,
+  // and ambiguity is never resolved silently.
+  if (food?.referenceGroupKey && food.pointsStatus !== "confirmed") {
+    return blocked("reference:blocked");
+  }
+
+  // 2. custom food with a confirmed portion value
+  if (food?.pointsStatus === "confirmed" && food.pointsPerPortion != null) {
+    const r = resolvePortion(customPortion(food), food.pointsPerPortion, requested);
+    if (r.kind === "blocked" || r.points == null) return blocked("custom:blocked");
+    return {
+      pointsValue: r.points,
+      pointsModelVersion: POINTS_MODEL_V2,
+      pointsBasis: "custom:confirmed",
+      basePoints: r.points,
+    };
+  }
+
+  // 3. internal model
+  const v2 = calculatePointsV2(entry, food);
+  return {
+    pointsValue: v2,
+    pointsModelVersion: POINTS_MODEL_V2,
+    pointsBasis: "model:v2-il",
+    basePoints: v2,
+  };
+}
+
+/** A custom food's confirmed portion expressed as a reference-style portion. */
+export function customPortion(
+  food: Pick<Food, "portionAmount" | "portionUnit" | "defaultUnit">,
+): ReferencePortion {
+  const amount = food.portionAmount ?? 1;
+  const unit = (food.portionUnit ?? food.defaultUnit ?? "יחידה") as Unit;
+  const family = UNIT_FAMILY[unit];
+  const text = `${amount} ${unit}`;
+  if (family === "weight") {
+    const grams = amount * (UNIT_TO_GRAMS[unit] ?? 1);
+    return {
+      text,
+      family: "weight",
+      primary: { amount: grams, family: "weight", label: "גרם", appUnit: "גרם" },
+      grams,
+    };
+  }
+  if (family === "volume") {
+    const ml = amount * (UNIT_TO_ML[unit] ?? 1);
+    return {
+      text,
+      family: "volume",
+      primary: { amount: ml, family: "volume", label: "מ״ל", appUnit: "מ״ל" },
+      ml,
+    };
+  }
+  return {
+    text,
+    family: "count",
+    primary: { amount, family: "count", label: unit, appUnit: unit },
+  };
+}
+
 /** The snapshot to persist for a new or deliberately edited entry. */
-export function scoreEntry<T extends EntryQuantity & { coffee?: unknown }>(
+export function scoreEntry<T extends ScorableEntry>(
   entry: T,
   food?: Food,
-): T & { pointsValue: number; pointsModelVersion: string } {
-  return {
-    ...entry,
-    pointsValue: calculatePointsV2(entry, food),
-    pointsModelVersion: POINTS_MODEL_V2,
-  };
+  ctx: ScoreContext = {},
+): T & Scored {
+  return { ...entry, ...scoreDetails(entry, food, ctx) };
 }
 
 /**
@@ -167,6 +326,9 @@ export function pointsForEntry(entry: FoodEntry, food?: Food): number {
   if (entry.pointsValue != null && Number.isFinite(entry.pointsValue)) {
     return Math.max(0, entry.pointsValue);
   }
+  // A reference-linked entry without a snapshot is never estimated from the
+  // internal model — that would invent a number the reference refused.
+  if (entry.referenceItemId || entry.pointsBasis?.startsWith("reference:")) return 0;
   return calculatePointsV2(entry, food);
 }
 

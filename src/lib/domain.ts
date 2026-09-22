@@ -101,6 +101,23 @@ export interface Food {
    * keeping historical entries readable (they store the name).
    */
   isActive?: boolean;
+  /**
+   * Canonical points reference (DEC-035): the reference group this food is
+   * linked to (exact name / verified alias), or the group a reference-only
+   * food represents. Scoring goes through the reference engine when set.
+   */
+  referenceGroupKey?: string;
+  /** Custom food: the portion its confirmed points describe. */
+  portionAmount?: number;
+  portionUnit?: Unit;
+  /**
+   * Custom food scoring state: `confirmed` = the person approved
+   * `pointsPerPortion` for `portionAmount portionUnit`; `unscored` = no
+   * confirmed value (never scored silently).
+   */
+  pointsStatus?: "unscored" | "confirmed";
+  /** Which person created a custom food (owner scope). */
+  createdBy?: ProfileId;
 }
 
 // --- Coffee ---------------------------------------------------------------
@@ -175,6 +192,17 @@ export interface FoodEntry {
   pointsValue?: number;
   /** Model version of the persisted snapshot ("v1" legacy or "v2-il"); never rewritten in place. */
   pointsModelVersion?: string;
+  /**
+   * Snapshot provenance (DEC-035): "reference:exact" / "reference:scaled" /
+   * "reference:any" / "custom:confirmed" / "model:v2-il" / "zero:coffee".
+   */
+  pointsBasis?: string;
+  /** The reference row the snapshot was derived from (chosen variation). */
+  referenceItemId?: string;
+  /** Base points before a conditional benefit; equals pointsValue when none applied. */
+  basePoints?: number;
+  /** The daily benefit applied to this entry, if any (one per entry). */
+  benefitRule?: "zero_any_quantity" | "fruit_daily_allowance" | "protein_zero_allowance";
   /**
    * When the entry was logged (ISO). Set locally at creation and read back from
    * the row's `created_at`; never sent on writes (the database owns it). Used

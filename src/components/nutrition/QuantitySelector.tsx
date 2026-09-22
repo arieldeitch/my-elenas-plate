@@ -1,13 +1,25 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { Food, FoodEntry, QuantityMode, SubjectiveAmount, Unit } from "@/lib/domain";
 import { ALL_UNITS } from "@/lib/domain";
 import { parseAmount, validateMeasured } from "@/lib/quantity";
-import { calculatePointsV2, formatPoints, SUBJECTIVE_LABEL } from "@/lib/points";
+import { formatPoints, scoreDetails, SUBJECTIVE_LABEL } from "@/lib/points";
+import {
+  BLOCK_MESSAGES,
+  formatPortion,
+  getReferenceIndex,
+  groupForFood,
+  portionAsQuantity,
+  resolvableUnits,
+  resolveReferenceItem,
+  type ReferenceRuntimeItem as ReferenceItem,
+} from "@/lib/points-reference";
 import { cn } from "@/lib/utils";
 
 interface Props {
   food: Food;
   initial?: FoodEntry;
+  /** The chosen reference variation (DEC-035); derived from the food when it has exactly one. */
+  referenceItem?: ReferenceItem;
   onSubmit: (entry: Omit<FoodEntry, "id">) => void;
   onCancel: () => void;
   submitLabel?: string;
@@ -15,33 +27,76 @@ interface Props {
 
 const SUBJECTIVES: SubjectiveAmount[] = ["מעט", "במידה", "הרבה", "מוגזם"];
 
+const BASIS_LABEL: Record<string, string> = {
+  "reference:exact": "לפי המאגר · מנת ייחוס",
+  "reference:scaled": "לפי המאגר · חישוב יחסי",
+  "reference:any": "לפי המאגר · 0 בכל כמות",
+  "custom:confirmed": "לפי הערך שאושר למאכל",
+  "model:v2-il": "הערכה לפי המודל הפנימי",
+};
+
 export function QuantitySelector({
   food,
   initial,
+  referenceItem,
   onSubmit,
   onCancel,
   submitLabel = "הוספת המאכל",
 }: Props) {
+  const index = getReferenceIndex();
+  // The reference row this quantity is scored against: the explicit choice,
+  // the row of the entry being edited, or the single row of the linked group.
+  const item = useMemo(() => {
+    if (referenceItem) return referenceItem;
+    if (initial?.referenceItemId) return index.itemsById.get(initial.referenceItemId);
+    const group = groupForFood(index, food);
+    return group?.items.length === 1 ? group.items[0] : undefined;
+  }, [referenceItem, initial?.referenceItemId, food, index]);
+  const portionQuantity = item ? portionAsQuantity(item.portion) : null;
+
   const [mode, setMode] = useState<QuantityMode>(initial?.mode ?? "measured");
   const [amount, setAmount] = useState<string>(
-    initial?.amount != null ? String(initial.amount) : "1",
+    initial?.amount != null ? String(initial.amount) : String(portionQuantity?.amount ?? 1),
   );
-  const [unit, setUnit] = useState<Unit>((initial?.unit ?? food.defaultUnit ?? "יחידה") as Unit);
+  const [unit, setUnit] = useState<Unit>(
+    (initial?.unit ?? portionQuantity?.unit ?? food.defaultUnit ?? "יחידה") as Unit,
+  );
   const [subjective, setSubjective] = useState<SubjectiveAmount>(initial?.subjective ?? "במידה");
   const [showAllUnits, setShowAllUnits] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const suggested = food.suggestedUnits ?? [food.defaultUnit ?? "יחידה"];
-  const unitList = showAllUnits ? ALL_UNITS : suggested;
+  // A reference portion offers only the units the engine can resolve safely;
+  // "יחידות נוספות" still exists so the person can see why a unit is refused.
+  const suggested = item
+    ? resolvableUnits(item.portion)
+    : (food.suggestedUnits ?? [food.defaultUnit ?? "יחידה"]);
+  const unitList = showAllUnits ? ALL_UNITS : suggested.length > 0 ? suggested : ALL_UNITS;
   const parsedPreviewAmount = parseAmount(amount);
-  const previewPoints = calculatePointsV2(
+  const quantity =
     mode === "measured"
-      ? { mode: "measured", amount: parsedPreviewAmount ?? 0, unit }
-      : { mode: "subjective", subjective },
+      ? ({ mode: "measured", amount: parsedPreviewAmount || 0, unit } as const)
+      : ({ mode: "subjective", subjective } as const);
+  const preview = scoreDetails(
+    { ...quantity, referenceItemId: item?.id, coffee: undefined },
     food,
+    { reference: index },
   );
+  const resolution = item ? resolveReferenceItem(item, quantity) : null;
+  const blockedMessage =
+    preview.pointsBasis === "reference:blocked"
+      ? resolution?.reason
+        ? BLOCK_MESSAGES[resolution.reason]
+        : BLOCK_MESSAGES.no_portion
+      : preview.pointsBasis === "custom:blocked"
+        ? BLOCK_MESSAGES.count_unit_mismatch
+        : null;
 
   function handleSubmit() {
+    if (blockedMessage) {
+      setError(blockedMessage);
+      return;
+    }
+    const base = { foodId: food.id, foodName: food.name, referenceItemId: item?.id };
     if (mode === "measured") {
       const n = parseAmount(amount);
       const errs = validateMeasured({ amount: n, unit });
@@ -53,20 +108,9 @@ export function QuantitySelector({
         setError("יש לבחור יחידה");
         return;
       }
-      onSubmit({
-        foodId: food.id,
-        foodName: food.name,
-        mode: "measured",
-        amount: n,
-        unit,
-      });
+      onSubmit({ ...base, mode: "measured", amount: n, unit });
     } else {
-      onSubmit({
-        foodId: food.id,
-        foodName: food.name,
-        mode: "subjective",
-        subjective,
-      });
+      onSubmit({ ...base, mode: "subjective", subjective });
     }
   }
 
@@ -75,6 +119,18 @@ export function QuantitySelector({
       <div className="rounded-2xl bg-secondary/60 px-3 py-2">
         <div className="text-xs text-muted-foreground">נבחר</div>
         <div className="font-semibold text-foreground">{food.name}</div>
+        {item && (
+          <div className="mt-0.5 text-xs text-muted-foreground" data-testid="reference-line">
+            מנת ייחוס: {formatPortion(item.portion)} = {formatPoints(item.points)} נק׳
+            {item.category ? ` · ${item.category}` : ""}
+          </div>
+        )}
+        {!item && food.pointsStatus === "confirmed" && food.pointsPerPortion != null && (
+          <div className="mt-0.5 text-xs text-muted-foreground" data-testid="reference-line">
+            ערך שאושר: {food.portionAmount ?? 1} {food.portionUnit ?? food.defaultUnit} ={" "}
+            {formatPoints(food.pointsPerPortion)} נק׳
+          </div>
+        )}
       </div>
 
       <div
@@ -180,20 +236,37 @@ export function QuantitySelector({
         </div>
       )}
 
-      <div
-        className="rounded-xl border border-border bg-secondary/55 px-3 py-2 text-sm text-muted-foreground"
-        data-testid="points-preview"
-        data-points={previewPoints}
-        aria-live="polite"
-      >
-        נקודות למנה הזו:{" "}
-        <strong className="text-foreground">{formatPoints(previewPoints)} נק׳</strong>
-      </div>
+      {blockedMessage ? (
+        <div
+          className="rounded-xl border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+          data-testid="points-preview"
+          data-points="blocked"
+          data-basis={preview.pointsBasis}
+          role="status"
+        >
+          {blockedMessage}
+        </div>
+      ) : (
+        <div
+          className="rounded-xl border border-border bg-secondary/55 px-3 py-2 text-sm text-muted-foreground"
+          data-testid="points-preview"
+          data-points={preview.pointsValue}
+          data-basis={preview.pointsBasis}
+          aria-live="polite"
+        >
+          נקודות למנה הזו:{" "}
+          <strong className="text-foreground">{formatPoints(preview.pointsValue)} נק׳</strong>
+          {BASIS_LABEL[preview.pointsBasis] && (
+            <span className="block text-[11px]">{BASIS_LABEL[preview.pointsBasis]}</span>
+          )}
+        </div>
+      )}
 
       <div className="flex gap-2 pt-1">
         <button
           onClick={handleSubmit}
-          className="flex-1 rounded-2xl bg-primary py-3 text-primary-foreground font-semibold hover:bg-primary/90"
+          disabled={!!blockedMessage}
+          className="flex-1 rounded-2xl bg-primary py-3 text-primary-foreground font-semibold hover:bg-primary/90 disabled:opacity-50"
         >
           {submitLabel}
         </button>

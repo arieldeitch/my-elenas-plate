@@ -124,8 +124,12 @@ export type Database = {
           id: string
           log_date: string
           note: string | null
+          base_points: number | null
+          benefit_rule: string | null
+          points_basis: string | null
           points_model_version: string | null
           points_value: number | null
+          reference_item_id: string | null
           profile_id: string
           quantity_mode: string
           slot: string
@@ -143,8 +147,12 @@ export type Database = {
           id?: string
           log_date: string
           note?: string | null
+          base_points?: number | null
+          benefit_rule?: string | null
+          points_basis?: string | null
           points_model_version?: string | null
           points_value?: number | null
+          reference_item_id?: string | null
           profile_id: string
           quantity_mode: string
           slot: string
@@ -162,8 +170,12 @@ export type Database = {
           id?: string
           log_date?: string
           note?: string | null
+          base_points?: number | null
+          benefit_rule?: string | null
+          points_basis?: string | null
           points_model_version?: string | null
           points_value?: number | null
+          reference_item_id?: string | null
           profile_id?: string
           quantity_mode?: string
           slot?: string
@@ -194,6 +206,160 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      food_reference_aliases: {
+        Row: {
+          alias: string
+          created_at: string
+          id: string
+          item_id: string
+          normalized_alias: string
+          origin: string
+          verified: boolean
+        }
+        Insert: {
+          alias: string
+          created_at?: string
+          id?: string
+          item_id: string
+          normalized_alias: string
+          origin?: string
+          verified?: boolean
+        }
+        Update: {
+          alias?: string
+          created_at?: string
+          id?: string
+          item_id?: string
+          normalized_alias?: string
+          origin?: string
+          verified?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "food_reference_aliases_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "food_reference_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      food_reference_items: {
+        Row: {
+          base_name: string | null
+          benefit_of: string | null
+          category: string | null
+          cleaning_rules: string[]
+          conflict_group: string | null
+          created_at: string
+          display_name: string
+          duplicate_of: string | null
+          id: string
+          normalized_name: string
+          notes: string[]
+          points: number
+          portion: Json | null
+          review_reasons: string[]
+          rule: string | null
+          source_category: string | null
+          source_id: string
+          source_name: string
+          source_points: number
+          source_quantity_text: string | null
+          source_row: number
+          source_version: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          base_name?: string | null
+          benefit_of?: string | null
+          category?: string | null
+          cleaning_rules?: string[]
+          conflict_group?: string | null
+          created_at?: string
+          display_name: string
+          duplicate_of?: string | null
+          id: string
+          normalized_name: string
+          notes?: string[]
+          points: number
+          portion?: Json | null
+          review_reasons?: string[]
+          rule?: string | null
+          source_category?: string | null
+          source_id: string
+          source_name: string
+          source_points: number
+          source_quantity_text?: string | null
+          source_row: number
+          source_version: string
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          base_name?: string | null
+          benefit_of?: string | null
+          category?: string | null
+          cleaning_rules?: string[]
+          conflict_group?: string | null
+          created_at?: string
+          display_name?: string
+          duplicate_of?: string | null
+          id?: string
+          normalized_name?: string
+          notes?: string[]
+          points?: number
+          portion?: Json | null
+          review_reasons?: string[]
+          rule?: string | null
+          source_category?: string | null
+          source_id?: string
+          source_name?: string
+          source_points?: number
+          source_quantity_text?: string | null
+          source_row?: number
+          source_version?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "food_reference_items_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "food_reference_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      food_reference_sources: {
+        Row: {
+          file_name: string
+          id: string
+          imported_at: string
+          sha256: string
+          sheet: string | null
+          version: string
+        }
+        Insert: {
+          file_name: string
+          id: string
+          imported_at?: string
+          sha256: string
+          sheet?: string | null
+          version: string
+        }
+        Update: {
+          file_name?: string
+          id?: string
+          imported_at?: string
+          sha256?: string
+          sheet?: string | null
+          version?: string
+        }
+        Relationships: []
       }
       food_preferences: {
         Row: {
@@ -257,6 +423,12 @@ export type Database = {
           kind: string
           name: string
           normalized_name: string
+          points_confirmed_at: string | null
+          points_per_portion: number | null
+          points_status: string
+          portion_amount: number | null
+          portion_unit: string | null
+          created_by_profile_id: string | null
           updated_at: string
         }
         Insert: {
@@ -269,6 +441,12 @@ export type Database = {
           kind?: string
           name: string
           normalized_name: string
+          points_confirmed_at?: string | null
+          points_per_portion?: number | null
+          points_status?: string
+          portion_amount?: number | null
+          portion_unit?: string | null
+          created_by_profile_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -281,6 +459,12 @@ export type Database = {
           kind?: string
           name?: string
           normalized_name?: string
+          points_confirmed_at?: string | null
+          points_per_portion?: number | null
+          points_status?: string
+          portion_amount?: number | null
+          portion_unit?: string | null
+          created_by_profile_id?: string | null
           updated_at?: string
         }
         Relationships: [

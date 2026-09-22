@@ -5,7 +5,50 @@ import { useStore } from "@/lib/store";
 import { buildFoodSearchIndex, findFoodByName, searchFoods } from "@/lib/food-search";
 import { normalizeFoodName } from "@/lib/food-normalize";
 import { formatQuantity, usualQuantity } from "@/lib/quantity";
+import { formatPoints } from "@/lib/points";
+import {
+  formatPortion,
+  getReferenceIndex,
+  groupForFood,
+  groupPointsSummary,
+} from "@/lib/points-reference";
 import { cn } from "@/lib/utils";
+
+/**
+ * Secondary line of a result (DEC-035): reference portion · points · category,
+ * or "N כמויות" with the points range when the food has several portions.
+ * Foods without a reference keep their category only — no invented number.
+ */
+export function referenceLine(food: Food): string | null {
+  const group = groupForFood(getReferenceIndex(), food);
+  if (group && group.items.length > 0) {
+    const parts: string[] = [];
+    if (group.items.length === 1) {
+      const item = group.items[0];
+      parts.push(formatPortion(item.portion), `${formatPoints(item.points)} נק׳`);
+    } else {
+      const range = groupPointsSummary(group)!;
+      parts.push(
+        `${group.items.length} כמויות`,
+        range.min === range.max
+          ? `${formatPoints(range.min)} נק׳`
+          : `${formatPoints(range.min)}–${formatPoints(range.max)} נק׳`,
+      );
+    }
+    if (group.category) parts.push(group.category);
+    return parts.join(" · ");
+  }
+  if (food.pointsStatus === "confirmed" && food.pointsPerPortion != null) {
+    return [
+      `${food.portionAmount ?? 1} ${food.portionUnit ?? food.defaultUnit ?? ""}`.trim(),
+      `${formatPoints(food.pointsPerPortion)} נק׳`,
+      food.category,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  }
+  return food.category ?? null;
+}
 
 /** Results shown per query. The catalog is never rendered in full. */
 const RESULT_LIMIT = 20;
@@ -59,7 +102,20 @@ export function FoodSearch({ onChoose, onCreate, onAddCoffee, autoFocus = true }
   // typing responsive on a several-hundred-item catalog.
   const index = useMemo(() => buildFoodSearchIndex(foods), [foods]);
   const nq = normalizeFoodName(q);
-  const results = useMemo(() => searchFoods(index, q, RESULT_LIMIT), [index, q]);
+  // Ranked by the search tiers; inside the list, foods the person used recently
+  // or favourited come first — the canonical reference rows stay visible below.
+  const results = useMemo(() => {
+    const ranked = searchFoods(index, q, RESULT_LIMIT);
+    const recentRank = new Map(recents.map((id, i) => [id, i]));
+    const score = (food: Food) =>
+      (favSet.has(food.id) ? 0 : 1) * 1000 + (recentRank.get(food.id) ?? 999);
+    return ranked
+      .map((food, i) => ({ food, i }))
+      .sort((a, b) => score(a.food) - score(b.food) || a.i - b.i)
+      .map((x) => x.food);
+    // favSet is derived from favorites; recents/favorites are stable arrays from the store.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index, q, recents, favorites]);
   const exact = findFoodByName(index, q);
 
   return (
@@ -151,7 +207,14 @@ export function FoodSearch({ onChoose, onCreate, onAddCoffee, autoFocus = true }
               >
                 <div className="min-w-0 flex-1">
                   <div className="font-medium truncate">{f.name}</div>
-                  {f.category && <div className="text-xs text-muted-foreground">{f.category}</div>}
+                  {referenceLine(f) && (
+                    <div
+                      className="truncate text-xs text-muted-foreground"
+                      data-testid="result-detail"
+                    >
+                      {referenceLine(f)}
+                    </div>
+                  )}
                 </div>
                 {favSet.has(f.id) && (
                   <Star className="h-4 w-4 shrink-0 text-warn fill-warn" aria-hidden />
