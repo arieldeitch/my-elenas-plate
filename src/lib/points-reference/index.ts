@@ -11,7 +11,9 @@
 import type { Food, Unit } from "../domain";
 import { normalizeFoodName } from "../food-normalize";
 import dataset from "@/data/points-reference/reference.v1.runtime.json";
-import { portionAsQuantity, resolvableUnits } from "./engine";
+import aliasFile from "@/data/points-reference/aliases.v1.json";
+import { resolvableUnits } from "./engine";
+import { selectableItems } from "./canonical";
 import type { ReferenceRuntimeDataset, ReferenceRuntimeItem } from "./types";
 
 export type {
@@ -23,6 +25,7 @@ export type {
 } from "./types";
 export * from "./engine";
 export { formatPortion } from "./quantity-parse";
+export * from "./canonical";
 
 export interface ReferenceGroup {
   /** normalized display name — the search / link key. */
@@ -33,11 +36,15 @@ export interface ReferenceGroup {
   items: ReferenceRuntimeItem[];
   /** Rows of this name that are hidden (conflict / needs_review / deprecated). */
   hiddenCount: number;
+  /** Verified aliases (other names that mean this food), display form. */
+  aliases: string[];
 }
 
+/** A verified alias: another name for a reference food (group), never a food of its own. */
 export interface ReferenceAlias {
   alias: string;
-  itemId: string;
+  /** Display name of the target reference food. */
+  target: string;
   verified: boolean;
 }
 
@@ -88,6 +95,7 @@ export function buildReferenceIndex(
         category: item.category,
         items: [],
         hiddenCount: 0,
+        aliases: [],
       };
       groupsByKey.set(item.normalizedName, group);
     }
@@ -101,20 +109,29 @@ export function buildReferenceIndex(
   const aliasToGroup = new Map<string, string>();
   for (const a of aliases) {
     if (!a.verified) continue;
-    const item = itemsById.get(a.itemId);
-    if (item && groupsByKey.has(item.normalizedName)) {
-      aliasToGroup.set(normalizeFoodName(a.alias), item.normalizedName);
-    }
+    const group = groupsByKey.get(normalizeFoodName(a.target));
+    const key = normalizeFoodName(a.alias);
+    // An alias never shadows an OFFERED reference name and never points at two
+    // foods (a hidden row of the same name — conflict / review — does not block it).
+    const shadow = groupsByKey.get(key);
+    if (!group || (shadow && shadow.items.length > 0) || aliasToGroup.has(key)) continue;
+    aliasToGroup.set(key, group.key);
+    group.aliases.push(a.alias);
   }
   const groups = [...groupsByKey.values()];
   return { version: data.source.version, itemsById, groupsByKey, groups, aliasToGroup };
 }
 
+/** The verified aliases shipped with the app (`aliases.v1.json`, DEC-036). */
+export const BUNDLED_ALIASES: ReferenceAlias[] = (
+  aliasFile as { aliases: Array<{ alias: string; target: string }> }
+).aliases.map((a) => ({ alias: a.alias, target: a.target, verified: true }));
+
 let cached: ReferenceIndex | null = null;
 
 /** The bundled reference, built once per process. */
 export function getReferenceIndex(): ReferenceIndex {
-  if (!cached) cached = buildReferenceIndex(dataset as ReferenceRuntimeDataset);
+  if (!cached) cached = buildReferenceIndex(dataset as ReferenceRuntimeDataset, BUNDLED_ALIASES);
   return cached;
 }
 
@@ -148,40 +165,6 @@ export function groupPointsSummary(group: ReferenceGroup): { min: number; max: n
   return { min, max };
 }
 
-/**
- * Attaches the canonical reference to the household's foods (built-in and
- * custom) by exact normalized name / verified alias — the ONLY automatic
- * match — and appends every unclaimed active reference group as a food of its
- * own, so search sees one list. Historical entries are untouched: linking
- * changes how a NEW quantity is scored, never a persisted snapshot.
- */
-export function withReference(foods: Food[], index: ReferenceIndex): Food[] {
-  const claimed = new Set<string>();
-  const out: Food[] = foods.map((food) => {
-    if (food.kind === "coffee") return food;
-    const group = findGroupForName(index, food.name);
-    if (!group || group.items.length === 0) return food;
-    claimed.add(group.key);
-    return { ...food, referenceGroupKey: group.key };
-  });
-  for (const group of index.groups) {
-    if (group.items.length === 0 || claimed.has(group.key)) continue;
-    const first = group.items[0];
-    const usual = portionAsQuantity(first.portion);
-    const units = groupUnits(group);
-    const food: Food = {
-      id: referenceFoodId(group.key),
-      name: group.name,
-      category: group.category ?? undefined,
-      defaultUnit: usual?.unit ?? units[0],
-      suggestedUnits: units.length > 0 ? units : undefined,
-      referenceGroupKey: group.key,
-    };
-    out.push(food);
-  }
-  return out;
-}
-
 /** The reference group a food is linked to (or represents), if any. */
 export function groupForFood(index: ReferenceIndex, food: Pick<Food, "referenceGroupKey">) {
   return food.referenceGroupKey ? index.groupsByKey.get(food.referenceGroupKey) : undefined;
@@ -198,10 +181,16 @@ export function usualReferenceQuantity(
   food: Pick<Food, "referenceGroupKey">,
 ): { mode: "measured"; amount: number; unit: Unit; referenceItemId: string } | null {
   const group = groupForFood(index, food);
-  if (!group || group.items.length !== 1) return null;
-  const item = group.items[0];
-  const p = item.portion?.primary;
-  if (!item.portion || item.portion.family !== "count" || !p?.appUnit) return null;
+  const rows = group ? selectableItems(group) : [];
+  if (rows.length !== 1) return null;
+  const item = rows[0];
+  if (!item.portion) return null;
+  // 0 at any quantity (plain vegetables, tea): one portion is a truthful one-tap add.
+  if (item.portion.family === "any") {
+    return { mode: "measured", amount: 1, unit: "מנה", referenceItemId: item.id };
+  }
+  const p = item.portion.primary;
+  if (item.portion.family !== "count" || !p?.appUnit) return null;
   return { mode: "measured", amount: p.amount, unit: p.appUnit as Unit, referenceItemId: item.id };
 }
 

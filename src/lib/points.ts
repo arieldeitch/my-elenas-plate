@@ -1,27 +1,28 @@
 /**
- * Internal points engine (DEC-034, model "v2-il"). Pure and cheap; every
- * constant lives in `points-config.ts`.
+ * Points engine. Since DEC-036 (2026-09-22) the ONLY source of a new points
+ * value is the canonical points reference (`points-reference/`): a chosen
+ * reference row, scaled safely within its unit family, or nothing. There is no
+ * category / model / manual fallback any more — an entry that cannot be
+ * resolved is saved UNSCORED (`pointsValue` null, basis `unscored:*`) and shown
+ * as such, never estimated.
  *
- * Calculation hierarchy for a food:
- *   1. explicit calibrated value per standard portion (`food.pointsPerPortion`);
- *   2. real nutrition facts (`food.nutrition`) → transparent linear score;
- *   3. category fallback (`CATEGORY_PORTION_POINTS_V2`).
- * Vegetables are 0 at any quantity; coffee is 0 (its own editor).
+ * Snapshots: an entry carries `pointsValue` + `pointsModelVersion` + basis as
+ * saved when it was logged/edited. Display always prefers the persisted
+ * snapshot; a snapshot is never recalculated in place — only a deliberate
+ * edit (store.updateEntry) re-scores, and only through the reference.
  *
- * Snapshots: an entry carries `pointsValue` + `pointsModelVersion` as saved
- * when it was logged/edited. Display always prefers the persisted snapshot;
- * legacy "v1" snapshots are never recalculated in place — an entry moves to
- * v2-il only when the person deliberately edits it (store.updateEntry).
+ * The v1 / v2-il model functions below are kept as deprecated explainers of
+ * historical snapshots and for the personalised daily budget (unchanged).
  */
 import type { DayData, Food, FoodEntry, SubjectiveAmount, Unit } from "./domain";
 import {
   applyBenefit,
   benefitEligibility,
+  coffeeReferenceGroup,
   getReferenceIndex,
-  resolvePortion,
   resolveReferenceItem,
+  selectableItems,
   type ReferenceIndex,
-  type ReferencePortion,
   type Resolution,
 } from "./points-reference";
 import {
@@ -103,7 +104,7 @@ export function portionsForEntry(entry: EntryQuantity): number {
 
 export type PointsBasis = "zero" | "calibrated" | "nutrition" | "category" | "unknown";
 
-/** Points for ONE standard portion of a food and where that number came from. */
+/** @deprecated DEC-034 model — kept to explain historical v2-il snapshots only (DEC-036). */
 export function portionPointsForFood(food?: Food): { points: number; basis: PointsBasis } {
   if (!food) return { points: UNKNOWN_FOOD_PORTION_POINTS, basis: "unknown" };
   if (food.kind === "coffee") return { points: 0, basis: "zero" };
@@ -143,7 +144,7 @@ export function pointsFromNutrition(n: NutritionFacts): number {
 
 // --- entry scoring --------------------------------------------------------------
 
-/** v2-il score for an entry's CURRENT quantity. */
+/** @deprecated DEC-034 model — explains historical v2-il snapshots only; never used for new values (DEC-036). */
 export function calculatePointsV2(
   entry: EntryQuantity & { coffee?: unknown },
   food?: Food,
@@ -161,10 +162,8 @@ export type ScoreBasis =
   | "reference:scaled"
   | "reference:any"
   | "reference:blocked"
-  | "custom:confirmed"
-  | "custom:blocked"
-  | "model:v2-il"
-  | "zero:coffee";
+  | "unscored:no_reference"
+  | "unscored:ambiguous";
 
 export interface ScoreContext {
   reference?: ReferenceIndex;
@@ -176,13 +175,17 @@ type ScorableEntry = EntryQuantity &
   Partial<Pick<FoodEntry, "id" | "coffee" | "referenceItemId" | "benefitRule">>;
 
 export interface Scored {
-  pointsValue: number;
+  /** null = unscored: no reference row could be resolved; never estimated. */
+  pointsValue: number | null;
   pointsModelVersion: string;
   pointsBasis: ScoreBasis;
-  basePoints: number;
+  basePoints: number | null;
   referenceItemId?: string;
   benefitRule?: FoodEntry["benefitRule"];
 }
+
+/** Model version stamped on every reference-based snapshot (DEC-036). */
+export const POINTS_MODEL_REFERENCE = "ref-v1" as const;
 
 function toRequested(entry: EntryQuantity) {
   return entry.mode === "subjective"
@@ -190,122 +193,71 @@ function toRequested(entry: EntryQuantity) {
     : ({ mode: "measured", amount: Number(entry.amount ?? 0), unit: entry.unit as Unit } as const);
 }
 
-function blocked(basis: "reference:blocked" | "custom:blocked", referenceItemId?: string): Scored {
+function unscored(
+  basis: "reference:blocked" | "unscored:no_reference" | "unscored:ambiguous",
+  referenceItemId?: string,
+): Scored {
   const out: Scored = {
-    pointsValue: 0,
-    pointsModelVersion: POINTS_MODEL_V2,
+    pointsValue: null,
+    pointsModelVersion: POINTS_MODEL_REFERENCE,
     pointsBasis: basis,
-    basePoints: 0,
+    basePoints: null,
   };
   if (referenceItemId) out.referenceItemId = referenceItemId;
   return out;
 }
 
 /**
- * Where the points of an entry come from (DEC-035 precedence):
- *   1. the chosen reference row (exact / scaled / any) — never a different row;
- *   2. a custom food with a confirmed portion value, scaled the same safe way;
- *   3. the internal v2-il model for foods that are neither (built-in catalog
- *      foods without a reference match keep their DEC-034 behaviour).
- * A reference-linked entry whose quantity cannot be converted safely is
- * "blocked": nothing is invented, the UI must ask for a resolvable unit.
+ * Where the points of an entry come from (DEC-036): the chosen reference row
+ * (exact / scaled / any), or the single selectable row of the food's reference
+ * group, or — for the coffee editor — the reference row the milk choice maps
+ * to. Nothing else. Ambiguity (several rows, none chosen) and unsafe
+ * conversions are never resolved silently: the result is unscored / blocked
+ * and the UI must ask.
  */
 export function scoreDetails(entry: ScorableEntry, food?: Food, ctx: ScoreContext = {}): Scored {
-  if (entry.coffee || food?.kind === "coffee") {
-    return {
-      pointsValue: 0,
-      pointsModelVersion: POINTS_MODEL_V2,
-      pointsBasis: "zero:coffee",
-      basePoints: 0,
-    };
-  }
   const index = ctx.reference ?? getReferenceIndex();
   const requested = toRequested(entry);
 
-  // 1. explicit reference row (chosen variation) or the single row of the linked group
   let item = entry.referenceItemId ? index.itemsById.get(entry.referenceItemId) : undefined;
+  if (!item && (entry.coffee || food?.kind === "coffee")) {
+    if (!entry.coffee) return unscored("unscored:no_reference");
+    const group = coffeeReferenceGroup(index, entry.coffee);
+    if (!group) return unscored("unscored:no_reference");
+    const rows = selectableItems(group);
+    if (rows.length !== 1) return unscored("unscored:ambiguous");
+    item = rows[0];
+  }
   if (!item && food?.referenceGroupKey) {
     const group = index.groupsByKey.get(food.referenceGroupKey);
-    if (group?.items.length === 1) item = group.items[0];
+    const rows = group ? selectableItems(group) : [];
+    if (rows.length === 1) item = rows[0];
+    else if (rows.length > 1) return unscored("unscored:ambiguous");
   }
-  if (item) {
-    const r: Resolution = resolveReferenceItem(item, requested);
-    if (r.kind === "blocked" || r.points == null) return blocked("reference:blocked", item.id);
-    const benefit = item.benefits?.find((b) => b.rule === entry.benefitRule);
-    const eligibility =
-      benefit && benefit.rule !== "zero_any_quantity"
-        ? benefitEligibility(benefit.rule, ctx.dayEntries ?? [], entry.id)
-        : undefined;
-    const applied = applyBenefit(r.points, benefit, eligibility);
-    const scored: Scored = {
-      pointsValue: applied.appliedPoints,
-      pointsModelVersion: POINTS_MODEL_V2,
-      pointsBasis: `reference:${r.kind}` as ScoreBasis,
-      basePoints: applied.basePoints,
-      referenceItemId: item.id,
-    };
-    if (applied.benefitRule) scored.benefitRule = applied.benefitRule;
-    return scored;
-  }
-  // Linked to a group with several variations but none chosen → ambiguous,
-  // and ambiguity is never resolved silently.
-  if (food?.referenceGroupKey && food.pointsStatus !== "confirmed") {
-    return blocked("reference:blocked");
-  }
+  if (!item) return unscored("unscored:no_reference");
 
-  // 2. custom food with a confirmed portion value
-  if (food?.pointsStatus === "confirmed" && food.pointsPerPortion != null) {
-    const r = resolvePortion(customPortion(food), food.pointsPerPortion, requested);
-    if (r.kind === "blocked" || r.points == null) return blocked("custom:blocked");
-    return {
-      pointsValue: r.points,
-      pointsModelVersion: POINTS_MODEL_V2,
-      pointsBasis: "custom:confirmed",
-      basePoints: r.points,
-    };
-  }
-
-  // 3. internal model
-  const v2 = calculatePointsV2(entry, food);
-  return {
-    pointsValue: v2,
-    pointsModelVersion: POINTS_MODEL_V2,
-    pointsBasis: "model:v2-il",
-    basePoints: v2,
+  const r: Resolution = resolveReferenceItem(item, requested);
+  if (r.kind === "blocked" || r.points == null) return unscored("reference:blocked", item.id);
+  const benefit = item.benefits?.find((b) => b.rule === entry.benefitRule);
+  const eligibility =
+    benefit && benefit.rule !== "zero_any_quantity"
+      ? benefitEligibility(benefit.rule, ctx.dayEntries ?? [], entry.id)
+      : undefined;
+  const applied = applyBenefit(r.points, benefit, eligibility);
+  const scored: Scored = {
+    pointsValue: applied.appliedPoints,
+    pointsModelVersion: POINTS_MODEL_REFERENCE,
+    pointsBasis: `reference:${r.kind}` as ScoreBasis,
+    basePoints: applied.basePoints,
+    referenceItemId: item.id,
   };
+  if (applied.benefitRule) scored.benefitRule = applied.benefitRule;
+  return scored;
 }
 
-/** A custom food's confirmed portion expressed as a reference-style portion. */
-export function customPortion(
-  food: Pick<Food, "portionAmount" | "portionUnit" | "defaultUnit">,
-): ReferencePortion {
-  const amount = food.portionAmount ?? 1;
-  const unit = (food.portionUnit ?? food.defaultUnit ?? "יחידה") as Unit;
-  const family = UNIT_FAMILY[unit];
-  const text = `${amount} ${unit}`;
-  if (family === "weight") {
-    const grams = amount * (UNIT_TO_GRAMS[unit] ?? 1);
-    return {
-      text,
-      family: "weight",
-      primary: { amount: grams, family: "weight", label: "גרם", appUnit: "גרם" },
-      grams,
-    };
-  }
-  if (family === "volume") {
-    const ml = amount * (UNIT_TO_ML[unit] ?? 1);
-    return {
-      text,
-      family: "volume",
-      primary: { amount: ml, family: "volume", label: "מ״ל", appUnit: "מ״ל" },
-      ml,
-    };
-  }
-  return {
-    text,
-    family: "count",
-    primary: { amount, family: "count", label: unit, appUnit: unit },
-  };
+/** True when the entry can be saved with a real reference value. */
+export function isScored(scored: Pick<Scored, "pointsValue">): boolean {
+  return scored.pointsValue != null && Number.isFinite(scored.pointsValue);
 }
 
 /** The snapshot to persist for a new or deliberately edited entry. */
@@ -322,30 +274,42 @@ export function scoreEntry<T extends ScorableEntry>(
  * Entries logged before any points model get a v2-il estimate for display
  * only — nothing is written back.
  */
-export function pointsForEntry(entry: FoodEntry, food?: Food): number {
+/**
+ * Display value: the persisted snapshot always wins (whatever its version);
+ * an entry without a snapshot is UNSCORED (null) — never estimated (DEC-036).
+ * `_food` is kept for call-site compatibility.
+ */
+export function pointsForEntry(entry: FoodEntry, _food?: Food): number | null {
   if (entry.pointsValue != null && Number.isFinite(entry.pointsValue)) {
     return Math.max(0, entry.pointsValue);
   }
-  // A reference-linked entry without a snapshot is never estimated from the
-  // internal model — that would invent a number the reference refused.
-  if (entry.referenceItemId || entry.pointsBasis?.startsWith("reference:")) return 0;
-  return calculatePointsV2(entry, food);
+  return null;
 }
 
-export function pointsForDay(day: DayData, foods: Food[]): number {
-  const byId = new Map(foods.map((f) => [f.id, f]));
+/** Sum of the scored entries of a day (unscored entries are excluded, see `unscoredEntries`). */
+export function pointsForDay(day: DayData, _foods: Food[] = []): number {
   let total = 0;
   for (const meal of Object.values(day.meals)) {
-    for (const entry of meal.entries) total += pointsForEntry(entry, byId.get(entry.foodId));
+    for (const entry of meal.entries) total += pointsForEntry(entry) ?? 0;
   }
   return roundHalf(total);
+}
+
+/** Entries of a day that carry no points value (shown as "ללא ניקוד"). */
+export function unscoredEntries(day: DayData): FoodEntry[] {
+  const out: FoodEntry[] = [];
+  for (const meal of Object.values(day.meals)) {
+    for (const entry of meal.entries) if (pointsForEntry(entry) == null) out.push(entry);
+  }
+  return out;
 }
 
 export function pointsRemaining(total: number, budget: number): number {
   return roundHalf(budget - total);
 }
 
-export function formatPoints(value: number): string {
+export function formatPoints(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value)) return "—";
   const rounded = roundHalf(value);
   return Number.isInteger(rounded)
     ? String(rounded)

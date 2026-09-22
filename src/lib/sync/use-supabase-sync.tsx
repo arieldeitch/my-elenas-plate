@@ -32,6 +32,7 @@ import type { ProfileFacts } from "../points";
 import { getSession, onAuthChange } from "../supabase/auth";
 import {
   bootstrapHousehold,
+  foodsSchemaSupportsReferenceLink,
   loadProfileFacts,
   loadWeighIns,
   type HouseholdContext,
@@ -91,6 +92,8 @@ export interface SyncControls {
   retryFailed: () => void;
   /** Drops permanently failed ops (local optimistic state is kept). */
   discardFailed: () => void;
+  /** Cloud schema capabilities detected on activation (DEC-036). */
+  schema: { referenceGroupKey: boolean };
 }
 
 const WEIGH_KINDS = new Set(["weighin.insert"]);
@@ -159,12 +162,18 @@ export function useSupabaseSync(args: Args): SyncControls {
   // Reconcile the remote catalog with the built-in list. Always merged from
   // BUILT_IN_FOODS (not from previous state) so a row deleted or archived
   // remotely actually disappears instead of lingering from an earlier hydrate.
+  // DEC-036: personal aliases need `foods.reference_group_key`; until the
+  // cloud confirms the column, the store refuses to create them (no silent
+  // queue failure). Only a definite "column missing" turns it off.
+  const [schemaReferenceGroupKey, setSchemaReferenceGroupKey] = useState(true);
   const hydrateFoodsList = useCallback(async () => {
     const ctx = ctxRef.current;
     if (!ctx) return;
     try {
       const remote = await hydrateFoods(ctx);
       setFoods(mergeCatalog(BUILT_IN_FOODS, remote));
+      const supported = await foodsSchemaSupportsReferenceLink(ctx.householdId);
+      if (supported != null) setSchemaReferenceGroupKey(supported);
     } catch (err) {
       console.warn("hydrate foods failed", err);
     }
@@ -598,7 +607,13 @@ export function useSupabaseSync(args: Args): SyncControls {
     publishState();
   }, [publishState]);
 
-  return { active, enqueue, retryFailed, discardFailed };
+  return {
+    active,
+    enqueue,
+    retryFailed,
+    discardFailed,
+    schema: { referenceGroupKey: schemaReferenceGroupKey },
+  };
 }
 
 /** Finds which in-memory day holds an entry id (for DELETE events without metadata). */

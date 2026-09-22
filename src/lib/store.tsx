@@ -43,7 +43,13 @@ import type {
 import { MEAL_SLOTS } from "./domain";
 import { FOOD_CATALOG, mergeCatalog } from "./food-catalog";
 import { normalizeFoodName } from "./food-normalize";
-import { getReferenceIndex, withReference } from "./points-reference";
+import {
+  canonicalIdFor,
+  getReferenceIndex,
+  resolveCatalog,
+  type CanonicalFood,
+  type ResolvedCatalog,
+} from "./points-reference";
 import {
   latestWeightKg,
   resolvePointsBudget,
@@ -94,14 +100,25 @@ interface StoreValue {
   getDay: (profile: ProfileId, iso: string) => DayData;
   getAllDays: (profile: ProfileId) => Record<string, DayData>;
 
-  /** The ONE searchable list: household foods linked to the reference + reference-only foods. */
-  foods: Food[];
   /**
-   * Creates (or reuses) a custom food. A food created through the new-food
-   * flow carries its confirmed portion + points (DEC-035); the legacy
-   * two-argument form creates an `unscored` food that is never scored silently.
+   * The ONE active list (DEC-036): canonical reference foods only (+ the coffee
+   * editor). Legacy catalog rows appear only through a verified link, as the
+   * reference food; unlinked ones are hidden (history only).
    */
-  addFood: (name: string, category?: string, details?: NewFoodDetails) => Food;
+  foods: CanonicalFood[];
+  /** The full resolution (hidden legacy foods, legacy→canonical map, summary). */
+  catalog: ResolvedCatalog;
+  /** The canonical id an arbitrary stored food id maps to, or null when that food is hidden. */
+  resolveFoodId: (foodId: string) => string | null;
+  /**
+   * Saves a personal alias: a name of the person's own for an EXISTING
+   * reference food (DEC-036). The alias never becomes a card or a value of its
+   * own — it makes the reference food findable by that name. Returns the
+   * canonical food. A name that already resolves is reused, nothing is created.
+   */
+  addPersonalAlias: (name: string, referenceGroupKey: string) => CanonicalFood;
+  /** True once the cloud schema can store personal aliases (migration 20260922 applied). */
+  personalAliasesSupported: boolean;
   favorites: string[];
   recents: string[];
   toggleFavorite: (foodId: string) => void;
@@ -129,15 +146,6 @@ interface StoreValue {
 
   weighIns: WeighIn[];
   addWeighIn: (w: Omit<WeighIn, "id">) => void;
-}
-
-/** What the new-food form confirms before a custom food may score. */
-export interface NewFoodDetails {
-  portionAmount: number;
-  portionUnit: Food["portionUnit"];
-  pointsPerPortion: number;
-  /** Always "confirmed" from the form; kept explicit so the intent is visible at the call site. */
-  pointsStatus: "confirmed";
 }
 
 const StoreCtx = createContext<StoreValue | null>(null);
@@ -192,11 +200,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // The built-in catalog is the pre-hydration fallback; Supabase supersedes it
   // by normalized name once loaded (see `mergeCatalog`).
   const [foods, setFoods] = useState<Food[]>(FOOD_CATALOG);
-  // The searchable list = household foods linked to the canonical reference by
-  // exact name / verified alias + every unclaimed active reference group as a
-  // food of its own (DEC-035). Derived, never persisted: the reference is a
-  // client constant like the built-in catalog.
-  const catalog = useMemo(() => withReference(foods, getReferenceIndex()), [foods]);
+  // DEC-036: the active list is built from the reference alone; the household
+  // foods (built-in + custom rows) are resolved against it — explicit link,
+  // verified alias or exact name — and everything else is hidden. Derived,
+  // never persisted.
+  const catalog = useMemo(() => resolveCatalog(getReferenceIndex(), foods), [foods]);
+  const resolveFoodId = useCallback((foodId: string) => canonicalIdFor(catalog, foodId), [catalog]);
+  // Favourites / recents are stored by food id (legacy or canonical). They are
+  // shown only when they resolve to an ACTIVE food, mapped to its canonical id
+  // and de-duplicated — a hidden legacy favourite never bypasses the filter.
+  const visibleIds = useCallback(
+    (ids: string[]) => {
+      const out: string[] = [];
+      for (const id of ids) {
+        const c = canonicalIdFor(catalog, id);
+        if (c && !out.includes(c)) out.push(c);
+      }
+      return out;
+    },
+    [catalog],
+  );
 
   const iso = toISODate(selectedDate);
 
@@ -344,10 +367,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const addEntry: StoreValue["addEntry"] = (slot, entry) => {
-    const base: FoodEntry = { ...entry, id: genId("e"), loggedAt: new Date().toISOString() };
-    const food = catalog.find((f) => f.id === base.foodId);
-    // Every NEW entry carries a snapshot: reference row → confirmed custom
-    // portion → internal model (DEC-035 precedence), never rewritten later.
+    // A new entry always references the canonical food (a legacy id is mapped).
+    const foodId = canonicalIdFor(catalog, entry.foodId) ?? entry.foodId;
+    const food = catalog.active.find((f) => f.id === foodId);
+    const base: FoodEntry = {
+      ...entry,
+      foodId,
+      foodName: food?.name ?? entry.foodName,
+      id: genId("e"),
+      loggedAt: new Date().toISOString(),
+    };
+    // Every NEW entry carries a snapshot from the reference (or is saved
+    // unscored — never estimated); it is never rewritten later.
     const withId: FoodEntry = scoreEntry(base, food, { dayEntries: dayEntriesNow() });
     mutateDay(activeProfile, iso, (d) => {
       const meal = d.meals[slot];
@@ -361,7 +392,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const updateEntry: StoreValue["updateEntry"] = (slot, entry) => {
-    const food = catalog.find((f) => f.id === entry.foodId);
+    const canonical = canonicalIdFor(catalog, entry.foodId);
+    const food = canonical ? catalog.active.find((f) => f.id === canonical) : undefined;
     // A deliberate edit re-scores — this is the only path by which a legacy
     // snapshot changes (DEC-034 §S). Editing a food in the reference or the
     // catalog never touches an existing entry.
@@ -474,39 +506,36 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setProfileFacts({ pointsBudgetOverride: Math.max(10, Math.min(60, Math.round(budget))) });
   };
 
-  const addFood: StoreValue["addFood"] = (name, category, details) => {
-    const trimmed = name.trim();
-    // Duplicate prevention: the DB enforces unique (household_id, normalized_name),
-    // so creating a food that normalizes onto an existing one would fail to sync
-    // and split favorites/recents across two ids. Reuse the existing food instead —
-    // this is what makes "קוטג" resolve to קוטג׳ rather than creating a twin.
-    // The reference-only foods count too: a name the reference knows is that food.
-    const key = normalizeFoodName(trimmed);
-    const existing = catalog.find((f) => normalizeFoodName(f.name) === key);
-    if (existing) return existing;
+  // Personal aliases need the cloud column `foods.reference_group_key` (migration
+  // 20260922090000). Until a hydrated row shows the column exists, creating one
+  // is refused with an explanation instead of failing silently in the queue.
+  const personalAliasesSupported = !isSupabaseConfigured() || sync.schema.referenceGroupKey;
 
-    const f: Food = {
-      id: genId("f"),
-      name: trimmed,
-      category,
-      defaultUnit: details?.portionUnit ?? "יחידה",
-      suggestedUnits: details?.portionUnit
-        ? [
-            details.portionUnit,
-            ...(["יחידה", "גרם", "מנה"] as const).filter((u) => u !== details.portionUnit),
-          ]
-        : ["יחידה", "גרם", "מנה"],
-      createdBy: activeProfile,
-      pointsStatus: details ? "confirmed" : "unscored",
-    };
-    if (details) {
-      f.portionAmount = details.portionAmount;
-      f.portionUnit = details.portionUnit;
-      f.pointsPerPortion = details.pointsPerPortion;
+  const addPersonalAlias: StoreValue["addPersonalAlias"] = (name, referenceGroupKey) => {
+    const trimmed = name.trim();
+    const target = catalog.active.find((f) => f.referenceGroupKey === referenceGroupKey);
+    if (!target) throw new Error("personal alias must point at an active reference food");
+    // A name that already resolves (reference name, verified alias, existing
+    // personal alias) needs nothing new: the DB is unique per normalized name.
+    const key = normalizeFoodName(trimmed);
+    const existing = foods.find((f) => normalizeFoodName(f.name) === key);
+    if (existing) {
+      const c = canonicalIdFor(catalog, existing.id);
+      if (c) return catalog.active.find((f) => f.id === c)!;
     }
-    setFoods((prev) => [f, ...prev]);
-    sync.enqueue([{ kind: "food.upsert", food: f }]);
-    return f;
+    if (!existing) {
+      const f: Food = {
+        id: genId("f"),
+        name: trimmed,
+        category: target.category,
+        defaultUnit: target.defaultUnit,
+        referenceGroupKey,
+        createdBy: activeProfile,
+      };
+      setFoods((prev) => [f, ...prev]);
+      sync.enqueue([{ kind: "food.upsert", food: f }]);
+    }
+    return target;
   };
 
   const toggleFavorite: StoreValue["toggleFavorite"] = (foodId) => {
@@ -551,10 +580,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       discardFailedSync: sync.discardFailed,
       getDay,
       getAllDays,
-      foods: catalog,
-      addFood,
-      favorites: favoritesMap[activeProfile],
-      recents: recentsMap[activeProfile],
+      foods: catalog.active,
+      catalog,
+      resolveFoodId,
+      addPersonalAlias,
+      personalAliasesSupported,
+      favorites: visibleIds(favoritesMap[activeProfile]),
+      recents: visibleIds(recentsMap[activeProfile]),
       toggleFavorite,
       addEntry,
       updateEntry,
