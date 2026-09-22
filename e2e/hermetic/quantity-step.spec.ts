@@ -15,7 +15,11 @@ test("quick add, one tap on +, finish — the day review shows 2 units", async (
   // an egg 2 points); confirming with the default 1 unit makes the egg a recent chip.
   await page.getByRole("button", { name: /^פתיחת חלון אכילה:/ }).click();
   await page.getByLabel("חיפוש מאכל").fill("ביצה קשה");
-  const result = page.getByTestId("search-result").filter({ hasText: "ביצה קשה" }).first();
+  // DEC-036: "ביצה קשה" is a verified alias; the ONE card is the reference food ביצה (1 יחידה = 2).
+  const result = page
+    .getByTestId("search-result")
+    .filter({ hasText: "נמצא לפי: ביצה קשה" })
+    .first();
   await expect(result).toContainText("בחירת כמות");
   await result.click();
   await expect(page.getByTestId("points-preview")).toHaveAttribute("data-points", "2");
@@ -31,14 +35,11 @@ test("quick add, one tap on +, finish — the day review shows 2 units", async (
 
   // The common case: tile → chip (quick add) → + → סיום.
   await page.getByRole("button", { name: /^ארוחה מרכזית:/ }).click();
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "ביצה קשה, הוספה של 1 יחידה" })
-    .click();
+  await page.getByRole("dialog").getByRole("button", { name: "ביצה, הוספה של 1 יחידה" }).click();
   const row = page.getByTestId("meal-entry").last();
   await expect(row).toHaveAttribute("data-quantity", "1 יחידה");
-  await expect(row.getByRole("button", { name: "פחות ביצה קשה" })).toBeDisabled();
-  await row.getByRole("button", { name: "עוד ביצה קשה" }).click();
+  await expect(row.getByRole("button", { name: "פחות ביצה" })).toBeDisabled();
+  await row.getByRole("button", { name: "עוד ביצה" }).click();
   await expect(row).toHaveAttribute("data-quantity", "2 יחידות");
   await expect(row.getByTestId("qty-value")).toHaveText("2 יחידות");
   // No quantity screen appeared.
@@ -50,7 +51,7 @@ test("quick add, one tap on +, finish — the day review shows 2 units", async (
   // The review reflects the corrected quantity; it has no steppers of its own.
   await page.getByTestId("today-review").click();
   const lunch = page.getByTestId("day-review-slot-lunch");
-  await expect(lunch).toContainText("ביצה קשה");
+  await expect(lunch).toContainText("ביצה");
   await expect(lunch).toContainText("2 יחידות");
   await expect(page.getByTestId("day-review").getByTestId("qty-plus")).toHaveCount(0);
   await page.getByRole("button", { name: "סגירה" }).click();

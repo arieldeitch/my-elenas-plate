@@ -5,7 +5,8 @@ import { waitForHydration } from "./helpers";
  * DEC-035 acceptance item 16 — the reference flow on a narrow phone screen
  * (Pixel 7 profile, hermetic demo store, no backend): compact results with
  * portion · points · category, a variation picker, a reference-aware quantity
- * screen that refuses an unsafe unit, and a new food that must be confirmed.
+ * screen that refuses an unsafe unit, and an unknown name that can only become a
+ * personal alias of a reference food (DEC-036).
  * Nothing overflows horizontally and every tap target stays reachable.
  */
 test("reference search → variation → quantity → add, then a confirmed new food, all on a phone", async ({
@@ -51,21 +52,29 @@ test("reference search → variation → quantity → add, then a confirmed new 
   await page.getByRole("button", { name: "הוספת המאכל" }).click();
   await expect(page.getByTestId("meal-entry")).toHaveCount(2);
 
-  // Unknown food: the confirmation form, a suggestion marked for review, explicit confirm.
+  // Unknown name (DEC-036): no new-food form — only a personal alias of a reference food.
   await searchBox.fill("מאפין של סבתא");
-  await page.getByRole("button", { name: /כמאכל חדש/ }).click();
-  const form = page.getByTestId("new-food-form");
+  await page.getByRole("button", { name: /קישור לשם אישי/ }).click();
+  const form = page.getByTestId("personal-alias-form");
   await expect(form).toBeVisible();
-  await page.getByLabel("קטגוריה").selectOption("דגנים ופחמימות");
-  await page.getByLabel("נקודות לכמות הייחוס").fill("4.5");
-  await page.getByTestId("nf-confirm").click();
-  await expect(page.getByTestId("reference-line")).toContainText(/ערך שאושר: 1 יחידה = 4[.,]5 נק׳/);
-  await expect(page.getByTestId("points-preview")).toHaveAttribute(
-    "data-basis",
-    "custom:confirmed",
-  );
+  await expect(page.getByTestId("pa-save")).toBeDisabled();
+  await page.getByLabel("המאכל במאגר").fill("מאפין");
+  await page.getByTestId("pa-option").filter({ hasText: "מאפין שוקולד" }).first().click();
+  await page.getByTestId("pa-save").click();
+  await expect(page.getByTestId("reference-line")).toContainText("1 יחידה (45 גרם) = 5 נק׳");
+  await expect(page.getByTestId("points-preview")).toHaveAttribute("data-basis", "reference:exact");
   await page.getByRole("button", { name: "הוספת המאכל" }).click();
   await expect(page.getByTestId("meal-entry")).toHaveCount(3);
+  await expect(page.getByTestId("meal-entry").last()).toContainText("מאפין שוקולד");
+  // The personal name now finds the reference food — one card, alias shown.
+  await searchBox.fill("מאפין של סבתא");
+  const aliasHit = dialog.getByTestId("search-result").first();
+  await expect(aliasHit).toContainText("מאפין שוקולד");
+  await expect(aliasHit.getByTestId("result-alias")).toHaveText("נמצא לפי: מאפין של סבתא");
+  await expect(dialog.getByTestId("search-result").filter({ hasText: "מאפין שוקולד" })).toHaveCount(
+    1,
+  );
+  await searchBox.fill("");
 
   // Narrow screen: no horizontal overflow anywhere in the sheet.
   const overflow = await page.evaluate(

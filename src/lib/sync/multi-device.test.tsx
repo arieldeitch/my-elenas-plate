@@ -159,7 +159,7 @@ describe("multi-device: A = Ariel, B = Elena, C = fresh phone", () => {
     act(() => A.result.current.addEntry("lunch", apple));
     await waitFor(() => expect(A.result.current.syncState).toBe("saved"));
     const bSeesAriel = await B.view("me");
-    expect(bSeesAriel!.meals.lunch.entries.map((e) => e.foodName)).toEqual(["תפוח"]);
+    expect(bSeesAriel!.meals.lunch.entries.map((e) => e.foodName)).toEqual(["תפוח עץ"]);
 
     // B (Elena) logs dinner from her phone → A's partner day updates via realtime, no reload.
     const eggEntry: FoodEntry = { id: "b-egg-1", ...egg };
@@ -400,7 +400,7 @@ describe("offline / recovery sequences", () => {
     expect(queue.pending()).toHaveLength(0);
     expect(queue.quarantined()).toHaveLength(0);
     expect(fake.rows("food_entries")).toHaveLength(1);
-    expect(fake.rows("food_entries")[0]).toMatchObject({ profile_id: ARIEL, food_name: "תפוח" });
+    expect(fake.rows("food_entries")[0]).toMatchObject({ profile_id: ARIEL, food_name: "תפוח עץ" });
     A2.unmount();
   });
 
@@ -430,12 +430,12 @@ describe("offline / recovery sequences", () => {
   });
 });
 
-describe("points v2-il — persisted snapshots follow the FINAL entry state (DEC-034 §R)", () => {
-  const { calculatePointsV2 } = pointsLib;
-  const fruit = { ...apple, foodId: "f_apple" }; // catalog apple: פירות → 1 point per unit
+describe("reference snapshots follow the FINAL entry state (DEC-036); never estimated", () => {
+  // f_apple is a legacy id: it resolves to the reference food תפוח עץ (100 גרם = 2).
+  const fruit = { ...apple, foodId: "f_apple", amount: 100, unit: "גרם" as const };
   const bread = {
-    foodId: "f_bread_slice",
-    foodName: "לחם לבן",
+    foodId: "f_white_bread",
+    foodName: "לחם לבן", // verified alias → לחם אחיד - לבן שחור, 1 פרוסה (30 גרם) = 2
     mode: "measured" as const,
     amount: 1,
     unit: "פרוסה" as const,
@@ -446,21 +446,30 @@ describe("points v2-il — persisted snapshots follow the FINAL entry state (DEC
     await new Promise((r) => setTimeout(r, 30));
   };
 
-  it("new entry, amount edit, unit change, measured→subjective, level edit, subjective→measured: row = final state, version v2-il", async () => {
+  it("new entry, amount edit, unsafe unit → unscored, measured→subjective, level edit, subjective→measured: row = final state, version ref-v1", async () => {
     const A = await mountDevice(USER_A, "me");
     act(() => A.result.current.addEntry("lunch", fruit));
     await settled(A);
-    expect(row()).toMatchObject({ points_value: 1, points_model_version: "v2-il" });
-    const f = A.result.current.foods.find((x) => x.id === "f_apple");
+    expect(row()).toMatchObject({
+      food_name: "תפוח עץ",
+      points_value: 2,
+      points_model_version: "ref-v1",
+      points_basis: "reference:exact",
+    });
     const e = () => A.result.current.getDay("me", today()).meals.lunch.entries[0];
 
-    act(() => A.result.current.updateEntry("lunch", { ...e(), amount: 3 }));
+    act(() => A.result.current.updateEntry("lunch", { ...e(), amount: 300 }));
     await settled(A);
-    expect(row()).toMatchObject({ amount: 3, points_value: 3, points_model_version: "v2-il" });
+    expect(row()).toMatchObject({ amount: 300, points_value: 6, points_basis: "reference:scaled" });
 
-    act(() => A.result.current.updateEntry("lunch", { ...e(), amount: 150, unit: "גרם" }));
+    // A unit the reference cannot convert (יחידה for a gram portion) is never estimated.
+    act(() => A.result.current.updateEntry("lunch", { ...e(), amount: 1, unit: "יחידה" }));
     await settled(A);
-    expect(row()).toMatchObject({ unit: "גרם", points_value: 1.5, points_model_version: "v2-il" });
+    expect(row()).toMatchObject({
+      unit: "יחידה",
+      points_value: null,
+      points_basis: "reference:blocked",
+    });
 
     act(() =>
       A.result.current.updateEntry("lunch", {
@@ -472,30 +481,28 @@ describe("points v2-il — persisted snapshots follow the FINAL entry state (DEC
       }),
     );
     await settled(A);
-    expect(row()).toMatchObject({ quantity_mode: "subjective", points_value: 1.5 });
+    expect(row()).toMatchObject({ quantity_mode: "subjective", points_value: 3 });
 
     act(() => A.result.current.updateEntry("lunch", { ...e(), subjective: "מוגזם" }));
     await settled(A);
-    expect(row()).toMatchObject({ points_value: 2 });
+    expect(row()).toMatchObject({ points_value: 4 });
 
     act(() =>
       A.result.current.updateEntry("lunch", {
         ...e(),
         mode: "measured",
-        amount: 2,
-        unit: "יחידה",
+        amount: 50,
+        unit: "גרם",
         subjective: undefined,
       }),
     );
     await settled(A);
-    expect(row()).toMatchObject({ quantity_mode: "measured", amount: 2, points_value: 2 });
-    // The persisted snapshot always equals a fresh v2 calculation of the final row.
-    expect(row().points_value).toBe(calculatePointsV2(e(), f));
-    expect(row().points_model_version).toBe("v2-il");
+    expect(row()).toMatchObject({ quantity_mode: "measured", amount: 50, points_value: 1 });
+    expect(row().points_model_version).toBe("ref-v1");
     A.unmount();
   });
 
-  it("a legacy v1 snapshot is hydrated as saved (fruit = 0) and only a deliberate edit moves it to v2-il", async () => {
+  it("a legacy v1 snapshot is hydrated as saved (fruit = 0) and only a deliberate edit re-scores it through the reference", async () => {
     fake.rows("food_entries").push({
       id: "legacy-v1",
       household_id: HOUSEHOLD,
@@ -516,26 +523,27 @@ describe("points v2-il — persisted snapshots follow the FINAL entry state (DEC
       expect(A.result.current.getDay("me", today()).meals.lunch.entries).toHaveLength(1),
     );
     const e = A.result.current.getDay("me", today()).meals.lunch.entries[0];
-    expect(e).toMatchObject({ pointsValue: 0, pointsModelVersion: "v1" });
-    const f = A.result.current.foods.find((x) => x.id === "f_apple");
-    expect(pointsLib.pointsForEntry(e, f)).toBe(0);
-    // Activation/hydration wrote nothing back.
+    expect(e).toMatchObject({ pointsValue: 0, pointsModelVersion: "v1", foodName: "תפוח" });
+    expect(pointsLib.pointsForEntry(e)).toBe(0);
+    // Activation/hydration wrote nothing back; the history keeps its old name.
     expect(fake.rows("food_entries")[0]).toMatchObject({
       points_value: 0,
       points_model_version: "v1",
+      food_name: "תפוח",
     });
     expect(writes()).toBe(0);
-    // Deliberate edit (same quantity) → v2-il snapshot: fruit is 1 now.
-    act(() => A.result.current.updateEntry("lunch", { ...e }));
+    // Deliberate edit to a resolvable quantity → reference snapshot (100 גרם = 2).
+    act(() => A.result.current.updateEntry("lunch", { ...e, amount: 100, unit: "גרם" }));
     await settled(A);
     expect(fake.rows("food_entries")[0]).toMatchObject({
-      points_value: 1,
-      points_model_version: "v2-il",
+      points_value: 2,
+      points_model_version: "ref-v1",
+      points_basis: "reference:exact",
     });
     A.unmount();
   });
 
-  it("offline write + queue replay and a realtime roundtrip keep the v2-il snapshot", async () => {
+  it("offline write + queue replay and a realtime roundtrip keep the reference snapshot", async () => {
     const A = await mountDevice(USER_A, "me");
     setOnline(false);
     fake.offline = true;
@@ -545,16 +553,25 @@ describe("points v2-il — persisted snapshots follow the FINAL entry state (DEC
     fake.offline = false;
     act(() => window.dispatchEvent(new Event("online")));
     await waitFor(() => expect(A.result.current.syncState).toBe("saved"), { timeout: 5000 });
-    expect(row()).toMatchObject({ points_value: 3, points_model_version: "v2-il" });
+    expect(row()).toMatchObject({
+      food_name: "לחם אחיד - לבן שחור",
+      points_value: 2,
+      points_model_version: "ref-v1",
+    });
 
     // Device B writes a scored Elena entry; A receives it with the snapshot intact.
     const B = await deviceB();
-    const f = A.result.current.foods.find((x) => x.id === "f_apple");
-    await B.add("elena", "lunch", pointsLib.scoreEntry({ id: "b-1", ...fruit, amount: 2 }, f));
+    const canonical = A.result.current.resolveFoodId("f_apple")!;
+    const f = A.result.current.foods.find((x) => x.id === canonical);
+    await B.add(
+      "elena",
+      "lunch",
+      pointsLib.scoreEntry({ id: "b-1", ...fruit, foodId: canonical, amount: 200 }, f),
+    );
     await waitFor(() =>
       expect(A.result.current.getDay("elena", today()).meals.lunch.entries[0]).toMatchObject({
-        pointsValue: 2,
-        pointsModelVersion: "v2-il",
+        pointsValue: 4,
+        pointsModelVersion: "ref-v1",
       }),
     );
     A.unmount();

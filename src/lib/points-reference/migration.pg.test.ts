@@ -17,9 +17,11 @@ import { PGlite } from "@electric-sql/pglite";
 import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
 import { BEGIN_MARKER, END_MARKER } from "../../../scripts/points-reference/seed-sql";
 import dataset from "@/data/points-reference/reference.v1.json";
+import aliasFile from "@/data/points-reference/aliases.v1.json";
 
 const MIGRATIONS = join(process.cwd(), "supabase", "migrations");
 const REFERENCE_MIGRATION = "20260921120000_points_reference.sql";
+const ALIAS_MIGRATION = "20260922090000_reference_only_foods.sql";
 const SKIP = new Set([
   "20260723090300_realtime.sql",
   "20260725190000_cleanup_mock_data_and_seed_food_catalog.sql",
@@ -247,6 +249,32 @@ describe("points reference migration (DEC-035)", () => {
     await db.query(`update public.food_reference_items set points = 1 where id = '${ref}'`);
   });
 
+  it("DEC-036: the verified aliases are seeded, readable by a member, not writable; a personal alias stores its link", async () => {
+    const apple = await db.query<{ alias: string; display_name: string; verified: boolean }>(
+      "select a.alias, i.display_name, a.verified from public.food_reference_aliases a join public.food_reference_items i on i.id = a.item_id where a.normalized_alias = 'תפוח'",
+    );
+    expect(apple.rows).toEqual([{ alias: "תפוח", display_name: "תפוח עץ", verified: true }]);
+    const hid = (await db.query<{ id: string }>("select id from public.households limit 1")).rows[0]
+      .id;
+    await asUser(DEVICE_A, async () => {
+      const n = await count(
+        "select count(*) as n from public.food_reference_aliases where verified",
+      );
+      expect(n).toBe(aliasFile.aliases.length);
+      await expect(
+        db.query("update public.food_reference_aliases set verified = false"),
+      ).rejects.toThrow(/permission denied/);
+      await db.query(
+        `insert into public.foods (household_id, name, normalized_name, reference_group_key)
+         values ('${hid}', 'המלפפון שלי', 'המלפפון שלי', 'מלפפון')`,
+      );
+    });
+    const row = await db.query<{ reference_group_key: string; points_status: string }>(
+      "select reference_group_key, points_status from public.foods where name = 'המלפפון שלי'",
+    );
+    expect(row.rows[0]).toEqual({ reference_group_key: "מלפפון", points_status: "unscored" });
+  });
+
   it("rejects an unknown status / rule / benefit value", async () => {
     await expect(
       db.query("update public.food_reference_items set status = 'guess' where source_row = 3"),
@@ -278,7 +306,7 @@ describe("production apply wrapper (owner-run SQL)", () => {
         );
       `);
       for (const file of readdirSync(MIGRATIONS).sort()) {
-        if (SKIP.has(file) || file === REFERENCE_MIGRATION) continue;
+        if (SKIP.has(file) || file === REFERENCE_MIGRATION || file === ALIAS_MIGRATION) continue;
         await fresh.exec(readFileSync(join(MIGRATIONS, file), "utf8"));
       }
       const wrapper = readFileSync(
@@ -295,6 +323,31 @@ describe("production apply wrapper (owner-run SQL)", () => {
         "select version, name from supabase_migrations.schema_migrations where version = '20260921120000'",
       );
       expect(ledger.rows).toEqual([{ version: "20260921120000", name: "points_reference" }]);
+
+      // DEC-036 wrapper on top: before/after counts identical, aliases seeded, ledger row, idempotent.
+      const countsSql =
+        "select (select count(*) from public.households) as h, (select count(*) from public.profiles) as p, (select count(*) from public.foods) as f, (select count(*) from public.food_entries) as e";
+      const before = (await fresh.query(countsSql)).rows[0];
+      const aliasWrapper = readFileSync(
+        join(process.cwd(), "supabase", "apply_reference_only_foods_production.sql"),
+        "utf8",
+      );
+      await fresh.exec(aliasWrapper);
+      await fresh.exec(aliasWrapper);
+      const after = (await fresh.query(countsSql)).rows[0];
+      expect(after).toEqual(before);
+      const aliases = await fresh.query<{ n: string }>(
+        "select count(*) as n from public.food_reference_aliases where verified",
+      );
+      expect(Number(aliases.rows[0].n)).toBe(aliasFile.aliases.length);
+      const col = await fresh.query<{ column_name: string; is_nullable: string }>(
+        "select column_name, is_nullable from information_schema.columns where table_name = 'foods' and column_name = 'reference_group_key'",
+      );
+      expect(col.rows).toEqual([{ column_name: "reference_group_key", is_nullable: "YES" }]);
+      const ledger2 = await fresh.query<{ version: string; name: string }>(
+        "select version, name from supabase_migrations.schema_migrations where version = '20260922090000'",
+      );
+      expect(ledger2.rows).toEqual([{ version: "20260922090000", name: "reference_only_foods" }]);
     } finally {
       await fresh.close();
     }

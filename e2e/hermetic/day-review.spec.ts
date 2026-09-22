@@ -27,8 +27,8 @@ test("one tap from home shows the whole day, the partner's day, and reaches edit
 
   // Elena logs two things in one slot, one elsewhere, and skips a snack.
   await logFood(page, "פתיחת חלון אכילה", "ביצה");
-  await logFood(page, "פתיחת חלון אכילה", "תפוח");
-  await logFood(page, "ארוחת ערב", "סלמון");
+  await logFood(page, "פתיחת חלון אכילה", "תפוח עץ");
+  await logFood(page, "ארוחת ערב", "דג סלמון אחרי בישול");
   await page.getByRole("button", { name: /^נשנוש ראשון:/ }).click();
   await page.getByRole("button", { name: "לא נאכלה ארוחה" }).click();
   await page.getByRole("button", { name: "סגירה" }).click();
@@ -41,7 +41,7 @@ test("one tap from home shows the whole day, the partner's day, and reaches edit
   const breakfast = page.getByTestId("day-review-slot-breakfast");
   await expect(breakfast).toHaveAttribute("data-status", "logged");
   await expect(breakfast).toContainText("ביצה");
-  await expect(breakfast).toContainText("תפוח");
+  await expect(breakfast).toContainText("תפוח עץ");
   await expect(breakfast.getByText(/^\d{2}:\d{2}$/)).toHaveCount(2);
   await expect(page.getByTestId("day-review-slot-morning_snack")).toHaveAttribute(
     "data-status",
@@ -77,7 +77,7 @@ test("one tap from home shows the whole day, the partner's day, and reaches edit
   await expect(page.getByTestId("today-count")).toContainText("3/6");
   await page.getByTestId("today-review").click();
   await expect(page.getByTestId("day-review-summary")).toContainText("2 פריטים");
-  await expect(page.getByTestId("day-review-slot-breakfast")).not.toContainText("תפוח");
+  await expect(page.getByTestId("day-review-slot-breakfast")).not.toContainText("תפוח עץ");
   await page.getByRole("button", { name: "סגירה" }).click();
 
   // The partner card opens the partner's review directly (read-only), with the
