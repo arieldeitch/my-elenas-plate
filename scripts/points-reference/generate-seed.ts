@@ -5,6 +5,11 @@
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import {
+  ALIAS_MIGRATION_PATH,
+  ALIAS_WRAPPER_PATH,
+  buildAliasProductionWrapper,
+  buildAliasSeedSql,
+  spliceAliasSeed,
   buildProductionWrapper,
   buildReferenceSeedSql,
   MIGRATION_PATH,
@@ -29,3 +34,11 @@ const migration = spliceReferenceSeed(
 write(MIGRATION_PATH, migration);
 // The owner-run production wrapper is the migration + the CLI ledger row.
 write(WRAPPER_PATH, buildProductionWrapper(migration));
+
+// DEC-036: the alias seed block of the reference-only migration + its wrapper.
+const aliasMigration = spliceAliasSeed(
+  readFileSync(ALIAS_MIGRATION_PATH, "utf8"),
+  buildAliasSeedSql(),
+);
+write(ALIAS_MIGRATION_PATH, aliasMigration);
+write(ALIAS_WRAPPER_PATH, buildAliasProductionWrapper(aliasMigration));
