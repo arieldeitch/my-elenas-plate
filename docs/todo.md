@@ -1,12 +1,24 @@
 # TODO
 
 Status legend: Done / In Progress / Blocked / Deferred / Not Started.
-Updated 2026-09-21. **Production bootstrap is complete** — Supabase project `rqgoiuztphkcvbwtbxbj`
+Updated 2026-09-22. **Production bootstrap is complete** — Supabase project `rqgoiuztphkcvbwtbxbj`
 holds 1 household, 2 profiles (אריאל/אלנה), 6 meal slots, RLS on 10 tables and 390 active foods
 (status `READY`). Rollback code checkpoint: tag `pilot-ready-2026-07-24` (`29ac1d5`).
 **M1 code is Done and merged to `main`; owner release actions A/B/C are complete; live preflight PASS on the served `0cd3673` (2026-09-18). DEC-031 (2026-09-18) removed the login: production now needs the device-join migration + "Allow anonymous sign-ins" + a republish (`supabase/DEPLOY.md`), then the two-minute path §3b on both phones (`M1_RELEASE_ACCEPTANCE.md`).**
 **T-034 was split on 2026-08-01** (DEC-023): the backend half is **Done**, the browser-dependent half
 (**T-034-UI**) is **Blocked** until a browser automation capability exists.
+
+## DEC-036 — reference-only food list (2026-09-22)
+
+- [x] Canonical resolver (`resolveCatalog`), 76 verified aliases, hidden legacy foods, no points fallback,
+      personal aliases instead of custom values, resolver-backed favourites/recents/edit/copy, coffee map.
+- [x] 15 mandatory acceptance items (`store-reference.test.tsx`), PGlite proof of both wrappers, 9/9 phone E2E.
+- [x] Migration `20260922090000_reference_only_foods` + owner wrapper + verify script; merged to `main`.
+- [ ] **Owner:** `verify_reference_only_foods.sql` → `apply_reference_only_foods_production.sql` → verify → publish
+      `main` from Lovable → `npm run preflight -- --live`.
+- [ ] Elena: add rows for the basics with no reference row (`מים`, `מים מוגזים`, `קולה זירו`, `מלח`) and decide the
+      235 hidden legacy names (`docs/POINTS_REFERENCE_RECONCILIATION.md`).
+- [ ] Drive: create the P-005 project memory document (none exists in the connected Drive) and paste DEC-036 §0.
 
 ## DEC-035 — canonical points reference from `ניקוד.xlsx` (2026-09-21)
 
@@ -17,9 +29,7 @@ holds 1 household, 2 profiles (אריאל/אלנה), 6 meal slots, RLS on 10 tab
 - [x] UI: reference line in results, VariantPicker, reference-aware quantity screen, NewFoodForm confirmation.
 - [x] 16 acceptance items covered (`docs/POINTS_REFERENCE.md §5`); hermetic Playwright on Pixel 7.
 - [x] Migration `20260921120000_points_reference` + owner wrapper + verify, proven on PGlite.
-- [ ] **Owner:** run `supabase/verify_points_reference.sql` → `apply_points_reference_production.sql` → verify
-      again on `rqgoiuztphkcvbwtbxbj` (`supabase/DEPLOY.md`).
-- [ ] **Owner:** merge PR `feat/points-reference-import` → Lovable publish → `npm run preflight -- --live`.
+- [x] **Owner:** `20260921120000` applied in production (REST probe 2026-09-22); PR #2 merged; `919f75e` published (preflight PASS).
 - [ ] Elena: resolve the 3 conflicts and the 78 review rows in the sheet → bump `SOURCE_VERSION` → re-import
       (new migration for the new version).
 - [ ] Review the 158 catalog candidates; add verified aliases (`food_reference_aliases`) + wire `loadAliases`.

@@ -1,6 +1,6 @@
 # Project Status
 
-**Date:** 2026-09-21 (canonical points reference from `ניקוד.xlsx`, DEC-035; on branch `feat/points-reference-import`, PR open, migration `20260921120000` prepared + proven on PGlite, NOT applied to production)
+**Date:** 2026-09-22 (DEC-036 reference-only foods on `main`; DEC-035 applied + live on `919f75e`; migration `20260922090000` prepared, NOT applied to production; publish of the new `main` pending)
 **Branch:** `main` — points v2-il (vegetables 0, fruit positive, calibrated/nutrition/category hierarchy) + personalised daily budget (Mifflin-St Jeor backbone) + keyboard/quantity fixes. Production schema `20260919100000` is applied/verified; Lovable publish of current main has been triggered.
 **Supabase project:** `rqgoiuztphkcvbwtbxbj` (production) · isolated branch `uyroeumwmjhrcbkesmgb`
 **Stage:** **Feature work paused. M1 = YELLOW only until live verification: DEC-031 + hardening are applied, owner reports Supabase "Allow anonymous sign-ins" = ON, and current main is published. Next: fresh-device smoke + §3b on two phones → M1 CLOSED → M2-7 (`M2_7_PILOT.md`).**
@@ -8,6 +8,19 @@
 **Pilot-ready code checkpoint:** tag `pilot-ready-2026-07-24` → `29ac1d5`.
 
 > Rule: nothing is listed as "working" unless it was actually run/verified.
+
+## 2026-09-22 (fourteenth run) — the reference is the ONLY source of the food list (DEC-036)
+
+Full record: `docs/claude-tasks/RUN_2026-09-22_REFERENCE_ONLY_FOODS.md`. State found: PR #2 merged and
+published (`919f75e` live, preflight PASS), migration `20260921120000` applied in production (REST
+probe). Cutover: active list = reference foods only (`resolveCatalog`), 76 hand-verified aliases
+(`תפוח` → `תפוח עץ`, one card), 154 legacy foods linked / 235 hidden / 18 duplicates collapsed,
+1,431 → 1,121 cards; no points fallback (unscored entries shown as "ללא ניקוד"); custom foods =
+personal aliases; favourites/recents/edit/copy through the resolver; coffee via a documented map.
+Migration `20260922090000` (column + alias seed + before/after counts) proven on PGlite, NOT applied.
+Gate: typecheck 0 · lint 0 errors · vitest 447/16 · hermetic Playwright 9/9 · build OK (gzip 272 KB).
+Merged to `main` (gates passed); owner: apply migration, publish, verify. Drive project memory for
+P-005 does not exist in the connected account → gap documented, not updated.
 
 ## 2026-09-21 (thirteenth run) — canonical points reference from `ניקוד.xlsx` (DEC-035)
 

@@ -1,7 +1,7 @@
 # Claude Context
 
 Fast-start context for Claude Code. The latest user instruction always overrides older docs.
-Updated 2026-09-21 (DEC-035 canonical points reference on branch `feat/points-reference-import`, PR open; migration 20260921120000 prepared + proven on PGlite, NOT applied to production; previous state: DEC-034 applied/verified, publish triggered).
+Updated 2026-09-22 (DEC-036 reference-only foods merged to `main`; migration 20260922090000 prepared + proven on PGlite, NOT applied to production; DEC-035 migration IS applied and live on `919f75e`).
 
 ## Start state
 
@@ -11,6 +11,17 @@ Updated 2026-09-21 (DEC-035 canonical points reference on branch `feat/points-re
   M1 status: `docs/claude-tasks/M1_STATUS.md`; **M1 release entrypoint:**
   `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md`; latest run record:
   `docs/claude-tasks/RUN_2026-09-19_POINTS_V2_HARDENING.md` (previous: `RUN_2026-09-19_STEPS_UX.md`, `RUN_2026-09-18_RELIABILITY_HARDENING.md`).
+- **DEC-036 (2026-09-22) — the reference is the ONLY source of the food list (`docs/POINTS_REFERENCE.md §0`).**
+  `src/lib/points-reference/canonical.ts` builds the active list from the reference alone
+  (`resolveCatalog`); legacy catalog foods appear only through explicit link / verified alias
+  (`src/data/points-reference/aliases.v1.json`, 76) / exact name, as the reference card (`r_*`,
+  one canonical id), otherwise hidden (235). No points fallback: unresolved entries are saved
+  UNSCORED (`pointsValue null`, `ref-v1`), never estimated; custom foods are personal aliases
+  (`store.addPersonalAlias`, `PersonalAliasForm`) of reference foods. Favourites/recents/edit/copy go
+  through `store.resolveFoodId`. Coffee scores via `coffeeReferenceGroup`. Migration
+  `20260922090000_reference_only_foods` (+ `apply_reference_only_foods_production.sql`,
+  `verify_reference_only_foods.sql`) is an owner gate; the client refuses to create personal aliases
+  until the column exists. Run record: `docs/claude-tasks/RUN_2026-09-22_REFERENCE_ONLY_FOODS.md`.
 - **DEC-035 (2026-09-21) — canonical points reference (`docs/POINTS_REFERENCE.md`).** Elena's sheet
   `docs/data/nutrition-points-source.xlsx` → `npm run points:import` → `src/data/points-reference/`
   (audit `reference.v1.json` with verbatim `source_*`, runtime `reference.v1.runtime.json`, reports).
@@ -138,7 +149,7 @@ seeded. Nothing was ever broken in the migration.
 Not a repository audit, and not a migration:
 
 1. Read `docs/claude-context.md`.
-2. Read `docs/claude-tasks/RUN_2026-09-21_POINTS_REFERENCE.md` (latest run record; previous `RUN_2026-09-19_POINTS_V2_HARDENING.md`) and
+2. Read `docs/claude-tasks/RUN_2026-09-22_REFERENCE_ONLY_FOODS.md` (latest run record; previous `RUN_2026-09-21_POINTS_REFERENCE.md`) and
    `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md` (release state).
 3. Read `docs/project-status.md` and `docs/todo.md`.
 4. Check the current branch, HEAD and `git status` (read-only).
