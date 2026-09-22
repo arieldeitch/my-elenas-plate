@@ -70,20 +70,24 @@ describe("MealEditor (M2 one-screen logging loop)", () => {
 
     await user.type(search(), "תפוח");
     // Search results appear after the 180ms debounce — findAllBy waits for them.
-    // "תפוח" also prefixes תפוח אדמה / תפוחי אדמה, and the exact match ranks first.
+    // DEC-036: "תפוח" is a verified alias of the reference food תפוח עץ, which
+    // ranks first (exact alias) above the תפוח אדמה prefix matches — ONE card.
     const results = await screen.findAllByTestId("search-result");
-    expect(results[0]).toHaveAccessibleName("תפוח, פתיחת בחירת כמות");
+    expect(results[0]).toHaveAccessibleName("תפוח עץ, פתיחת בחירת כמות");
     expect(results[0]).toHaveAttribute("data-direct", "false");
+    expect(within(results[0]).getByTestId("result-alias")).toHaveTextContent("נמצא לפי: תפוח");
+    expect(results.filter((r) => within(r).queryByText("תפוח עץ"))).toHaveLength(1);
     await user.click(results[0]);
     expect(screen.getByRole("button", { name: "הוספת המאכל" })).toBeInTheDocument();
+    expect(screen.getByTestId("points-preview")).toHaveAttribute("data-points", "2");
     await user.click(screen.getByRole("button", { name: "הוספת המאכל" }));
     const row = within(screen.getByTestId("meal-entries")).getByTestId("meal-entry");
-    expect(within(row).getByText("תפוח")).toBeInTheDocument();
-    expect(row).toHaveAttribute("data-quantity", "1 יחידה");
+    expect(within(row).getByText("תפוח עץ")).toBeInTheDocument();
+    expect(row).toHaveAttribute("data-quantity", "100 גרם");
     expect(search()).toHaveValue("");
     expect(store!.getDay("me", isoToday()).meals.dinner.entries[0].loggedAt).toMatch(/^\d{4}-/);
 
-    await user.click(screen.getByRole("button", { name: "מחיקה: תפוח" }));
+    await user.click(screen.getByRole("button", { name: "מחיקה: תפוח עץ" }));
     expect(screen.queryByTestId("meal-entries")).not.toBeInTheDocument();
   });
 
@@ -91,17 +95,17 @@ describe("MealEditor (M2 one-screen logging loop)", () => {
     const user = userEvent.setup();
     renderEditor();
 
-    await user.type(search(), "תפוח");
+    await user.type(search(), "ביצה");
     await user.click((await screen.findAllByTestId("search-result"))[0]);
     await user.click(screen.getByRole("button", { name: "הוספת המאכל" }));
 
     // Now a chip exists under "אחרונים" — one tap adds it too, no quantity step.
     expect(screen.getByText("אחרונים")).toBeInTheDocument();
     expect(screen.getByTestId("quick-add-hint")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "תפוח, הוספה של 1 יחידה" }));
+    await user.click(screen.getByRole("button", { name: "ביצה, הוספה של 1 יחידה" }));
 
     expect(screen.queryByRole("button", { name: "הוספת המאכל" })).not.toBeInTheDocument();
-    const rows = within(screen.getByTestId("meal-entries")).getAllByText("תפוח");
+    const rows = within(screen.getByTestId("meal-entries")).getAllByText("ביצה");
     expect(rows).toHaveLength(2); // repeated add = a second row (existing rule)
     const day = store!.getDay("me", isoToday());
     expect(day.meals.dinner.entries).toHaveLength(2);
@@ -114,14 +118,14 @@ describe("MealEditor (M2 one-screen logging loop)", () => {
     expect(store!.getDay("elena", isoToday()).meals.dinner.entries).toHaveLength(0);
   });
 
-  it("a weight-first food (קוטג׳ → גרם) has no trusted default: the result opens the quantity screen", async () => {
+  it("a weight-first food (אבוקדו → 30 גרם) has no trusted default: the result opens the quantity screen", async () => {
     const user = userEvent.setup();
     renderEditor();
 
-    await user.type(search(), "קוטג");
+    await user.type(search(), "אבוקדו");
     const result = (await screen.findAllByTestId("search-result"))[0];
     expect(result).toHaveAttribute("data-direct", "false");
-    expect(result).toHaveAccessibleName(/^קוטג׳, פתיחת בחירת כמות/);
+    expect(result).toHaveAccessibleName(/^אבוקדו, פתיחת בחירת כמות/);
     await user.click(result);
 
     // Quantity screen, grams first — nothing was added yet.
@@ -135,6 +139,7 @@ describe("MealEditor (M2 one-screen logging loop)", () => {
     const user = userEvent.setup();
     renderEditor();
 
+    // "סלט ירקות" is a verified alias of the reference food ירקות (0 at any quantity).
     await user.type(search(), "סלט ירקות");
     await user.click((await screen.findAllByTestId("search-result"))[0]);
     await user.click(screen.getByRole("tab", { name: "לפי תחושה" }));
@@ -142,7 +147,7 @@ describe("MealEditor (M2 one-screen logging loop)", () => {
     await user.click(screen.getByRole("button", { name: "הוספת המאכל" }));
 
     const entries = screen.getByTestId("meal-entries");
-    expect(within(entries).getByText("סלט ירקות")).toBeInTheDocument();
+    expect(within(entries).getByText("ירקות")).toBeInTheDocument();
     expect(within(entries).getByText("הרבה")).toBeInTheDocument();
   });
 
@@ -150,10 +155,10 @@ describe("MealEditor (M2 one-screen logging loop)", () => {
     const user = userEvent.setup();
     renderEditor();
 
-    await user.type(search(), "גבינה צהובה");
+    await user.type(search(), "לחם דגנים");
     await user.click((await screen.findAllByTestId("search-result"))[0]);
 
-    // גבינה צהובה opens the quantity screen with its own suggested units.
+    // לחם דגנים (1 פרוסה / 30 גרם) offers exactly the units its reference portion resolves.
     expect(screen.getByRole("button", { name: "פרוסה" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "גרם" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "חצי יחידה" })).not.toBeInTheDocument();
@@ -163,11 +168,11 @@ describe("MealEditor (M2 one-screen logging loop)", () => {
     const user = userEvent.setup();
     renderEditor();
 
-    // Typing קוטג' (straight apostrophe) must resolve to the catalog's קוטג׳.
-    await user.type(search(), "קוטג'");
+    // Typing צ׳יה (Hebrew geresh) must resolve to the reference row זרעי צ'יה — no "new" offer.
+    await user.type(search(), "צ׳יה");
 
-    expect(await screen.findByRole("button", { name: /קוטג׳/ })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /כמאכל חדש/ })).not.toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /זרעי צ/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /קישור לשם אישי/ })).not.toBeInTheDocument();
   });
 
   it("marks the meal as not eaten and can undo the skip", async () => {
@@ -203,42 +208,59 @@ describe("MealEditor — direct add boundaries (M2-6)", () => {
     store = null;
   });
 
-  it("creating a custom food confirms portion + points first, then goes through the quantity screen — never a guessed default", async () => {
+  it("an unknown name becomes a PERSONAL ALIAS of a reference food — never a food with its own points (DEC-036)", async () => {
     const user = userEvent.setup();
     renderEditor();
     await user.type(search(), "מאפין קינמון ביתי");
-    await user.click(await screen.findByRole("button", { name: /כמאכל חדש/ }));
-    // DEC-035: an unknown food is never scored silently — the new-food form asks
-    // for the reference quantity, category and points, and the person confirms.
-    expect(screen.getByTestId("new-food-form")).toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: /קישור לשם אישי/ }));
+    const form = screen.getByTestId("personal-alias-form");
+    expect(form).toBeInTheDocument();
+    // Nothing exists yet; the save is disabled until a reference food is picked.
     expect(store!.foods.some((f) => f.name === "מאפין קינמון ביתי")).toBe(false);
-    await user.selectOptions(screen.getByLabelText("קטגוריה"), "דגנים ופחמימות");
-    await user.type(screen.getByLabelText("נקודות לכמות הייחוס"), "5");
-    await user.click(screen.getByTestId("nf-confirm"));
+    expect(screen.getByTestId("pa-save")).toBeDisabled();
+    await user.clear(screen.getByLabelText("המאכל במאגר"));
+    await user.type(screen.getByLabelText("המאכל במאגר"), "מאפין");
+    const option = (await screen.findAllByTestId("pa-option")).find((o) =>
+      within(o).queryByText("מאפין שוקולד"),
+    )!;
+    await user.click(option);
+    await user.click(screen.getByTestId("pa-save"));
+    // The quantity screen is the reference food's (1 יחידה / 45 גרם = 5): no card of its own.
     expect(screen.getByRole("button", { name: "הוספת המאכל" })).toBeInTheDocument();
-    expect(screen.getByTestId("points-preview")).toHaveAttribute("data-basis", "custom:confirmed");
-    expect(store!.getDay("me", isoToday()).meals.dinner.entries).toHaveLength(0);
+    expect(screen.getByTestId("reference-line")).toHaveTextContent(
+      "מנת ייחוס: 1 יחידה (45 גרם) = 5 נק׳",
+    );
+    expect(store!.foods.some((f) => f.name === "מאפין קינמון ביתי")).toBe(false);
     await user.click(screen.getByRole("button", { name: "הוספת המאכל" }));
-    expect(screen.getByTestId("meal-entry")).toHaveAttribute("data-quantity", "1 יחידה");
-    // Once it exists (default unit יחידה), its chip is a trusted one-tap add like any other.
+    const row = screen.getByTestId("meal-entry");
+    expect(within(row).getByText("מאפין שוקולד")).toBeInTheDocument();
+    expect(row).toHaveAttribute("data-points", "5");
+    // The personal name now FINDS the reference food (and its chip is the reference food's).
     expect(
-      screen.getByRole("button", { name: "מאפין קינמון ביתי, הוספה של 1 יחידה" }),
+      screen.getByRole("button", { name: "מאפין שוקולד, הוספה של 1 יחידה" }),
     ).toBeInTheDocument();
+    await user.type(search(), "מאפין קינמון ביתי");
+    const hit = (await screen.findAllByTestId("search-result"))[0];
+    expect(within(hit).getByText("מאפין שוקולד")).toBeInTheDocument();
+    expect(within(hit).getByTestId("result-alias")).toHaveTextContent(
+      "נמצא לפי: מאפין קינמון ביתי",
+    );
   });
 
   it("a recent chip for a weight-first food opens the quantity screen too (one rule for chips and results)", async () => {
     const user = userEvent.setup();
     renderEditor();
-    await user.type(search(), "קוטג");
+    await user.type(search(), "אבוקדו");
     await user.click((await screen.findAllByTestId("search-result"))[0]);
     await user.click(screen.getByRole("button", { name: "גרם" }));
     await user.clear(screen.getByRole("spinbutton"));
     await user.type(screen.getByRole("spinbutton"), "150");
     await user.click(screen.getByRole("button", { name: "הוספת המאכל" }));
     expect(screen.getByTestId("meal-entry")).toHaveAttribute("data-quantity", "150 גרם");
+    expect(screen.getByTestId("meal-entry")).toHaveAttribute("data-points", "5"); // 30 גרם = 1 → 150 גרם = 5
 
     // The recent chip announces the fallback and opens the quantity screen.
-    const chip = screen.getByRole("button", { name: "קוטג׳, פתיחת בחירת כמות" });
+    const chip = screen.getByRole("button", { name: "אבוקדו, פתיחת בחירת כמות" });
     expect(chip).toHaveAttribute("data-direct", "false");
     await user.click(chip);
     expect(screen.getByRole("button", { name: "הוספת המאכל" })).toBeInTheDocument();

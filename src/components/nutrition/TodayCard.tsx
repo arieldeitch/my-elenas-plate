@@ -6,7 +6,7 @@ import { calcCompletion } from "@/lib/completion";
 import { latestActivity } from "@/lib/activity";
 import { MEAL_LABELS } from "@/lib/meal-slots";
 import { cn } from "@/lib/utils";
-import { formatPoints, pointsForDay, pointsRemaining } from "@/lib/points";
+import { formatPoints, pointsForDay, pointsRemaining, unscoredEntries } from "@/lib/points";
 
 interface Props {
   onOpenCalendar: () => void;
@@ -34,6 +34,8 @@ export function TodayCard({ onOpenCalendar, onOpenReview, onOpenPoints }: Props)
   const completion = useMemo(() => calcCompletion(day.meals), [day.meals]);
   const latest = useMemo(() => latestActivity(day), [day]);
   const points = useMemo(() => pointsForDay(day, foods), [day, foods]);
+  // DEC-036: entries saved without a reference value are counted, never estimated.
+  const unscored = useMemo(() => unscoredEntries(day).length, [day]);
   const budgetInfo = getPointsBudgetInfo(activeProfile);
   const pointsBudget = budgetInfo.budget;
   const remaining = pointsRemaining(points, pointsBudget);
@@ -134,6 +136,11 @@ export function TodayCard({ onOpenCalendar, onOpenReview, onOpenPoints }: Props)
           {budgetInfo.source === "fallback" && (
             <span className="mr-2 text-[11px] text-info" data-testid="budget-setup-prompt">
               השלמת פרטים להתאמת יעד הנקודות
+            </span>
+          )}
+          {unscored > 0 && (
+            <span className="mr-2 text-[11px] text-muted-foreground" data-testid="today-unscored">
+              {unscored === 1 ? "פריט אחד ללא ניקוד" : `${unscored} פריטים ללא ניקוד`}
             </span>
           )}
         </span>

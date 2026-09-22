@@ -118,27 +118,14 @@ describe("points reference in the meal editor", () => {
     expect(screen.getByTestId("points-preview")).toHaveAttribute("data-points", "1");
   });
 
-  it("an unknown food: suggestions are 'הצעה לבדיקה' with source + confidence, and saving requires confirmation", async () => {
+  it("an unknown name offers ONLY a personal alias to a reference food — no new-food form (DEC-036)", async () => {
     const user = userEvent.setup();
     renderEditor();
     await user.type(search(), "יוגורט טבעי 4%");
-    await user.click(await screen.findByRole("button", { name: /כמאכל חדש/ }));
-    const form = screen.getByTestId("new-food-form");
-    const suggestions = within(form).getAllByTestId("nf-suggestion");
-    expect(suggestions.length).toBeGreaterThan(0);
-    expect(suggestions[0]).toHaveAttribute("data-confidence");
-    // Confirm without points → refused.
-    await user.selectOptions(screen.getByLabelText("קטגוריה"), "מוצרי חלב");
-    await user.click(screen.getByTestId("nf-confirm"));
-    expect(screen.getByText(/יש להזין ניקוד/)).toBeInTheDocument();
-    // Take a suggestion: the source is shown, the person still confirms.
-    await user.click(suggestions[0]);
-    expect(screen.getByTestId("nf-suggestion-source")).toHaveTextContent("הצעה לבדיקה על בסיס");
+    await user.click(await screen.findByRole("button", { name: /קישור לשם אישי/ }));
+    expect(screen.getByTestId("personal-alias-form")).toBeInTheDocument();
+    expect(screen.queryByTestId("new-food-form")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("נקודות לכמות הייחוס")).not.toBeInTheDocument();
     expect(store!.foods.some((f) => f.name === "יוגורט טבעי 4%")).toBe(false);
-    await user.click(screen.getByTestId("nf-confirm"));
-    const created = store!.foods.find((f) => f.name === "יוגורט טבעי 4%")!;
-    expect(created.pointsStatus).toBe("confirmed");
-    expect(created.createdBy).toBe("me");
-    expect(screen.getByTestId("points-preview")).toHaveAttribute("data-basis", "custom:confirmed");
   });
 });

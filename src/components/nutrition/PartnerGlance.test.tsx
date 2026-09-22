@@ -64,7 +64,7 @@ describe("PartnerGlance (M2 — partner's day at a glance)", () => {
     expect(card).toHaveAttribute("data-partner", "elena");
     expect(card).toHaveAccessibleName(/2 מתוך 6 ארוחות תועדו/);
     // The visible line answers "what did she eat last?" (name + slot, no quantity).
-    expect(card).toHaveTextContent(/לאחרונה: תפוח · ארוחה מרכזית/);
+    expect(card).toHaveTextContent(/לאחרונה: תפוח עץ · ארוחה מרכזית/);
     expect(card.querySelector("[data-slot='lunch']")).toHaveAttribute("data-status", "logged");
     expect(card.querySelector("[data-slot='late']")).toHaveAttribute("data-status", "skipped");
     expect(card.querySelectorAll("[data-status='empty']")).toHaveLength(4);

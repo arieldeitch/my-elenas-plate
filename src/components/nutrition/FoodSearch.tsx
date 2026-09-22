@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, Star, Clock, Plus, X, Coffee, SlidersHorizontal } from "lucide-react";
 import type { Food } from "@/lib/domain";
 import { useStore } from "@/lib/store";
-import { buildFoodSearchIndex, findFoodByName, searchFoods } from "@/lib/food-search";
+import { buildFoodSearchIndex, findFoodByName, searchFoodsDetailed } from "@/lib/food-search";
 import { normalizeFoodName } from "@/lib/food-normalize";
 import { formatQuantity, usualQuantity } from "@/lib/quantity";
 import { formatPoints } from "@/lib/points";
@@ -11,43 +11,34 @@ import {
   getReferenceIndex,
   groupForFood,
   groupPointsSummary,
+  selectableItems,
 } from "@/lib/points-reference";
 import { cn } from "@/lib/utils";
 
 /**
- * Secondary line of a result (DEC-035): reference portion · points · category,
- * or "N כמויות" with the points range when the food has several portions.
- * Foods without a reference keep their category only — no invented number.
+ * Secondary line of a result (DEC-035/036): reference portion · points ·
+ * category, or "N כמויות" with the points range when the food has several
+ * selectable portions. The coffee editor entry has no line of its own.
  */
 export function referenceLine(food: Food): string | null {
   const group = groupForFood(getReferenceIndex(), food);
-  if (group && group.items.length > 0) {
-    const parts: string[] = [];
-    if (group.items.length === 1) {
-      const item = group.items[0];
-      parts.push(formatPortion(item.portion), `${formatPoints(item.points)} נק׳`);
-    } else {
-      const range = groupPointsSummary(group)!;
-      parts.push(
-        `${group.items.length} כמויות`,
-        range.min === range.max
-          ? `${formatPoints(range.min)} נק׳`
-          : `${formatPoints(range.min)}–${formatPoints(range.max)} נק׳`,
-      );
-    }
-    if (group.category) parts.push(group.category);
-    return parts.join(" · ");
+  if (!group) return food.category ?? null;
+  const items = selectableItems(group);
+  if (items.length === 0) return food.category ?? null;
+  const parts: string[] = [];
+  if (items.length === 1) {
+    parts.push(formatPortion(items[0].portion), `${formatPoints(items[0].points)} נק׳`);
+  } else {
+    const range = groupPointsSummary({ ...group, items })!;
+    parts.push(
+      `${items.length} כמויות`,
+      range.min === range.max
+        ? `${formatPoints(range.min)} נק׳`
+        : `${formatPoints(range.min)}–${formatPoints(range.max)} נק׳`,
+    );
   }
-  if (food.pointsStatus === "confirmed" && food.pointsPerPortion != null) {
-    return [
-      `${food.portionAmount ?? 1} ${food.portionUnit ?? food.defaultUnit ?? ""}`.trim(),
-      `${formatPoints(food.pointsPerPortion)} נק׳`,
-      food.category,
-    ]
-      .filter(Boolean)
-      .join(" · ");
-  }
-  return food.category ?? null;
+  if (group.category) parts.push(group.category);
+  return parts.join(" · ");
 }
 
 /** Results shown per query. The catalog is never rendered in full. */
@@ -91,8 +82,10 @@ export function FoodSearch({ onChoose, onCreate, onAddCoffee, autoFocus = true }
     return () => clearTimeout(t);
   }, [raw]);
 
-  const foodById = useMemo(() => new Map(foods.map((f) => [f.id, f])), [foods]);
-  const favList = favorites.map((id) => foodById.get(id)).filter(Boolean) as Food[];
+  // favorites / recents arrive already resolved to ACTIVE canonical ids (store,
+  // DEC-036); a hidden legacy favourite never reaches this list.
+  const foodById = useMemo(() => new Map<string, Food>(foods.map((f) => [f.id, f])), [foods]);
+  const favList = favorites.map((id) => foodById.get(id)).filter((f): f is Food => !!f);
   const favSet = new Set(favList.map((f) => f.id));
   const recentList = recents
     .map((id) => foodById.get(id))
@@ -105,14 +98,14 @@ export function FoodSearch({ onChoose, onCreate, onAddCoffee, autoFocus = true }
   // Ranked by the search tiers; inside the list, foods the person used recently
   // or favourited come first — the canonical reference rows stay visible below.
   const results = useMemo(() => {
-    const ranked = searchFoods(index, q, RESULT_LIMIT);
+    const ranked = searchFoodsDetailed(index, q, RESULT_LIMIT);
     const recentRank = new Map(recents.map((id, i) => [id, i]));
     const score = (food: Food) =>
       (favSet.has(food.id) ? 0 : 1) * 1000 + (recentRank.get(food.id) ?? 999);
     return ranked
-      .map((food, i) => ({ food, i }))
-      .sort((a, b) => score(a.food) - score(b.food) || a.i - b.i)
-      .map((x) => x.food);
+      .map((hit, i) => ({ hit, i }))
+      .sort((a, b) => score(a.hit.food) - score(b.hit.food) || a.i - b.i)
+      .map((x) => x.hit);
     // favSet is derived from favorites; recents/favorites are stable arrays from the store.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, q, recents, favorites]);
@@ -194,13 +187,14 @@ export function FoodSearch({ onChoose, onCreate, onAddCoffee, autoFocus = true }
 
       {nq && (
         <div className="space-y-1">
-          {results.map((f) => {
+          {results.map(({ food: f, matchedAlias }) => {
             const hint = f.kind === "coffee" ? "סוג וחלב" : "בחירת כמות";
             return (
               <button
                 key={f.id}
                 onClick={() => choose(f, "typed")}
                 data-testid="search-result"
+                data-canonical-id={(f as { canonicalId?: string }).canonicalId ?? f.id}
                 data-direct="false"
                 aria-label={`${f.name}, ${f.kind === "coffee" ? "פתיחת עורך הקפה" : "פתיחת בחירת כמות"}`}
                 className="flex w-full items-center gap-3 rounded-xl border border-border bg-card px-3 py-3 text-right hover:border-primary/40"
@@ -213,6 +207,14 @@ export function FoodSearch({ onChoose, onCreate, onAddCoffee, autoFocus = true }
                       data-testid="result-detail"
                     >
                       {referenceLine(f)}
+                    </div>
+                  )}
+                  {matchedAlias && (
+                    <div
+                      className="truncate text-[11px] text-muted-foreground/80"
+                      data-testid="result-alias"
+                    >
+                      נמצא לפי: {matchedAlias}
                     </div>
                   )}
                 </div>
@@ -242,8 +244,7 @@ export function FoodSearch({ onChoose, onCreate, onAddCoffee, autoFocus = true }
               onClick={() => onCreate(raw.trim())}
               className="flex w-full items-center gap-2 rounded-xl border border-dashed border-primary/50 bg-primary-soft/50 px-3 py-3 text-right text-primary font-medium hover:bg-primary-soft"
             >
-              <Plus className="h-4 w-4" />
-              הוספת “{raw.trim()}” כמאכל חדש
+              <Plus className="h-4 w-4" />“{raw.trim()}” לא במאגר — קישור לשם אישי
             </button>
           )}
           {results.length === 0 && (

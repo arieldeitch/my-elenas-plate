@@ -12,6 +12,7 @@ import { formatPoints, pointsForEntry } from "@/lib/points";
 import {
   getReferenceIndex,
   groupForFood,
+  selectableItems,
   type ReferenceGroup,
   type ReferenceRuntimeItem as ReferenceItem,
 } from "@/lib/points-reference";
@@ -19,7 +20,7 @@ import { FoodSearch } from "./FoodSearch";
 import { QuantitySelector } from "./QuantitySelector";
 import { CoffeeSelector } from "./CoffeeSelector";
 import { VariantPicker } from "./VariantPicker";
-import { NewFoodForm } from "./NewFoodForm";
+import { PersonalAliasForm } from "./PersonalAliasForm";
 
 interface Props {
   slot: MealSlotId | null;
@@ -36,7 +37,7 @@ type View =
   | { kind: "variant"; food: Food; group: ReferenceGroup }
   | { kind: "quantity"; food: Food; editing?: FoodEntry; referenceItem?: ReferenceItem }
   | { kind: "coffee"; editing?: FoodEntry }
-  | { kind: "newFood"; name: string };
+  | { kind: "alias"; name: string };
 
 export function MealEditor({ slot, onClose }: Props) {
   const store = useStore();
@@ -103,8 +104,8 @@ export function MealEditor({ slot, onClose }: Props) {
     // Several reference portions → the person picks one (DEC-035 §6), from a
     // chip or a typed result alike; nothing is chosen silently.
     const group = groupForFood(getReferenceIndex(), food);
-    if (group && group.items.length > 1) {
-      setView({ kind: "variant", food, group });
+    if (group && selectableItems(group).length > 1) {
+      setView({ kind: "variant", food, group: { ...group, items: selectableItems(group) } });
       return "opened";
     }
     // A typed search is deliberate: always ask how much was eaten so the
@@ -122,7 +123,7 @@ export function MealEditor({ slot, onClose }: Props) {
     const added = store.addEntry(slot!, { foodId: food.id, foodName: food.name, ...usual });
     setJustAdded(added.id);
     toast(
-      `נוסף: ${food.name} · ${formatQuantity(added)} · ${formatPoints(added.pointsValue ?? 0)} נק׳ · אפשר לערוך כמות מיד`,
+      `נוסף: ${food.name} · ${formatQuantity(added)} · ${formatPoints(added.pointsValue)} נק׳ · אפשר לערוך כמות מיד`,
       { duration: 2500 },
     );
     return "added";
@@ -165,8 +166,19 @@ export function MealEditor({ slot, onClose }: Props) {
   }
 
   /** A name the catalog and the reference do not know: confirm portion + points first (DEC-035 §7). */
+  /** A name the reference does not know: it can only become a personal alias of a reference food (DEC-036). */
   function handleCreateFood(name: string) {
-    setView({ kind: "newFood", name });
+    setView({ kind: "alias", name });
+  }
+
+  /**
+   * A historical entry can be edited only when its food still resolves to an
+   * active reference food (DEC-036): a legacy entry without a verified link
+   * keeps its snapshot untouched and must be chosen again from the reference.
+   */
+  function editableFood(entry: FoodEntry): Food | null {
+    const canonical = store.resolveFoodId(entry.foodId);
+    return canonical ? (store.foods.find((f) => f.id === canonical) ?? null) : null;
   }
 
   return (
@@ -238,23 +250,27 @@ export function MealEditor({ slot, onClose }: Props) {
                       <EntryRow
                         key={e.id}
                         entry={e}
-                        isFavorite={store.favorites.includes(e.foodId)}
-                        onToggleFavorite={() => store.toggleFavorite(e.foodId)}
+                        isFavorite={store.favorites.includes(
+                          store.resolveFoodId(e.foodId) ?? e.foodId,
+                        )}
+                        legacy={!e.coffee && !editableFood(e)}
+                        onToggleFavorite={() =>
+                          store.toggleFavorite(store.resolveFoodId(e.foodId) ?? e.foodId)
+                        }
                         onEdit={() => {
                           if (e.coffee) {
                             setView({ kind: "coffee", editing: e });
                             return;
                           }
-                          const food = store.foods.find((f) => f.id === e.foodId);
+                          const food = editableFood(e);
                           if (food) setView({ kind: "quantity", food, editing: e });
-                          else if (e.referenceItemId) {
-                            // The food row is gone (archived) but the snapshot
-                            // knows its reference: edit against a name-only food.
-                            setView({
-                              kind: "quantity",
-                              food: { id: e.foodId, name: e.foodName },
-                              editing: e,
-                            });
+                          else {
+                            toast(
+                              "המאכל הישן אינו במאגר הניקוד — לעריכה יש לבחור אותו מחדש מהחיפוש",
+                              {
+                                duration: 4000,
+                              },
+                            );
                           }
                         }}
                         onDelete={() => handleDelete(e)}
@@ -282,12 +298,13 @@ export function MealEditor({ slot, onClose }: Props) {
             />
           )}
 
-          {view.kind === "newFood" && (
-            <NewFoodForm
+          {view.kind === "alias" && (
+            <PersonalAliasForm
               initialName={view.name}
-              onSubmit={({ name, category, details }) => {
-                const f = store.addFood(name, category, details);
-                setView({ kind: "quantity", food: f });
+              onLinked={(food) => {
+                // The linked reference food goes through the normal choose path
+                // (several portions → the picker, otherwise the quantity screen).
+                if (handleChoose(food, "typed") === "added") setView({ kind: "meal" });
               }}
               onCancel={() => setView({ kind: "meal" })}
             />
@@ -379,6 +396,7 @@ function SkippedState({ onUndo }: { onUndo: () => void }) {
 function EntryRow({
   entry,
   isFavorite,
+  legacy,
   highlighted,
   onToggleFavorite,
   onEdit,
@@ -387,22 +405,23 @@ function EntryRow({
 }: {
   entry: FoodEntry;
   isFavorite: boolean;
+  /** The entry's food no longer resolves to an active reference food (history only). */
+  legacy?: boolean;
   highlighted?: boolean;
   onToggleFavorite: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onStep: (direction: 1 | -1) => void;
 }) {
-  const { foods } = useStore();
   const quantityText = formatQuantity(entry);
-  const pointValue = pointsForEntry(
-    entry,
-    foods.find((f) => f.id === entry.foodId),
-  );
+  // Display = the persisted snapshot; null = saved without a reference value.
+  const pointValue = pointsForEntry(entry);
   const detail = entry.coffee
     ? [coffeeSummary(entry.coffee), quantityText].filter(Boolean).join(" · ")
     : quantityText;
-  const steppable = canStep(entry);
+  // One-tap − / + re-scores through the reference, so it exists only for an
+  // entry whose food still resolves (a legacy entry keeps its snapshot as is).
+  const steppable = !legacy && canStep(entry);
   const canDecrement = steppable && stepAmount(entry, -1) != null;
 
   return (
@@ -410,6 +429,8 @@ function EntryRow({
       data-testid="meal-entry"
       data-entry-id={entry.id}
       data-quantity={quantityText}
+      data-points={pointValue ?? "unscored"}
+      data-legacy={legacy ? "true" : "false"}
       className={cn(
         "rounded-2xl border border-border bg-card p-2 pr-3 transition-colors duration-700",
         highlighted && "border-primary/40 bg-primary-soft/40",
@@ -420,7 +441,10 @@ function EntryRow({
         <div className="min-w-0 flex-1">
           <div className="truncate font-medium text-foreground">{entry.foodName}</div>
           {entry.coffee && <div className="truncate text-xs text-muted-foreground">{detail}</div>}
-          <div className="text-[11px] font-medium text-primary">{formatPoints(pointValue)} נק׳</div>
+          <div className="text-[11px] font-medium text-primary">
+            {pointValue == null ? "ללא ניקוד" : `${formatPoints(pointValue)} נק׳`}
+            {legacy && <span className="text-muted-foreground"> · מאכל ישן, לא במאגר</span>}
+          </div>
           {entry.coffee?.note && (
             <div className="truncate text-xs text-muted-foreground/80">{entry.coffee.note}</div>
           )}
