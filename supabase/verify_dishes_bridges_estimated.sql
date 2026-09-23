@@ -36,6 +36,23 @@ where table_schema = 'public'
   and grantee in ('anon', 'authenticated')
 order by grantee, table_name, privilege_type;
 
+
+
+-- §4b Fail-closed privilege audit (expected: 0 rows).
+-- Catches inherited/default TRUNCATE, REFERENCES, TRIGGER or any other privilege
+-- outside the DEC-037 contract.
+select grantee, table_name, privilege_type
+from information_schema.role_table_grants
+where table_schema = 'public'
+  and table_name in ('dishes', 'dish_versions', 'estimated_products', 'weight_bridges')
+  and grantee in ('anon', 'authenticated')
+  and (
+    grantee = 'anon'
+    or privilege_type not in ('SELECT', 'INSERT', 'UPDATE', 'DELETE')
+    or (table_name = 'dish_versions' and privilege_type not in ('SELECT', 'INSERT'))
+  )
+order by grantee, table_name, privilege_type;
+
 -- §5 The five additive columns on food_entries (expected: 5 rows, all is_nullable = YES).
 select column_name, data_type, is_nullable
 from information_schema.columns
