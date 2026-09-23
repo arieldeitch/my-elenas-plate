@@ -14,6 +14,24 @@ than assumed — see LIVE / DEPLOYMENT. Nothing here is called green on producti
 
 ---
 
+## OS ACCESS RECEIPT (AGENTS.md / P-005)
+
+Canonical OS read during this run (Drive, `AI Projects` → `OS_START_HERE` + `CURRENT_OS_VERSION`):
+
+- **current_os_version:** 1.0.0 · **effective_at:** 2026-09-16T08:31:00+03:00 · status active
+- **permission_model_changed:** false — the permission freeze was honoured: no sharing, ownership,
+  auth, secrets, RLS or publication setting was changed anywhere in this run.
+- Applicable rules applied: source-of-truth governance (code, migrations and tests stay canonical in
+  this repository), the documentation/handoff protocol (this report), and the autonomy policy —
+  owner-only actions are left as one bounded action rather than performed or claimed.
+
+**OS sync not re-verified** — `scripts/control-tower/os-receipt.mjs` found no gateway token on this
+machine (neither `CT_GATEWAY_TOKEN` nor `~/.config/control-tower/token`), so no receipt could be
+written to the Control Tower board and its OS columns stay as they were. Commits, pushes and the
+merged PR are explicitly NOT alignment evidence; this section is the run-report half of the receipt.
+
+---
+
 ## OWNER INTENT TRACEABILITY
 
 | #   | Requirement                                | Status | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
