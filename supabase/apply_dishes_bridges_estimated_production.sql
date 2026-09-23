@@ -182,7 +182,12 @@ begin
   foreach t in array array['estimated_products', 'weight_bridges', 'dishes', 'dish_versions']
   loop
     immutable_table := (t = 'dish_versions');
+    -- New public tables can inherit broad default privileges in existing Supabase
+    -- projects (including TRUNCATE / REFERENCES / TRIGGER). Reset all API-role
+    -- privileges first, then grant only the exact DEC-037 contract below.
     execute format('revoke all on table public.%I from anon;', t);
+    execute format('revoke all on table public.%I from authenticated;', t);
+    execute format('revoke all on table public.%I from service_role;', t);
     if immutable_table then
       execute format('revoke update, delete on table public.%I from authenticated;', t);
       execute format('grant select, insert on table public.%I to authenticated;', t);
