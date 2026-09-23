@@ -73,7 +73,8 @@ than assumed — see LIVE / DEPLOYMENT. Nothing here is called green on producti
   publishable key, as before. `preflight --live` → `secrets:live` PASS.
 - **commit/PR/main SHA** — branch `feat/unified-points-dishes-label-estimator` on `main = 46c1ed8`:
   `2da090f` (ADR) → `824aedd` → `b12b298` → `54c1307` → `e56f743` → `7320c25` → `b27e6a8` (review
-  remediation) → `c243bea` (acceptance 24 as a test) → this report. PR opened against `main`.
+  remediation) → `c243bea` (acceptance 24 as a test) → `f0d7f91` (this report). PR #5 → CI
+  `quality` PASS → merged into `main` as `035acd5`.
 
 ---
 
@@ -111,7 +112,7 @@ than assumed — see LIVE / DEPLOYMENT. Nothing here is called green on producti
   tables do not exist); `food_reference_items`, `food_entries` → HTTP 401 `42501` (they exist and
   RLS refuses anon, as designed). **The DEC-037 migration is NOT applied.**
 
-**Only merged / only in the repository:** the whole DEC-037 implementation, its tests, the
+**Only merged / only in the repository** (`main` = `035acd5`, not published): the whole DEC-037 implementation, its tests, the
 migration and the owner apply + verify scripts, the ADR, and the DEPLOY / status / context / todo
 updates.
 
