@@ -4,7 +4,8 @@
 
 `supabase/migrations/20260923090000_dishes_bridges_estimated.sql` creates `estimated_products`,
 `weight_bridges`, `dishes` and `dish_versions` (household RLS exactly like the existing tables,
-`authenticated` only, nothing for `anon`, realtime publication) and adds five NULLABLE provenance
+`authenticated` only, nothing for `anon`, realtime publication; `dish_versions` is APPEND-ONLY —
+select + insert, no update/delete grant and no update/delete policy) and adds five NULLABLE provenance
 columns to `food_entries` (`dish_id`, `dish_revision`, `estimated_product_id`,
 `consumed_weight_g`, `weight_source`). Nothing existing is changed or removed. Proven on PGlite
 (`src/lib/dec037-migration.pg.test.ts`): RLS incl. cross-household negatives, immutable dish
@@ -15,7 +16,8 @@ Apply path (Dashboard SQL Editor, owner account):
 1. `supabase/verify_dishes_bridges_estimated.sql` (read-only) → keep §1 counts as BEFORE.
 2. `supabase/apply_dishes_bridges_estimated_production.sql` (one transaction; prints the same counts
    BEFORE and AFTER; records `20260923090000` in the ledger).
-3. Verify again: §1 identical · §2 four tables with RLS · §3 16 policies · §4 no `anon` row ·
+3. Verify again: §1 identical · §2 four tables with RLS · §3 14 policies (four each for the
+   three mutable tables, SELECT + INSERT for `dish_versions`) · §4 no `anon` row ·
    §5 five nullable columns · §6 four realtime tables · §7 the new tables empty · §8 unchanged basis
    distribution · §10 ledger row.
 4. Publish `main` from Lovable → `npm run preflight -- --live`. Before the apply the published client

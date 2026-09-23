@@ -20,7 +20,7 @@ as a dish ingredient — every estimated value marked in UI and in the stored ba
 by weight from `points_per_gram`, with the dish revision recorded, so editing a dish or a product
 never changes a saved meal. Migration `20260923090000` (4 tables + 5 nullable columns, household
 RLS + realtime) proven on PGlite incl. cross-household negative tests and an idempotent owner
-wrapper; NOT applied to production. Gate: typecheck 0 · lint 0 errors · vitest 497/16 · hermetic
+wrapper; NOT applied to production. Gate: typecheck 0 · lint 0 errors · vitest 508/16 · hermetic
 Playwright 10/10 · build OK.
 
 ## 2026-09-22 (fourteenth run) — the reference is the ONLY source of the food list (DEC-036)
