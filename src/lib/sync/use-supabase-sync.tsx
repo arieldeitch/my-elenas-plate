@@ -22,9 +22,12 @@ import type { Dispatch, SetStateAction } from "react";
 import {
   partnerOf,
   type DayData,
+  type Dish,
+  type EstimatedProduct,
   type Food,
   type ProfileId,
   type SyncState,
+  type WeightBridge,
   type WeighIn,
 } from "../domain";
 import { isSupabaseConfigured } from "../supabase/client";
@@ -32,9 +35,13 @@ import type { ProfileFacts } from "../points";
 import { getSession, onAuthChange } from "../supabase/auth";
 import {
   bootstrapHousehold,
+  dishesSchemaAvailable,
   foodsSchemaSupportsReferenceLink,
+  loadDishes,
+  loadEstimatedProducts,
   loadProfileFacts,
   loadWeighIns,
+  loadWeightBridges,
   type HouseholdContext,
 } from "../supabase/repositories";
 import { deriveFavoritesRecents } from "../supabase/mappers";
@@ -62,6 +69,9 @@ interface Args {
   weighInsMap: PerProfile<WeighIn[]>;
   setWeighInsMap: Dispatch<SetStateAction<PerProfile<WeighIn[]>>>;
   foods: Food[];
+  setDishes: Dispatch<SetStateAction<Dish[]>>;
+  setEstimatedProducts: Dispatch<SetStateAction<EstimatedProduct[]>>;
+  setWeightBridges: Dispatch<SetStateAction<WeightBridge[]>>;
   setFoods: Dispatch<SetStateAction<Food[]>>;
   setFavoritesMap: Dispatch<SetStateAction<PerProfile<string[]>>>;
   setRecentsMap: Dispatch<SetStateAction<PerProfile<string[]>>>;
@@ -92,8 +102,8 @@ export interface SyncControls {
   retryFailed: () => void;
   /** Drops permanently failed ops (local optimistic state is kept). */
   discardFailed: () => void;
-  /** Cloud schema capabilities detected on activation (DEC-036). */
-  schema: { referenceGroupKey: boolean };
+  /** Cloud schema capabilities detected on activation (DEC-036, DEC-037). */
+  schema: { referenceGroupKey: boolean; dishes: boolean };
 }
 
 const WEIGH_KINDS = new Set(["weighin.insert"]);
@@ -166,6 +176,41 @@ export function useSupabaseSync(args: Args): SyncControls {
   // cloud confirms the column, the store refuses to create them (no silent
   // queue failure). Only a definite "column missing" turns it off.
   const [schemaReferenceGroupKey, setSchemaReferenceGroupKey] = useState(true);
+  // DEC-037: the dishes / estimated products / bridges tables. Until the
+  // migration is applied the UI explains it instead of queueing a doomed write.
+  const [schemaDishes, setSchemaDishes] = useState(true);
+
+  /**
+   * Household-wide DEC-037 entities. Hydrated together (they are small and
+   * always read as a set) and re-read on any realtime event of their tables,
+   * which also makes a partner's new dish appear without a reload.
+   */
+  const hydrateDerived = useCallback(async () => {
+    const ctx = ctxRef.current;
+    if (!ctx) return;
+    const localById = new Map<string, ProfileId>();
+    for (const local of ["me", "elena"] as ProfileId[]) {
+      const id = profileIdFor(ctx, local);
+      if (id) localById.set(id, local);
+    }
+    const available = await dishesSchemaAvailable(ctx.householdId);
+    if (available != null) setSchemaDishes(available);
+    if (available === false) return;
+    try {
+      const [dishes, products, bridges] = await Promise.all([
+        loadDishes(ctx.householdId, localById),
+        loadEstimatedProducts(ctx.householdId, localById),
+        loadWeightBridges(ctx.householdId, localById),
+      ]);
+      args.setDishes(dishes);
+      args.setEstimatedProducts(products);
+      args.setWeightBridges(bridges);
+    } catch (err) {
+      console.warn("hydrate dishes/estimated/bridges failed", err);
+    }
+    // args setters are stable state setters from the store.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const hydrateFoodsList = useCallback(async () => {
     const ctx = ctxRef.current;
     if (!ctx) return;
@@ -442,6 +487,7 @@ export function useSupabaseSync(args: Args): SyncControls {
 
         retryAttempt = 0;
         await hydrateFoodsList();
+        await hydrateDerived();
         // Initial hydrate of the current view (own + partner day) BEFORE the
         // hook is flagged active, so the view effect below does not fetch the
         // same day a second time (it skips exactly this key once).
@@ -481,6 +527,13 @@ export function useSupabaseSync(args: Args): SyncControls {
           return;
         case "profiles":
           void hydrateProfileFacts();
+          return;
+        case "dishes":
+        case "dish_versions":
+        case "estimated_products":
+        case "weight_bridges":
+          // Household-wide: a partner's new dish / product / bridge lands here.
+          void hydrateDerived();
           return;
         default: {
           // Day-scoped tables. Use payload metadata when present; a DELETE
@@ -536,6 +589,7 @@ export function useSupabaseSync(args: Args): SyncControls {
     hydrate,
     hydrateDayOnly,
     hydrateFoodsList,
+    hydrateDerived,
     hydratePrefsFor,
     hydrateProfileFacts,
     hydrateWeighInsFor,
@@ -612,7 +666,7 @@ export function useSupabaseSync(args: Args): SyncControls {
     enqueue,
     retryFailed,
     discardFailed,
-    schema: { referenceGroupKey: schemaReferenceGroupKey },
+    schema: { referenceGroupKey: schemaReferenceGroupKey, dishes: schemaDishes },
   };
 }
 

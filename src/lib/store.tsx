@@ -29,15 +29,22 @@ import {
 import type {
   DayData,
   DailyMeal,
+  Dish,
+  DishIngredient,
+  EstimatedProduct,
   FastingLog,
   Food,
   FoodEntry,
+  LabelInput,
   MealSlotId,
   Profile,
   ProfileId,
   StepLog,
   SyncState,
+  Unit,
   WeighIn,
+  WeightBridge,
+  WeightSource,
   WorkoutLog,
 } from "./domain";
 import { MEAL_SLOTS } from "./domain";
@@ -57,6 +64,9 @@ import {
   type BudgetInfo,
   type ProfileFacts,
 } from "./points";
+import { buildDish, dishTotals } from "./dishes";
+import { estimateFromLabel, LABEL_ESTIMATOR_VERSION } from "./label-estimator";
+import { buildBridgeIndex } from "./weight-bridges";
 import { toISODate } from "./format";
 import { loadState, saveState } from "./persistence";
 import { loadDeviceProfile, saveDeviceProfile } from "./device-profile";
@@ -119,6 +129,49 @@ interface StoreValue {
   addPersonalAlias: (name: string, referenceGroupKey: string) => CanonicalFood;
   /** True once the cloud schema can store personal aliases (migration 20260922 applied). */
   personalAliasesSupported: boolean;
+
+  // --- DEC-037: dishes, label-estimated products, weight bridges -------------
+  /** Active household dishes (archived ones stay for history). */
+  dishes: Dish[];
+  /** Every dish, including archived (history lookups). */
+  allDishes: Dish[];
+  /** Household label-estimated products (a separate source from the reference). */
+  estimatedProducts: EstimatedProduct[];
+  /** Explicit "1 unit = N grams" facts, by source identity. */
+  weightBridges: WeightBridge[];
+  /** True once the cloud schema has the DEC-037 tables (migration 20260923). */
+  dishesSupported: boolean;
+  /** Creates or replaces a dish; editing bumps the revision (new immutable version). */
+  saveDish: (input: {
+    id?: string;
+    name: string;
+    ingredients: DishIngredient[];
+    finalWeightG: number;
+    usualServingWeightG?: number;
+  }) => Dish;
+  setDishActive: (dishId: string, isActive: boolean) => void;
+  /** Saves a label-estimated product (reusable by both people). */
+  saveEstimatedProduct: (input: {
+    id?: string;
+    name: string;
+    brand?: string;
+    label: LabelInput;
+  }) => EstimatedProduct;
+  /** Saves an explicit weight bridge for ONE source identity + unit. */
+  saveWeightBridge: (input: {
+    sourceKind: WeightBridge["sourceKind"];
+    sourceKey: string;
+    referenceItemId?: string;
+    estimatedProductId?: string;
+    unit: Unit;
+    gramsPerUnit: number;
+    provenance: WeightBridge["provenance"];
+  }) => WeightBridge;
+  /** Logs a served weight of a dish into a meal slot. */
+  logDish: (
+    slot: MealSlotId,
+    input: { dishId: string; grams: number; weightSource: WeightSource },
+  ) => FoodEntry | null;
   favorites: string[];
   recents: string[];
   toggleFavorite: (foodId: string) => void;
@@ -133,16 +186,16 @@ interface StoreValue {
   setWorkout: (w: WorkoutLog | undefined) => void;
   setSteps: (s: StepLog) => void;
 
-  /** Effective daily budget (override → personalised → fallback). */
-  getPointsBudget: (profile: ProfileId) => number;
+  /** The manually entered daily target, or null when none is configured (DEC-037). */
+  getPointsBudget: (profile: ProfileId) => number | null;
   /** Budget plus where it comes from and which facts are still missing. */
   getPointsBudgetInfo: (profile: ProfileId) => BudgetInfo;
   /** The active person's stored facts (DEC-034). */
   profileFacts: ProfileFacts;
   /** Partial update of the active person's facts; `pointsBudgetOverride: null` = back to automatic. */
   setProfileFacts: (patch: Partial<ProfileFacts>) => void;
-  /** @deprecated v1 name — sets the manual override. */
-  setPointsBudget: (budget: number) => void;
+  /** Sets the manual daily target (DEC-037: the only source); null clears it. */
+  setPointsBudget: (budget: number | null) => void;
 
   weighIns: WeighIn[];
   addWeighIn: (w: Omit<WeighIn, "id">) => void;
@@ -200,6 +253,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // The built-in catalog is the pre-hydration fallback; Supabase supersedes it
   // by normalized name once loaded (see `mergeCatalog`).
   const [foods, setFoods] = useState<Food[]>(FOOD_CATALOG);
+  // DEC-037 — household-wide derived entities (not day-scoped, like `foods`).
+  const [dishes, setDishes] = useState<Dish[]>([]);
+  const [estimatedProducts, setEstimatedProducts] = useState<EstimatedProduct[]>([]);
+  const [weightBridges, setWeightBridges] = useState<WeightBridge[]>([]);
   // DEC-036: the active list is built from the reference alone; the household
   // foods (built-in + custom rows) are resolved against it — explicit link,
   // verified alias or exact name — and everything else is hidden. Derived,
@@ -232,6 +289,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setWeighInsMap,
     foods,
     setFoods,
+    setDishes,
+    setEstimatedProducts,
+    setWeightBridges,
     setFavoritesMap,
     setRecentsMap,
     setProfileFactsMap,
@@ -366,6 +426,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return current ? Object.values(current.meals).flatMap((m) => m.entries) : [];
   };
 
+  // DEC-037 — the sources an entry may be scored from, besides the reference.
+  const dishById = useMemo(() => new Map(dishes.map((d) => [d.id, d])), [dishes]);
+  const estimatedById = useMemo(
+    () => new Map(estimatedProducts.map((p) => [p.id, p])),
+    [estimatedProducts],
+  );
+  const bridgeIndex = useMemo(() => buildBridgeIndex(weightBridges), [weightBridges]);
+  const scoreContext = () => ({
+    dayEntries: dayEntriesNow(),
+    dishes: dishById,
+    estimatedProducts: estimatedById,
+    bridges: bridgeIndex,
+  });
+
   const addEntry: StoreValue["addEntry"] = (slot, entry) => {
     // A new entry always references the canonical food (a legacy id is mapped).
     const foodId = canonicalIdFor(catalog, entry.foodId) ?? entry.foodId;
@@ -379,7 +453,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
     // Every NEW entry carries a snapshot from the reference (or is saved
     // unscored — never estimated); it is never rewritten later.
-    const withId: FoodEntry = scoreEntry(base, food, { dayEntries: dayEntriesNow() });
+    const withId: FoodEntry = scoreEntry(base, food, scoreContext());
     mutateDay(activeProfile, iso, (d) => {
       const meal = d.meals[slot];
       meal.entries.push(withId);
@@ -397,7 +471,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     // A deliberate edit re-scores — this is the only path by which a legacy
     // snapshot changes (DEC-034 §S). Editing a food in the reference or the
     // catalog never touches an existing entry.
-    const scored: FoodEntry = scoreEntry(entry, food, { dayEntries: dayEntriesNow() });
+    const scored: FoodEntry = scoreEntry(entry, food, scoreContext());
     mutateDay(activeProfile, iso, (d) => {
       const meal = d.meals[slot];
       meal.entries = meal.entries.map((e) => (e.id === scored.id ? scored : e));
@@ -503,7 +577,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const setPointsBudget: StoreValue["setPointsBudget"] = (budget) => {
-    setProfileFacts({ pointsBudgetOverride: Math.max(10, Math.min(60, Math.round(budget))) });
+    setProfileFacts({
+      pointsBudgetOverride: budget == null ? null : Math.max(10, Math.min(60, Math.round(budget))),
+    });
   };
 
   // Personal aliases need the cloud column `foods.reference_group_key` (migration
@@ -536,6 +612,99 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       sync.enqueue([{ kind: "food.upsert", food: f }]);
     }
     return target;
+  };
+
+  // --- DEC-037: dishes, estimated products, weight bridges --------------------
+  // All three are household-wide and shared; the creator is recorded. They are
+  // refused (with a clear message at the call site) until the cloud schema has
+  // the tables, so nothing fails silently in the durable queue.
+  const dishesSupported = !isSupabaseConfigured() || sync.schema.dishes;
+
+  const saveEstimatedProduct: StoreValue["saveEstimatedProduct"] = (input) => {
+    const estimate = estimateFromLabel(input.label);
+    const existing = input.id
+      ? estimatedProducts.find((p) => p.id === input.id)
+      : estimatedProducts.find((p) => normalizeFoodName(p.name) === normalizeFoodName(input.name));
+    const product: EstimatedProduct = {
+      id: existing?.id ?? genId("ep"),
+      name: input.name.trim(),
+      label: input.label,
+      pointsPer100g: estimate.pointsPer100g,
+      estimatorVersion: LABEL_ESTIMATOR_VERSION,
+      createdBy: existing?.createdBy ?? activeProfile,
+      isActive: true,
+    };
+    if (input.brand?.trim()) product.brand = input.brand.trim();
+    setEstimatedProducts((prev) => {
+      const rest = prev.filter((p) => p.id !== product.id);
+      return [product, ...rest];
+    });
+    sync.enqueue([{ kind: "estimated.upsert", product, createdBy: product.createdBy }]);
+    return product;
+  };
+
+  const saveWeightBridge: StoreValue["saveWeightBridge"] = (input) => {
+    const existing = weightBridges.find(
+      (b) =>
+        b.sourceKind === input.sourceKind &&
+        b.sourceKey === input.sourceKey &&
+        b.unit === input.unit,
+    );
+    const bridge: WeightBridge = {
+      id: existing?.id ?? genId("wb"),
+      sourceKind: input.sourceKind,
+      sourceKey: input.sourceKey,
+      unit: input.unit,
+      gramsPerUnit: input.gramsPerUnit,
+      provenance: input.provenance,
+      createdBy: existing?.createdBy ?? activeProfile,
+    };
+    if (input.referenceItemId) bridge.referenceItemId = input.referenceItemId;
+    if (input.estimatedProductId) bridge.estimatedProductId = input.estimatedProductId;
+    setWeightBridges((prev) => [bridge, ...prev.filter((b) => b.id !== bridge.id)]);
+    sync.enqueue([{ kind: "bridge.upsert", bridge, createdBy: bridge.createdBy }]);
+    return bridge;
+  };
+
+  const saveDish: StoreValue["saveDish"] = (input) => {
+    const existing = input.id ? dishes.find((d) => d.id === input.id) : undefined;
+    // Editing a dish creates the NEXT revision; the previous revision row stays
+    // untouched, so a meal logged from it remains explainable (DEC-037 R9).
+    const dish = buildDish({
+      id: existing?.id ?? genId("dish"),
+      name: input.name,
+      revision: existing ? existing.revision + 1 : 1,
+      ingredients: input.ingredients,
+      finalWeightG: input.finalWeightG,
+      usualServingWeightG: input.usualServingWeightG,
+      createdBy: existing?.createdBy ?? activeProfile,
+    });
+    setDishes((prev) => [dish, ...prev.filter((d) => d.id !== dish.id)]);
+    sync.enqueue([{ kind: "dish.upsert", dish, createdBy: dish.createdBy }]);
+    return dish;
+  };
+
+  const setDishActive: StoreValue["setDishActive"] = (dishId, isActive) => {
+    setDishes((prev) => prev.map((d) => (d.id === dishId ? { ...d, isActive } : d)));
+    sync.enqueue([{ kind: "dish.archive", dishId, isActive }]);
+  };
+
+  const logDish: StoreValue["logDish"] = (slot, { dishId, grams, weightSource }) => {
+    const dish = dishById.get(dishId);
+    if (!dish || !Number.isFinite(grams) || grams <= 0) return null;
+    // The entry carries the dish REVISION and the points it was logged with, so
+    // a later edit of the dish cannot change this meal.
+    return addEntry(slot, {
+      foodId: dish.id,
+      foodName: dish.name,
+      mode: "measured",
+      amount: grams,
+      unit: "גרם",
+      dishId: dish.id,
+      dishRevision: dish.revision,
+      consumedWeightG: grams,
+      weightSource,
+    });
   };
 
   const toggleFavorite: StoreValue["toggleFavorite"] = (foodId) => {
@@ -585,6 +754,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       resolveFoodId,
       addPersonalAlias,
       personalAliasesSupported,
+      dishes: dishes.filter((d) => d.isActive !== false),
+      allDishes: dishes,
+      estimatedProducts: estimatedProducts.filter((p) => p.isActive !== false),
+      weightBridges,
+      dishesSupported,
+      saveDish,
+      setDishActive,
+      saveEstimatedProduct,
+      saveWeightBridge,
+      logDish,
       favorites: visibleIds(favoritesMap[activeProfile]),
       recents: visibleIds(recentsMap[activeProfile]),
       toggleFavorite,
@@ -618,6 +797,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       recentsMap,
       profileFactsMap,
       catalog,
+      dishes,
+      estimatedProducts,
+      weightBridges,
+      dishesSupported,
     ],
   );
 

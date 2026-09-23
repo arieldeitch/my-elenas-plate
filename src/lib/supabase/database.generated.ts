@@ -126,10 +126,15 @@ export type Database = {
           note: string | null
           base_points: number | null
           benefit_rule: string | null
+          consumed_weight_g: number | null
+          dish_id: string | null
+          dish_revision: number | null
+          estimated_product_id: string | null
           points_basis: string | null
           points_model_version: string | null
           points_value: number | null
           reference_item_id: string | null
+          weight_source: string | null
           profile_id: string
           quantity_mode: string
           slot: string
@@ -149,10 +154,15 @@ export type Database = {
           note?: string | null
           base_points?: number | null
           benefit_rule?: string | null
+          consumed_weight_g?: number | null
+          dish_id?: string | null
+          dish_revision?: number | null
+          estimated_product_id?: string | null
           points_basis?: string | null
           points_model_version?: string | null
           points_value?: number | null
           reference_item_id?: string | null
+          weight_source?: string | null
           profile_id: string
           quantity_mode: string
           slot: string
@@ -172,10 +182,15 @@ export type Database = {
           note?: string | null
           base_points?: number | null
           benefit_rule?: string | null
+          consumed_weight_g?: number | null
+          dish_id?: string | null
+          dish_revision?: number | null
+          estimated_product_id?: string | null
           points_basis?: string | null
           points_model_version?: string | null
           points_value?: number | null
           reference_item_id?: string | null
+          weight_source?: string | null
           profile_id?: string
           quantity_mode?: string
           slot?: string
@@ -360,6 +375,226 @@ export type Database = {
           version?: string
         }
         Relationships: []
+      }
+      dish_versions: {
+        Row: {
+          created_at: string
+          created_by_profile_id: string | null
+          dish_id: string
+          final_weight_g: number
+          household_id: string
+          id: string
+          ingredients: Json
+          name: string
+          points_per_gram: number
+          revision: number
+          total_points: number
+          usual_serving_weight_g: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by_profile_id?: string | null
+          dish_id: string
+          final_weight_g: number
+          household_id: string
+          id?: string
+          ingredients: Json
+          name: string
+          points_per_gram: number
+          revision: number
+          total_points: number
+          usual_serving_weight_g?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by_profile_id?: string | null
+          dish_id?: string
+          final_weight_g?: number
+          household_id?: string
+          id?: string
+          ingredients?: Json
+          name?: string
+          points_per_gram?: number
+          revision?: number
+          total_points?: number
+          usual_serving_weight_g?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dish_versions_dish_id_fkey"
+            columns: ["dish_id"]
+            isOneToOne: false
+            referencedRelation: "dishes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dishes: {
+        Row: {
+          created_at: string
+          created_by_profile_id: string | null
+          final_weight_g: number
+          household_id: string
+          id: string
+          is_active: boolean
+          name: string
+          normalized_name: string
+          points_per_gram: number
+          revision: number
+          total_points: number
+          updated_at: string
+          usual_serving_weight_g: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by_profile_id?: string | null
+          final_weight_g: number
+          household_id: string
+          id?: string
+          is_active?: boolean
+          name: string
+          normalized_name: string
+          points_per_gram: number
+          revision?: number
+          total_points: number
+          updated_at?: string
+          usual_serving_weight_g?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by_profile_id?: string | null
+          final_weight_g?: number
+          household_id?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          normalized_name?: string
+          points_per_gram?: number
+          revision?: number
+          total_points?: number
+          updated_at?: string
+          usual_serving_weight_g?: number | null
+        }
+        Relationships: []
+      }
+      estimated_products: {
+        Row: {
+          brand: string | null
+          created_at: string
+          created_by_profile_id: string | null
+          estimator_version: string
+          household_id: string
+          id: string
+          is_active: boolean
+          label_added_sugar_g: number | null
+          label_basis: string
+          label_calories: number
+          label_fiber_g: number | null
+          label_protein_g: number | null
+          label_saturated_fat_g: number | null
+          label_unsaturated_fat_g: number | null
+          name: string
+          normalized_name: string
+          points_per_100g: number
+          serving_weight_g: number | null
+          updated_at: string
+        }
+        Insert: {
+          brand?: string | null
+          created_at?: string
+          created_by_profile_id?: string | null
+          estimator_version?: string
+          household_id: string
+          id?: string
+          is_active?: boolean
+          label_added_sugar_g?: number | null
+          label_basis: string
+          label_calories: number
+          label_fiber_g?: number | null
+          label_protein_g?: number | null
+          label_saturated_fat_g?: number | null
+          label_unsaturated_fat_g?: number | null
+          name: string
+          normalized_name: string
+          points_per_100g: number
+          serving_weight_g?: number | null
+          updated_at?: string
+        }
+        Update: {
+          brand?: string | null
+          created_at?: string
+          created_by_profile_id?: string | null
+          estimator_version?: string
+          household_id?: string
+          id?: string
+          is_active?: boolean
+          label_added_sugar_g?: number | null
+          label_basis?: string
+          label_calories?: number
+          label_fiber_g?: number | null
+          label_protein_g?: number | null
+          label_saturated_fat_g?: number | null
+          label_unsaturated_fat_g?: number | null
+          name?: string
+          normalized_name?: string
+          points_per_100g?: number
+          serving_weight_g?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      weight_bridges: {
+        Row: {
+          created_at: string
+          created_by_profile_id: string | null
+          estimated_product_id: string | null
+          grams_per_unit: number
+          household_id: string
+          id: string
+          provenance: string
+          reference_item_id: string | null
+          source_key: string
+          source_kind: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_profile_id?: string | null
+          estimated_product_id?: string | null
+          grams_per_unit: number
+          household_id: string
+          id?: string
+          provenance: string
+          reference_item_id?: string | null
+          source_key: string
+          source_kind: string
+          unit: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by_profile_id?: string | null
+          estimated_product_id?: string | null
+          grams_per_unit?: number
+          household_id?: string
+          id?: string
+          provenance?: string
+          reference_item_id?: string | null
+          source_key?: string
+          source_kind?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weight_bridges_estimated_product_id_fkey"
+            columns: ["estimated_product_id"]
+            isOneToOne: false
+            referencedRelation: "estimated_products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       food_preferences: {
         Row: {

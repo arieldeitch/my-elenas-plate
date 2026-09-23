@@ -10,18 +10,31 @@
 import type {
   CoffeeMeta,
   DailyMeal,
+  Dish,
+  DishIngredient,
+  EstimatedProduct,
   Food,
   FoodEntry,
   FoodKind,
+  LabelBasis,
+  LabelInput,
   MealSlotId,
   MealStatus,
+  PointsSourceKind,
   ProfileId,
   QuantityMode,
   SubjectiveAmount,
   Unit,
+  WeightBridge,
 } from "../domain";
 import type {
   CoffeeJson,
+  DishInsert,
+  DishRow,
+  DishVersionInsert,
+  DishVersionRow,
+  EstimatedProductInsert,
+  EstimatedProductRow,
   FoodEntryInsert,
   FoodEntryRow,
   FoodInsert,
@@ -31,6 +44,8 @@ import type {
   MealSlotSlug,
   MealStatusValue,
   SubjectiveValue,
+  WeightBridgeInsert,
+  WeightBridgeRow,
 } from "./database.types";
 import { normalizeFoodName } from "../food-normalize";
 
@@ -131,6 +146,12 @@ export function entryToRow(entry: FoodEntry, ctx: EntryContext): FoodEntryInsert
     reference_item_id: entry.referenceItemId ?? null,
     base_points: entry.basePoints ?? null,
     benefit_rule: entry.benefitRule ?? null,
+    // DEC-037 — dish / estimated-product provenance of this serving.
+    dish_id: entry.dishId ?? null,
+    dish_revision: entry.dishRevision ?? null,
+    estimated_product_id: entry.estimatedProductId ?? null,
+    consumed_weight_g: entry.consumedWeightG ?? null,
+    weight_source: entry.weightSource ?? null,
   };
 }
 
@@ -157,8 +178,191 @@ export function entryFromRow(row: FoodEntryRow): FoodEntry {
   if (row.reference_item_id) entry.referenceItemId = row.reference_item_id;
   if (row.base_points != null) entry.basePoints = Number(row.base_points);
   if (row.benefit_rule) entry.benefitRule = row.benefit_rule as FoodEntry["benefitRule"];
+  // DEC-037 columns (added by 20260923090000; absent on an older database).
+  if (row.dish_id) entry.dishId = row.dish_id;
+  if (row.dish_revision != null) entry.dishRevision = row.dish_revision;
+  if (row.estimated_product_id) entry.estimatedProductId = row.estimated_product_id;
+  if (row.consumed_weight_g != null) entry.consumedWeightG = Number(row.consumed_weight_g);
+  if (row.weight_source) entry.weightSource = row.weight_source as FoodEntry["weightSource"];
   if (row.created_at) entry.loggedAt = row.created_at;
   return entry;
+}
+
+// --- dishes, estimated products, weight bridges (DEC-037) --------------------
+// Derived household entities; the canonical reference tables are never written.
+
+export function estimatedProductToRow(
+  product: EstimatedProduct,
+  householdId: string,
+  createdByProfileId: string | null = null,
+): EstimatedProductInsert {
+  const row: EstimatedProductInsert = {
+    id: product.id,
+    household_id: householdId,
+    name: product.name.trim(),
+    normalized_name: normalizeFoodName(product.name),
+    brand: product.brand ?? null,
+    label_basis: product.label.basis,
+    serving_weight_g: product.label.servingWeightG ?? null,
+    label_calories: product.label.calories,
+    label_protein_g: product.label.proteinG ?? null,
+    label_fiber_g: product.label.fiberG ?? null,
+    label_saturated_fat_g: product.label.saturatedFatG ?? null,
+    label_added_sugar_g: product.label.addedSugarG ?? null,
+    label_unsaturated_fat_g: product.label.unsaturatedFatG ?? null,
+    points_per_100g: product.pointsPer100g,
+    estimator_version: product.estimatorVersion,
+    is_active: product.isActive ?? true,
+  };
+  if (createdByProfileId) row.created_by_profile_id = createdByProfileId;
+  return row;
+}
+
+export function estimatedProductFromRow(
+  row: EstimatedProductRow,
+  localProfileById?: Map<string, ProfileId>,
+): EstimatedProduct {
+  const label: LabelInput = {
+    basis: row.label_basis as LabelBasis,
+    calories: Number(row.label_calories),
+  };
+  if (row.serving_weight_g != null) label.servingWeightG = Number(row.serving_weight_g);
+  if (row.label_protein_g != null) label.proteinG = Number(row.label_protein_g);
+  if (row.label_fiber_g != null) label.fiberG = Number(row.label_fiber_g);
+  if (row.label_saturated_fat_g != null) label.saturatedFatG = Number(row.label_saturated_fat_g);
+  if (row.label_added_sugar_g != null) label.addedSugarG = Number(row.label_added_sugar_g);
+  if (row.label_unsaturated_fat_g != null) {
+    label.unsaturatedFatG = Number(row.label_unsaturated_fat_g);
+  }
+  const product: EstimatedProduct = {
+    id: row.id,
+    name: row.name,
+    label,
+    pointsPer100g: Number(row.points_per_100g),
+    estimatorVersion: row.estimator_version,
+    isActive: row.is_active,
+  };
+  if (row.brand) product.brand = row.brand;
+  const creator = row.created_by_profile_id
+    ? localProfileById?.get(row.created_by_profile_id)
+    : undefined;
+  if (creator) product.createdBy = creator;
+  return product;
+}
+
+export function weightBridgeToRow(
+  bridge: WeightBridge,
+  householdId: string,
+  createdByProfileId: string | null = null,
+): WeightBridgeInsert {
+  const row: WeightBridgeInsert = {
+    id: bridge.id,
+    household_id: householdId,
+    source_kind: bridge.sourceKind,
+    source_key: bridge.sourceKey,
+    reference_item_id: bridge.referenceItemId ?? null,
+    estimated_product_id: bridge.estimatedProductId ?? null,
+    unit: bridge.unit,
+    grams_per_unit: bridge.gramsPerUnit,
+    provenance: bridge.provenance,
+  };
+  if (createdByProfileId) row.created_by_profile_id = createdByProfileId;
+  return row;
+}
+
+export function weightBridgeFromRow(
+  row: WeightBridgeRow,
+  localProfileById?: Map<string, ProfileId>,
+): WeightBridge {
+  const bridge: WeightBridge = {
+    id: row.id,
+    sourceKind: row.source_kind as PointsSourceKind,
+    sourceKey: row.source_key,
+    unit: row.unit as Unit,
+    gramsPerUnit: Number(row.grams_per_unit),
+    provenance: row.provenance as WeightBridge["provenance"],
+  };
+  if (row.reference_item_id) bridge.referenceItemId = row.reference_item_id;
+  if (row.estimated_product_id) bridge.estimatedProductId = row.estimated_product_id;
+  const creator = row.created_by_profile_id
+    ? localProfileById?.get(row.created_by_profile_id)
+    : undefined;
+  if (creator) bridge.createdBy = creator;
+  return bridge;
+}
+
+export function dishToRow(
+  dish: Dish,
+  householdId: string,
+  createdByProfileId: string | null = null,
+): DishInsert {
+  const row: DishInsert = {
+    id: dish.id,
+    household_id: householdId,
+    name: dish.name.trim(),
+    normalized_name: normalizeFoodName(dish.name),
+    revision: dish.revision,
+    total_points: dish.totalPoints,
+    final_weight_g: dish.finalWeightG,
+    points_per_gram: dish.pointsPerGram,
+    usual_serving_weight_g: dish.usualServingWeightG ?? null,
+    is_active: dish.isActive ?? true,
+  };
+  if (createdByProfileId) row.created_by_profile_id = createdByProfileId;
+  return row;
+}
+
+/** The immutable snapshot row for this revision (never updated in place). */
+export function dishVersionToRow(
+  dish: Dish,
+  householdId: string,
+  createdByProfileId: string | null = null,
+): DishVersionInsert {
+  const row: DishVersionInsert = {
+    dish_id: dish.id,
+    household_id: householdId,
+    revision: dish.revision,
+    name: dish.name.trim(),
+    total_points: dish.totalPoints,
+    final_weight_g: dish.finalWeightG,
+    points_per_gram: dish.pointsPerGram,
+    usual_serving_weight_g: dish.usualServingWeightG ?? null,
+    ingredients: dish.ingredients as unknown as Json,
+  };
+  if (createdByProfileId) row.created_by_profile_id = createdByProfileId;
+  return row;
+}
+
+/**
+ * A dish + the ingredient snapshot of its CURRENT revision. A missing version
+ * row (older database, partial replication) yields an empty ingredient list
+ * rather than a broken dish — the rate still logs correctly.
+ */
+export function dishFromRows(
+  row: DishRow,
+  version: DishVersionRow | undefined,
+  localProfileById?: Map<string, ProfileId>,
+): Dish {
+  const ingredients = (version?.ingredients as unknown as DishIngredient[] | null) ?? [];
+  const dish: Dish = {
+    id: row.id,
+    name: row.name,
+    revision: row.revision,
+    ingredients,
+    totalPoints: Number(row.total_points),
+    finalWeightG: Number(row.final_weight_g),
+    pointsPerGram: Number(row.points_per_gram),
+    isActive: row.is_active,
+    hasEstimatedIngredient: ingredients.some((i) => i.sourceKind === "estimated"),
+  };
+  if (row.usual_serving_weight_g != null) {
+    dish.usualServingWeightG = Number(row.usual_serving_weight_g);
+  }
+  const creator = row.created_by_profile_id
+    ? localProfileById?.get(row.created_by_profile_id)
+    : undefined;
+  if (creator) dish.createdBy = creator;
+  return dish;
 }
 
 // --- custom foods -----------------------------------------------------------

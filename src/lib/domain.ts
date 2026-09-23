@@ -205,6 +205,15 @@ export interface FoodEntry {
   basePoints?: number | null;
   /** The daily benefit applied to this entry, if any (one per entry). */
   benefitRule?: "zero_any_quantity" | "fruit_daily_allowance" | "protein_zero_allowance";
+  /** DEC-037 — the dish revision this serving was logged from (immutable provenance). */
+  dishId?: string;
+  dishRevision?: number;
+  /** DEC-037 — the label-estimated product this entry was scored from. */
+  estimatedProductId?: string;
+  /** Grams consumed (dish servings, and estimated products logged by weight). */
+  consumedWeightG?: number;
+  /** Whether those grams were weighed or estimated by the person. */
+  weightSource?: WeightSource;
   /**
    * When the entry was logged (ISO). Set locally at creation and read back from
    * the row's `created_at`; never sent on writes (the database owns it). Used
@@ -266,3 +275,100 @@ export interface DayData {
 }
 
 export type SyncState = "saved" | "saving" | "offline" | "pending" | "error";
+
+// --- Dishes, weight bridges and label-estimated products (DEC-037) ----------
+// Derived household entities. They never write into the canonical reference
+// (DEC-036); an estimated value is always visibly separate from a reference one.
+
+/** Where a points value came from, at the level of the SOURCE (not the row). */
+export type PointsSourceKind = "reference" | "estimated";
+
+/** Provenance of an explicit "1 <unit> = N grams" fact. Never inferred. */
+export type BridgeProvenance = "label" | "user_measured";
+
+export interface WeightBridge {
+  id: string;
+  sourceKind: PointsSourceKind;
+  /** Reference group key, or the estimated product id. */
+  sourceKey: string;
+  /** The exact reference row the bridge was measured on (reference sources only). */
+  referenceItemId?: string;
+  /** The estimated product the bridge belongs to (estimated sources only). */
+  estimatedProductId?: string;
+  unit: Unit;
+  gramsPerUnit: number;
+  provenance: BridgeProvenance;
+  createdBy?: ProfileId;
+}
+
+/** What the person typed off the package. Missing optional values stay absent. */
+export type LabelBasis = "per_100g" | "per_serving";
+
+export interface LabelInput {
+  basis: LabelBasis;
+  /** Required for `per_serving`: the weight of ONE serving in grams. */
+  servingWeightG?: number;
+  calories: number;
+  proteinG?: number;
+  fiberG?: number;
+  saturatedFatG?: number;
+  addedSugarG?: number;
+  unsaturatedFatG?: number;
+}
+
+export interface EstimatedProduct {
+  id: string;
+  name: string;
+  brand?: string;
+  label: LabelInput;
+  /** Deterministic normalisation of `label` to a 100 g basis. */
+  pointsPer100g: number;
+  estimatorVersion: string;
+  createdBy?: ProfileId;
+  isActive?: boolean;
+}
+
+/** One ingredient as it was when the dish revision was saved. Write-once. */
+export interface DishIngredient {
+  sourceKind: PointsSourceKind;
+  /** User-visible name at save time. */
+  name: string;
+  /** Reference row identity (reference ingredients). */
+  referenceItemId?: string;
+  referenceGroupKey?: string;
+  /** Dataset version of that reference row (provenance). */
+  sourceVersion?: string;
+  /** Estimated product identity + its estimator version (estimated ingredients). */
+  estimatedProductId?: string;
+  estimatorVersion?: string;
+  /** The quantity the person entered. */
+  amount: number;
+  unit: Unit;
+  /** Human-readable basis, e.g. "1 כף (15 גרם)" or "100 גרם". */
+  basisText: string;
+  /** Grams this ingredient contributed, when the amount resolves to grams. */
+  gramsUsed?: number;
+  /** The bridge COPY used to reach grams, if one was needed. */
+  bridge?: { unit: Unit; gramsPerUnit: number; provenance: BridgeProvenance };
+  /** Points this ingredient contributed to the dish total. */
+  points: number;
+}
+
+export interface Dish {
+  id: string;
+  name: string;
+  revision: number;
+  ingredients: DishIngredient[];
+  totalPoints: number;
+  finalWeightG: number;
+  /** totalPoints / finalWeightG — full precision, rounded only when logging. */
+  pointsPerGram: number;
+  usualServingWeightG?: number;
+  createdBy?: ProfileId;
+  isActive?: boolean;
+  /** True when any ingredient is label-estimated (the dish is marked in the UI). */
+  hasEstimatedIngredient?: boolean;
+}
+
+/** How the consumed weight of a dish serving was obtained. */
+export type WeightSource = "weighed" | "estimated";

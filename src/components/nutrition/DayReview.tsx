@@ -111,7 +111,9 @@ export function DayReview({ person, onClose, onEditSlot }: Props) {
               <div className="text-[12px] text-muted-foreground" data-testid="day-review-summary">
                 {completion.documented}/{completion.total} ארוחות תועדו
                 {items > 0 ? ` · ${items} ${items === 1 ? "פריט" : "פריטים"}` : ""}
-                {` · ${formatPoints(dayPoints)}/${formatPoints(pointsBudget)} נק׳`}
+                {pointsBudget == null
+                  ? ` · ${formatPoints(dayPoints)} נק׳`
+                  : ` · ${formatPoints(dayPoints)}/${formatPoints(pointsBudget)} נק׳`}
                 {isToday ? ` · ${formatShortDate(store.selectedDate)}` : ""}
               </div>
             </div>

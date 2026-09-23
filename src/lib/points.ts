@@ -14,7 +14,15 @@
  * The v1 / v2-il model functions below are kept as deprecated explainers of
  * historical snapshots and for the personalised daily budget (unchanged).
  */
-import type { DayData, Food, FoodEntry, SubjectiveAmount, Unit } from "./domain";
+import type {
+  DayData,
+  Dish,
+  EstimatedProduct,
+  Food,
+  FoodEntry,
+  SubjectiveAmount,
+  Unit,
+} from "./domain";
 import {
   applyBenefit,
   benefitEligibility,
@@ -25,6 +33,9 @@ import {
   type ReferenceIndex,
   type Resolution,
 } from "./points-reference";
+import { dishServingPoints } from "./dishes";
+import { estimatedPointsForGrams } from "./label-estimator";
+import { resolveGrams, type BridgeIndex } from "./weight-bridges";
 import {
   BUDGET_V2,
   CATEGORY_PORTION_POINTS_V2,
@@ -162,17 +173,46 @@ export type ScoreBasis =
   | "reference:scaled"
   | "reference:any"
   | "reference:blocked"
+  // DEC-037 — derived sources, always distinguishable from a canonical value.
+  | "dish:weighed"
+  | "dish:estimated"
+  | "estimated:label"
+  | "estimated:blocked"
   | "unscored:no_reference"
   | "unscored:ambiguous";
+
+/** True when the basis is a label-estimate rather than a canonical reference value. */
+export function isEstimatedBasis(basis: string | undefined): boolean {
+  return basis === "estimated:label" || basis === "dish:estimated" || basis === "dish:weighed";
+}
 
 export interface ScoreContext {
   reference?: ReferenceIndex;
   /** Entries already logged on the same profile-day (benefit eligibility). */
   dayEntries?: Array<{ id: string; benefitRule?: FoodEntry["benefitRule"] }>;
+  /** DEC-037 — dishes by id (a serving scores from the dish's points/gram). */
+  dishes?: Map<string, Dish>;
+  /** DEC-037 — label-estimated products by id. */
+  estimatedProducts?: Map<string, EstimatedProduct>;
+  /** DEC-037 — explicit gram bridges, for estimated products logged by a non-weight unit. */
+  bridges?: BridgeIndex;
 }
 
 type ScorableEntry = EntryQuantity &
-  Partial<Pick<FoodEntry, "id" | "coffee" | "referenceItemId" | "benefitRule">>;
+  Partial<
+    Pick<
+      FoodEntry,
+      | "id"
+      | "coffee"
+      | "referenceItemId"
+      | "benefitRule"
+      | "dishId"
+      | "dishRevision"
+      | "estimatedProductId"
+      | "consumedWeightG"
+      | "weightSource"
+    >
+  >;
 
 export interface Scored {
   /** null = unscored: no reference row could be resolved; never estimated. */
@@ -194,7 +234,7 @@ function toRequested(entry: EntryQuantity) {
 }
 
 function unscored(
-  basis: "reference:blocked" | "unscored:no_reference" | "unscored:ambiguous",
+  basis: "reference:blocked" | "estimated:blocked" | "unscored:no_reference" | "unscored:ambiguous",
   referenceItemId?: string,
 ): Scored {
   const out: Scored = {
@@ -218,6 +258,52 @@ function unscored(
 export function scoreDetails(entry: ScorableEntry, food?: Food, ctx: ScoreContext = {}): Scored {
   const index = ctx.reference ?? getReferenceIndex();
   const requested = toRequested(entry);
+
+  // 1. DEC-037 — a serving of a household dish: points/gram × consumed grams.
+  //    The dish revision is recorded so the snapshot stays explainable after
+  //    the dish is edited (the dish itself is never re-read for a saved entry).
+  if (entry.dishId) {
+    const dish = ctx.dishes?.get(entry.dishId);
+    const grams = Number(entry.consumedWeightG ?? entry.amount ?? 0);
+    if (!dish || !Number.isFinite(grams) || grams <= 0) {
+      return unscored("unscored:no_reference");
+    }
+    const points = dishServingPoints(dish.pointsPerGram, grams);
+    return {
+      pointsValue: points,
+      pointsModelVersion: POINTS_MODEL_REFERENCE,
+      pointsBasis: entry.weightSource === "estimated" ? "dish:estimated" : "dish:weighed",
+      basePoints: points,
+    };
+  }
+
+  // 2. DEC-037 — a label-estimated product: per-100 g estimate × grams. A
+  //    non-weight unit needs an explicit bridge of that product; never guessed.
+  if (entry.estimatedProductId) {
+    const product = ctx.estimatedProducts?.get(entry.estimatedProductId);
+    if (!product) return unscored("unscored:no_reference");
+    const unit = entry.unit as Unit | undefined;
+    const amount = Number(entry.amount ?? 0);
+    if (entry.mode !== "measured" || !unit || !Number.isFinite(amount) || amount <= 0) {
+      return unscored("estimated:blocked");
+    }
+    const resolution = resolveGrams(
+      ctx.bridges ?? new Map(),
+      { kind: "estimated", key: product.id },
+      amount,
+      unit,
+    );
+    if (resolution.kind !== "weight" && resolution.kind !== "bridged") {
+      return unscored("estimated:blocked");
+    }
+    const points = estimatedPointsForGrams(product.pointsPer100g, resolution.grams);
+    return {
+      pointsValue: points,
+      pointsModelVersion: POINTS_MODEL_REFERENCE,
+      pointsBasis: "estimated:label",
+      basePoints: points,
+    };
+  }
 
   let item = entry.referenceItemId ? index.itemsById.get(entry.referenceItemId) : undefined;
   if (!item && (entry.coffee || food?.kind === "coffee")) {
@@ -304,7 +390,9 @@ export function unscoredEntries(day: DayData): FoodEntry[] {
   return out;
 }
 
-export function pointsRemaining(total: number, budget: number): number {
+/** Remaining points against a configured target; null when there is no target. */
+export function pointsRemaining(total: number, budget: number | null): number | null {
+  if (budget == null || !Number.isFinite(budget)) return null;
   return roundHalf(budget - total);
 }
 
@@ -414,9 +502,12 @@ export function mifflinStJeorBmr(input: {
 }
 
 /**
- * The ONE budget function. Weight-loss budget = REFERENCE_DAILY_POINTS scaled by
- * BMR / REFERENCE_BMR, clamped to the product range; maintenance applies the
- * documented uplift. Rounded to the configured step. Not the WW equation.
+ * @deprecated DEC-037 — NOT part of the active target path. The daily target is
+ * manual only; this stays as the documented seam (and its tests) for the future
+ * sex+weight lookup table, which will replace `resolvePointsBudget`'s body.
+ *
+ * Weight-loss budget = REFERENCE_DAILY_POINTS scaled by BMR / REFERENCE_BMR,
+ * clamped to the product range; maintenance applies the documented uplift.
  */
 export function calculatePersonalizedPointsBudget(input: {
   sexAtBirth: SexAtBirth;
@@ -433,13 +524,22 @@ export function calculatePersonalizedPointsBudget(input: {
   return roundTo(scaled, c.ROUNDING_STEP);
 }
 
-export type BudgetSource = "override" | "personalized" | "fallback";
+/**
+ * DEC-037: the daily target is MANUAL only. "manual" = the person entered it;
+ * "none" = no target is configured, which is a real, first-class state — the
+ * app never invents one.
+ */
+export type BudgetSource = "manual" | "none";
 export type MissingFact = "sex" | "birthDate" | "height" | "weight";
 
 export interface BudgetInfo {
-  budget: number;
+  /** null = no target configured. Never a fallback / automatic number. */
+  budget: number | null;
   source: BudgetSource;
-  /** Facts still needed for a personalised budget (empty when personalised). */
+  /**
+   * Kept for the future sex+weight lookup seam (out of scope): which body
+   * facts are still missing. It has NO effect on the active target.
+   */
   missing: MissingFact[];
 }
 
@@ -449,31 +549,23 @@ export interface BudgetInfo {
  */
 export function resolvePointsBudget(
   facts: ProfileFacts | undefined,
-  latestWeightKg: number | undefined,
-  today: Date | string = new Date(),
+  latestWeightKg?: number | undefined,
+  _today: Date | string = new Date(),
 ): BudgetInfo {
-  const override = facts?.pointsBudgetOverride;
-  if (override != null && Number.isFinite(override) && override > 0) {
-    return { budget: override, source: "override", missing: [] };
-  }
+  // The manually entered per-profile target is the ONLY source (DEC-037). The
+  // body facts and the latest weigh-in are stored and displayed, but they can
+  // never become the active target — no BMR, no fallback 23/30. The future
+  // sex+weight lookup table replaces the body of THIS function and nothing else.
+  const manual = facts?.pointsBudgetOverride;
   const missing: MissingFact[] = [];
   if (!facts?.sexAtBirth) missing.push("sex");
   if (!facts?.birthDate) missing.push("birthDate");
   if (!facts?.heightCm || facts.heightCm <= 0) missing.push("height");
   if (!latestWeightKg || latestWeightKg <= 0) missing.push("weight");
-  if (missing.length > 0)
-    return { budget: BUDGET_V2.FALLBACK_DAILY_POINTS, source: "fallback", missing };
-  return {
-    budget: calculatePersonalizedPointsBudget({
-      sexAtBirth: facts!.sexAtBirth!,
-      age: ageFromBirthDate(facts!.birthDate!, today),
-      heightCm: facts!.heightCm!,
-      weightKg: latestWeightKg!,
-      goalMode: facts!.goalMode ?? "lose",
-    }),
-    source: "personalized",
-    missing: [],
-  };
+  if (manual != null && Number.isFinite(manual) && manual > 0) {
+    return { budget: manual, source: "manual", missing };
+  }
+  return { budget: null, source: "none", missing };
 }
 
 /** Latest valid weigh-in (by date, then time) of a profile, or undefined. */
