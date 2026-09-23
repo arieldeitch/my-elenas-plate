@@ -260,7 +260,11 @@ export function LabelEstimatorForm({ initialName, initial, onSaved, onCancel }: 
             </span>
           </>
         ) : (
-          "יש להשלים את הערכים כדי לראות הערכה."
+          <span data-testid="label-estimate-missing">
+            {errors.includes("serving_weight_required") || errors.includes("serving_weight_invalid")
+              ? "כדי לנרמל ל-100 גרם צריך גם את משקל המנה בגרמים."
+              : "יש להשלים את הערכים כדי לראות הערכה."}
+          </span>
         )}
       </div>
 

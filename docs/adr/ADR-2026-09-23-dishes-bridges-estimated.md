@@ -11,10 +11,10 @@ ambiguity, so the implementation below is explainable without re-deriving it.
 
 - `resolvePointsBudget(facts)` returns `{ budget: number | null, source: "manual" | "none" }`.
   There is **no** automatic branch any more: no BMR, no fallback 23/30.
-- The DB column stays `profiles.points_budget_override` — the task explicitly allows keeping it
-  as the source if that is the safest migration path, and it is: it already syncs, is already
-  per-profile, already has RLS, and no migration/backfill is needed. It is only renamed in the
-  UI/domain language ("יעד יומי", `manualDailyTarget`).
+- The DB column stays `profiles.points_budget_override` and the domain field keeps its name — the
+  task explicitly allows keeping it as the source if that is the safest migration path, and it is:
+  it already syncs, is already per-profile, already has RLS, and needs no migration or backfill.
+  Only the user-facing language changes ("יעד יומי", no "override"/"automatic" wording).
 - `calculatePersonalizedPointsBudget` / `mifflinStJeorBmr` / `ProfileFacts` remain exported and
   tested but are **not reachable from the active budget path**. They are the seam for the future
   sex+weight lookup table (explicitly out of scope): a future run replaces the body of
@@ -27,7 +27,7 @@ ambiguity, so the implementation below is explainable without re-deriving it.
 Canonical reference tables (`food_reference_items`, `food_reference_aliases`) are **never** written
 by this feature (DEC-036 stays intact).
 
-- `dishes` — the *current* definition of a household dish (name, totals, `points_per_gram`,
+- `dishes` — the _current_ definition of a household dish (name, totals, `points_per_gram`,
   optional usual serving, creator, `is_active`, `revision`).
 - `dish_versions` — an **immutable** row per revision holding the full ingredient snapshot as
   `jsonb`, plus the totals that were true for that revision.
@@ -68,11 +68,11 @@ explainable from its own snapshot even after the dish changes.
 - Normalisation is deterministic: per-serving values are scaled to 100 g by
   `value * 100 / serving_weight_g`; the result is scored by the existing transparent linear model
   (`pointsFromNutrition` with `NUTRITION_WEIGHTS_V2`, `STANDARD_PORTION_GRAMS = 100`), so the
-  estimator is the *already documented* model, not a new black box, and it is not a claim about
+  estimator is the _already documented_ model, not a new black box, and it is not a claim about
   any proprietary formula.
 - Stored: the raw label input, the basis, the normalised per-100 g facts, the resulting
   `points_per_100g`, and `estimator_version = "label-estimate-v1"`.
-- DEC-036 deprecated `pointsFromNutrition` as a *canonical fallback*. This ADR re-authorises it
+- DEC-036 deprecated `pointsFromNutrition` as a _canonical fallback_. This ADR re-authorises it
   **only** inside this clearly-marked ESTIMATED layer; the canonical path is unchanged and a
   reference food never falls back to it.
 - Everywhere an estimated value appears (search result, quantity screen, meal row, dish
@@ -109,10 +109,12 @@ replay after reconnect cannot create a duplicate dish.
 
 ## 7. Failing safely before the migration is applied (deploy constraint)
 
-The client probes the new tables once on activation (same pattern as
-`foodsSchemaSupportsReferenceLink`). Until they exist, the dishes area and the estimator are
-visible but explain that they need the server update, and no write is queued — instead of a
-silent queue failure. Everything that worked before keeps working.
+The three household-wide reads issued on activation ARE the probe: if the tables do not exist yet
+they fail with SQLSTATE 42P01 (`isMissingRelation`), which switches `schema.dishes` off. Any other
+error is transport/permission and must not disable the feature. Until the tables exist the dishes
+area and the estimator are visible but explain that they need the server update, and no write is
+queued — instead of a silent queue failure. This costs no extra round trip (a separate probe
+request was removed during the review pass). Everything that worked before keeps working.
 
 ## 8. Surface placement (R2, R11)
 

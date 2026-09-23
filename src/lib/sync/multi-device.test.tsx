@@ -674,7 +674,7 @@ describe("dishes / estimated products / bridges sync (DEC-037 R10)", () => {
     });
     await waitFor(() => expect(A.result.current.syncState).toBe("saved"));
 
-    const dishRow = fake.rows("dishes")[0];
+    const dishRow = fake.rows("dishes")[0] as { id: string; revision: number };
     expect(fake.rows("dishes")).toHaveLength(1);
     expect(dishRow).toMatchObject({
       household_id: HOUSEHOLD,
