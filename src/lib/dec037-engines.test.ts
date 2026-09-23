@@ -29,6 +29,7 @@ import {
 } from "./weight-bridges";
 import { dishServingPoints, dishTotals, resolveIngredient, buildDish } from "./dishes";
 import { findGroupForName, getReferenceIndex, selectableItems } from "./points-reference";
+import { isMissingRelation } from "./supabase/repositories";
 
 const index = getReferenceIndex();
 const refItem = (name: string) => {
@@ -488,5 +489,20 @@ describe("R9/R3 — the canonical reference path is untouched by DEC-037", () =>
       referenceItemId: item.id,
     });
     expect(blocked).toMatchObject({ pointsValue: null, pointsBasis: "reference:blocked" });
+  });
+});
+
+describe("schema detection before the migration is applied (deploy constraint)", () => {
+  it("treats BOTH the PostgREST and the SQL 'missing relation' codes as 'not applied yet'", () => {
+    // Verified against production on 2026-09-23: PostgREST answers an unknown
+    // table with PGRST205, so checking only 42P01 would have let the client
+    // queue a write that can never succeed.
+    expect(isMissingRelation({ code: "PGRST205" })).toBe(true);
+    expect(isMissingRelation({ code: "42P01" })).toBe(true);
+    // A transport / permission problem must NOT disable the feature.
+    expect(isMissingRelation({ code: "42501" })).toBe(false);
+    expect(isMissingRelation(new TypeError("Failed to fetch"))).toBe(false);
+    expect(isMissingRelation(null)).toBe(false);
+    expect(isMissingRelation(undefined)).toBe(false);
   });
 });

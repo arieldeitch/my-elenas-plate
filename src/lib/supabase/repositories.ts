@@ -504,17 +504,19 @@ export async function bumpRecent(
 // idempotent upserts keyed by the client-generated uuid.
 
 /**
- * SQLSTATE for "relation does not exist": the ONLY definite signal that the
- * DEC-037 migration (20260923090000) has not been applied yet. Any other error
- * is a transport/permission problem and must not turn the feature off.
+ * The codes that definitely mean "that table is not there yet" — the only
+ * signal that a migration has not been applied. PostgREST answers an unknown
+ * relation from its schema cache with PGRST205 (verified against production on
+ * 2026-09-23), while a direct SQL path answers with SQLSTATE 42P01. Anything
+ * else is transport / permission and must NOT turn the feature off.
  */
-export const UNDEFINED_TABLE = "42P01";
+export const MISSING_RELATION_CODES = ["42P01", "PGRST205"] as const;
 
 /** True when an error means "that table is not there yet". */
 export function isMissingRelation(err: unknown): boolean {
-  return (
-    typeof err === "object" && err !== null && (err as { code?: string }).code === UNDEFINED_TABLE
-  );
+  if (typeof err !== "object" || err === null) return false;
+  const code = (err as { code?: string }).code;
+  return MISSING_RELATION_CODES.includes(code as (typeof MISSING_RELATION_CODES)[number]);
 }
 
 export async function loadEstimatedProducts(
