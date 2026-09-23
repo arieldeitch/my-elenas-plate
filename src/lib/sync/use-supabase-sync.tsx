@@ -109,6 +109,8 @@ export interface SyncControls {
 const WEIGH_KINDS = new Set(["weighin.insert"]);
 const PREF_KINDS = new Set(["pref.favorite", "pref.recent"]);
 const PROFILE_FACTS_KINDS = new Set(["profile.points-budget.set", "profile.facts.set"]);
+/** Household-wide DEC-037 writes; hydrateDerived must not overwrite them. */
+const DERIVED_KINDS = new Set(["dish.upsert", "dish.archive", "estimated.upsert", "bridge.upsert"]);
 const DRAIN_DEBOUNCE_MS = 400;
 /**
  * Converging a day from the cloud after our own drain and after each realtime
@@ -201,7 +203,14 @@ export function useSupabaseSync(args: Args): SyncControls {
         loadEstimatedProducts(ctx.householdId, localById),
         loadWeightBridges(ctx.householdId, localById),
       ]);
+      // The reads themselves are the schema probe: they succeeded, so the
+      // tables exist. That is true regardless of what is still queued.
       setSchemaDishes(true);
+      // A dish / product / bridge that has not been sent yet is not in the
+      // server list, so replacing local state with it would lose the local row
+      // (the same guard the prefs and weigh-in hydrates apply). The probe above
+      // still runs, so a queued write never leaves the feature looking absent.
+      if (queue.hasPendingKinds(DERIVED_KINDS)) return;
       args.setDishes(dishes);
       args.setEstimatedProducts(products);
       args.setWeightBridges(bridges);

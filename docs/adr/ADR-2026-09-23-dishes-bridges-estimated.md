@@ -48,11 +48,18 @@ explainable from its own snapshot even after the dish changes.
 `(household_id, source_kind, source_key, unit) → grams_per_unit` with `provenance` in
 (`label`, `user_measured`) and the creator.
 
-- `source_kind = 'reference'` → `source_key` is the reference **group key** and
-  `reference_item_id` pins the exact row/variation the bridge was measured on.
-- `source_kind = 'estimated'` → `source_key` is the estimated product id.
-- A bridge is reusable inside the household for that exact identity only. It is never applied to
-  another brand/variant/reference identity, and there is no density inference anywhere.
+- `source_kind = 'reference'` → `source_key` is the reference **group key**, i.e. the food
+  identity the app searches and shows ("טחינה"), not one portion row of it. A group is exactly one
+  food under one canonical name (DEC-036), and "1 כף = 15 גרם" is a fact about that food, so a
+  bridge measured while one portion variation was selected is correct for the others too;
+  fragmenting it per row would make the person re-measure the same spoon for each variation.
+  `reference_item_id` is **provenance**, not part of the key: it records which row was on screen
+  when the fact was stated, so the bridge stays auditable.
+- `source_kind = 'estimated'` → `source_key` is the estimated product id. Estimated products are
+  per brand/package by construction, so the bridge is as narrow as the product itself.
+- A bridge is reusable inside the household for that identity only. It is never applied to another
+  food, another brand, another estimated product or the other `source_kind`, and there is no
+  density inference anywhere (`bridgeKey` = `kind:key:unit`).
 - Without a bridge, a gram request against a non-weight reference portion stays **blocked** (the
   DEC-036 behaviour) and the UI explains that a bridge is needed.
 - The bridge used by a dish ingredient is **copied into the ingredient snapshot**, so later edits

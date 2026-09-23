@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { StoreProvider, useStore } from "./store";
+import { DuplicateDishNameError, StoreProvider, useStore } from "./store";
 import { toISODate } from "./format";
 import { pointsForEntry } from "./points";
 import { LABEL_ESTIMATOR_VERSION } from "./label-estimator";
@@ -298,6 +298,126 @@ describe("weight bridges in the store", () => {
     });
     expect(result.current.weightBridges).toHaveLength(1);
     expect(result.current.weightBridges[0].gramsPerUnit).toBe(18);
+  });
+});
+
+describe("the canonical reference is never touched (acceptance 19)", () => {
+  beforeEach(() => window.localStorage.clear());
+
+  it("19. dishes, estimated products and bridges leave the reference and the food list identical", () => {
+    const { result } = renderHook(() => useStore(), { wrapper });
+    // The two things DEC-036 makes canonical: the reference dataset itself and
+    // the ONE active food list derived from it.
+    const referenceBefore = {
+      items: index.itemsById.size,
+      groups: index.groups.length,
+      aliases: index.aliasToGroup.size,
+      version: index.version,
+    };
+    const foodsBefore = JSON.stringify(result.current.foods);
+
+    act(() => {
+      const product = result.current.saveEstimatedProduct({
+        name: "רוטב מהסופר",
+        label: { basis: "per_100g", calories: 350, saturatedFatG: 12 },
+      });
+      result.current.saveWeightBridge({
+        sourceKind: "estimated",
+        sourceKey: product.id,
+        unit: "כף",
+        gramsPerUnit: 15,
+        provenance: "user_measured",
+      });
+    });
+    const product = result.current.estimatedProducts[0];
+    const estimated = resolveIngredient(
+      { sourceKind: "estimated", product, amount: 100, unit: "גרם" },
+      buildBridgeIndex(result.current.weightBridges),
+    );
+    expect(estimated.ok).toBe(true);
+    if (!estimated.ok) return;
+    act(() => {
+      result.current.saveDish({
+        name: "תבשיל מעורב",
+        ingredients: [gramIngredient("תפוח אדמה", 200), estimated.ingredient],
+        finalWeightG: 400,
+      });
+    });
+    act(() => {
+      result.current.logDish("lunch", {
+        dishId: result.current.dishes[0].id,
+        grams: 200,
+        weightSource: "weighed",
+      });
+    });
+
+    // Nothing was added to, removed from or renamed in the canonical layer …
+    const after = getReferenceIndex();
+    expect({
+      items: after.itemsById.size,
+      groups: after.groups.length,
+      aliases: after.aliasToGroup.size,
+      version: after.version,
+    }).toEqual(referenceBefore);
+    // … and the active food list is byte-for-byte what it was.
+    expect(JSON.stringify(result.current.foods)).toBe(foodsBefore);
+    // The derived entities live in their own namespaces.
+    expect(result.current.foods.some((f) => f.name === "תבשיל מעורב")).toBe(false);
+    expect(result.current.foods.some((f) => f.name === "רוטב מהסופר")).toBe(false);
+  });
+});
+
+describe("a dish name is unique per household (durable-queue safety)", () => {
+  beforeEach(() => window.localStorage.clear());
+
+  it("refuses a second dish of the same name instead of queueing a doomed write", () => {
+    const { result } = renderHook(() => useStore(), { wrapper });
+    act(() => {
+      result.current.saveDish({
+        name: "תבשיל עדשים",
+        ingredients: [gramIngredient("תפוח אדמה", 200)],
+        finalWeightG: 400,
+      });
+    });
+    // `dishes.normalized_name` is unique per household: a duplicate would be
+    // rejected for good (23505) and would quarantine the servings logged from
+    // it (23503), so the store refuses it up front.
+    expect(() =>
+      result.current.saveDish({
+        name: "  תבשיל   עדשים ",
+        ingredients: [gramIngredient("תפוח אדמה", 100)],
+        finalWeightG: 200,
+      }),
+    ).toThrow(DuplicateDishNameError);
+    expect(result.current.allDishes).toHaveLength(1);
+
+    // An ARCHIVED dish still owns its name in the database.
+    act(() => result.current.setDishActive(result.current.dishes[0].id, false));
+    expect(result.current.dishes).toHaveLength(0);
+    expect(result.current.findDishByName("תבשיל עדשים")).toBeDefined();
+    expect(() =>
+      result.current.saveDish({
+        name: "תבשיל עדשים",
+        ingredients: [gramIngredient("תפוח אדמה", 100)],
+        finalWeightG: 200,
+      }),
+    ).toThrow(DuplicateDishNameError);
+
+    // Editing the dish itself is of course still allowed, and an archived dish
+    // that is edited stays archived.
+    const id = result.current.allDishes[0].id;
+    act(() => {
+      result.current.saveDish({
+        id,
+        name: "תבשיל עדשים",
+        ingredients: [gramIngredient("תפוח אדמה", 300)],
+        finalWeightG: 400,
+      });
+    });
+    expect(result.current.allDishes).toHaveLength(1);
+    expect(result.current.allDishes[0].revision).toBe(2);
+    expect(result.current.allDishes[0].isActive).toBe(false);
+    expect(result.current.dishes).toHaveLength(0);
   });
 });
 

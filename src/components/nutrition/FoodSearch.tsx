@@ -138,6 +138,12 @@ export function FoodSearch({
     if (!key) return [];
     return estimatedProducts.filter((p) => normalizeFoodName(p.name).includes(key)).slice(0, 5);
   }, [estimatedProducts, q]);
+  // "Nothing matched" means nothing at all was offered — a household dish or an
+  // estimated product IS a result, even though it is not in the catalog.
+  const nothingListed =
+    results.length === 0 &&
+    (!onChooseDish || dishMatches.length === 0) &&
+    (!onChooseEstimated || estimatedMatches.length === 0);
 
   return (
     <div className="flex flex-col gap-3">
@@ -330,7 +336,7 @@ export function FoodSearch({
               הערכת מוצר מלייבל
             </button>
           )}
-          {results.length === 0 && (
+          {nothingListed && (
             <div className="text-sm text-muted-foreground py-4 text-center">
               לא נמצא מאכל תואם בקטלוג.
             </div>

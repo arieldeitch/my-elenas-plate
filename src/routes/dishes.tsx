@@ -217,7 +217,9 @@ function DishesPage() {
           onSaved={() => setEditing(null)}
         />
       )}
-      <DishLogSheet dish={logging} onClose={() => setLogging(null)} />
+      {/* Mounted only while a dish is selected, so the usual-serving prefill
+          applies and no state leaks from the previously logged dish. */}
+      {logging && <DishLogSheet dish={logging} onClose={() => setLogging(null)} />}
 
       <BottomNav
         active="dishes"

@@ -128,7 +128,7 @@ describe("DEC-037 schema", () => {
     expect(cols.rows.every((c) => c.is_nullable === "YES")).toBe(true);
   });
 
-  it("anon has no access to the new tables; authenticated has CRUD", async () => {
+  it("anon has no access; authenticated has CRUD except on the append-only versions", async () => {
     const grants = await db.query<{ grantee: string; table_name: string }>(
       `select distinct grantee, table_name from information_schema.role_table_grants
        where table_schema = 'public'
@@ -137,6 +137,27 @@ describe("DEC-037 schema", () => {
     );
     expect(grants.rows.filter((g) => g.grantee === "anon")).toHaveLength(0);
     expect(grants.rows.filter((g) => g.grantee === "authenticated")).toHaveLength(4);
+
+    // A revision snapshot is evidence for a meal that is already logged: no
+    // member may rewrite or erase one, by privilege AND by policy.
+    const perTable = await db.query<{ table_name: string; privs: string }>(
+      `select table_name, string_agg(distinct privilege_type, ',' order by privilege_type) as privs
+       from information_schema.role_table_grants
+       where table_schema = 'public' and grantee = 'authenticated'
+         and table_name in ('dishes','dish_versions','estimated_products','weight_bridges')
+       group by table_name order by table_name`,
+    );
+    expect(Object.fromEntries(perTable.rows.map((r) => [r.table_name, r.privs]))).toEqual({
+      dish_versions: "INSERT,SELECT",
+      dishes: "DELETE,INSERT,SELECT,UPDATE",
+      estimated_products: "DELETE,INSERT,SELECT,UPDATE",
+      weight_bridges: "DELETE,INSERT,SELECT,UPDATE",
+    });
+    const policies = await db.query<{ cmd: string }>(
+      `select cmd from pg_policies where schemaname = 'public' and tablename = 'dish_versions'
+       order by cmd`,
+    );
+    expect(policies.rows.map((r) => r.cmd).sort()).toEqual(["INSERT", "SELECT"]);
     await db.exec("set role anon");
     try {
       await expect(db.query("select count(*) from public.dishes")).rejects.toThrow(
@@ -250,6 +271,20 @@ describe("DEC-037 household sharing and RLS (acceptance 20, 21)", () => {
       "select total_points::text from public.dish_versions where revision = 1",
     );
     expect(v1.rows[0].total_points).toBe("10");
+
+    // A member of the household cannot rewrite or erase a stored revision.
+    await asUser(DEVICE_A, async () => {
+      await expect(
+        db.query("update public.dish_versions set total_points = 999 where revision = 1"),
+      ).rejects.toThrow(/permission denied/);
+      await expect(db.query("delete from public.dish_versions where revision = 1")).rejects.toThrow(
+        /permission denied/,
+      );
+    });
+    const after = await db.query<{ total_points: string }>(
+      "select total_points::text from public.dish_versions where revision = 1",
+    );
+    expect(after.rows[0].total_points).toBe("10");
   });
 
   it("a meal entry keeps its dish/estimated provenance and survives the dish changing", async () => {

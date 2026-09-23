@@ -623,10 +623,14 @@ export async function upsertDish(
     .from("dishes")
     .upsert(dishToRow(dish, householdId, createdByProfileId), { onConflict: "id" });
   if (error) throw error;
+  // A revision snapshot is written ONCE and never rewritten (the table grants
+  // no update): a replay of the same queued op must therefore be ignored, not
+  // turned into an update that RLS would refuse.
   const { error: vErr } = await sb
     .from("dish_versions")
     .upsert(dishVersionToRow(dish, householdId, createdByProfileId), {
       onConflict: "dish_id,revision",
+      ignoreDuplicates: true,
     });
   if (vErr) throw vErr;
 }

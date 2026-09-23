@@ -4,7 +4,7 @@
  * 14–16 and the non-negotiable "never guess" rules.
  */
 import { describe, it, expect } from "vitest";
-import type { LabelInput, WeightBridge } from "./domain";
+import type { LabelInput, Unit, WeightBridge } from "./domain";
 import {
   calculatePersonalizedPointsBudget,
   pointsRemaining,
@@ -28,7 +28,12 @@ import {
   resolveGrams,
 } from "./weight-bridges";
 import { dishServingPoints, dishTotals, resolveIngredient, buildDish } from "./dishes";
-import { findGroupForName, getReferenceIndex, selectableItems } from "./points-reference";
+import {
+  findGroupForName,
+  getReferenceIndex,
+  selectableItems,
+  type ReferenceRuntimeItem,
+} from "./points-reference";
 import { isMissingRelation } from "./supabase/repositories";
 
 const index = getReferenceIndex();
@@ -280,6 +285,96 @@ describe("R3/R4/R7 — dish ingredients resolve only through safe paths", () => 
     const otherBridge: WeightBridge = { ...bridge, id: "b3", sourceKey: "משהו אחר" };
     const stillBlocked = resolveIngredient(request, buildBridgeIndex([otherBridge]));
     expect(stillBlocked.ok).toBe(false);
+  });
+
+  it("a bridge belongs to the FOOD, so it serves every variation of the same name", () => {
+    // "1 יחידה = N גרם" is a property of the food, not of the row that happens
+    // to score it, so the bridge key is the reference GROUP (ADR §3). Several
+    // rows of one name are variations of one food (DEC-036).
+    const byName = new Map<string, ReferenceRuntimeItem[]>();
+    for (const item of index.itemsById.values()) {
+      if (item.benefitOf || item.status !== "active") continue;
+      if (item.portion?.primary?.appUnit == null || item.portion.grams != null) continue;
+      const list = byName.get(item.normalizedName) ?? [];
+      list.push(item);
+      byName.set(item.normalizedName, list);
+    }
+    const variations = [...byName.values()].find(
+      (rows) =>
+        rows.length > 1 && rows[0].portion!.primary!.appUnit === rows[1].portion!.primary!.appUnit,
+    )!;
+    expect(variations).toBeDefined();
+    const [first, second] = variations;
+    const groupKey = first.normalizedName;
+    const unit = first.portion!.primary!.appUnit as Unit;
+
+    const bridge: WeightBridge = {
+      id: "b-variation",
+      sourceKind: "reference",
+      sourceKey: groupKey,
+      // Provenance only: the row that was on screen when the fact was stated.
+      referenceItemId: first.id,
+      unit,
+      gramsPerUnit: 40,
+      provenance: "user_measured",
+    };
+    const bridges = buildBridgeIndex([bridge]);
+    const request = (item: ReferenceRuntimeItem) => ({
+      sourceKind: "reference" as const,
+      item,
+      name: item.displayName,
+      groupKey: item.normalizedName,
+      amount: 80,
+      unit: "גרם" as const,
+    });
+
+    for (const item of [first, second]) {
+      const resolved = resolveIngredient(request(item), bridges);
+      expect(resolved.ok).toBe(true);
+      if (!resolved.ok) return;
+      expect(resolved.ingredient.gramsUsed).toBe(80);
+      expect(resolved.ingredient.bridge?.gramsPerUnit).toBe(40);
+      // Each variation still scores with ITS OWN points, which is the whole
+      // reason the rows are separate.
+      expect(resolved.ingredient.referenceItemId).toBe(item.id);
+    }
+    // …and a bridge stated for a different FOOD is still never applied.
+    const otherFood = resolveIngredient(
+      request(first),
+      buildBridgeIndex([{ ...bridge, id: "x", sourceKey: "שם אחר לגמרי" }]),
+    );
+    expect(otherFood.ok).toBe(false);
+  });
+
+  it("the grams of a count ingredient come from the measure that actually matched", () => {
+    // A portion stated as "1 <primary> / N <alternative> / M גרם": asking for
+    // the ALTERNATIVE unit must scale by the alternative's own amount, not by
+    // the primary's, or the recorded gramsUsed would be wrong by that ratio.
+    const row = [...index.itemsById.values()].find(
+      (i) =>
+        i.status === "active" &&
+        !i.benefitOf &&
+        i.portion?.grams != null &&
+        i.portion.primary?.family === "count" &&
+        (i.portion.alternatives ?? []).some((m) => m.family === "count" && m.appUnit),
+    );
+    if (!row) return; // the dataset has none — nothing to assert
+    const alt = row.portion!.alternatives!.find((m) => m.family === "count" && m.appUnit)!;
+    const resolved = resolveIngredient(
+      {
+        sourceKind: "reference",
+        item: row,
+        name: row.displayName,
+        groupKey: row.normalizedName,
+        amount: alt.amount,
+        unit: alt.appUnit as Unit,
+      },
+      buildBridgeIndex([]),
+    );
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) return;
+    // `alt.amount` of the alternative unit IS the whole portion → its grams.
+    expect(resolved.ingredient.gramsUsed).toBeCloseTo(row.portion!.grams!, 6);
   });
 
   it("13. a dish may mix reference and estimated ingredients; each keeps its provenance", () => {

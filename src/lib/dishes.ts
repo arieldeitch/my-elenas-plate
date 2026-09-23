@@ -20,7 +20,13 @@
 import type { Dish, DishIngredient, EstimatedProduct, Unit, WeightBridge } from "./domain";
 import { estimatedPointsForGrams } from "./label-estimator";
 import { roundHalf } from "./points";
-import { formatPortion, resolveReferenceItem, type ReferenceRuntimeItem } from "./points-reference";
+import {
+  formatPortion,
+  resolveReferenceItem,
+  type ReferencePortion,
+  type ReferenceRuntimeItem,
+  type Resolution,
+} from "./points-reference";
 import { STANDARD_PORTION_GRAMS } from "./points-config";
 import {
   bridgeSnapshot,
@@ -111,9 +117,7 @@ export function resolveIngredient(
   if (direct.kind !== "blocked" && direct.points != null) {
     const grams = isWeightUnit(request.unit)
       ? gramsFromWeightUnit(amount, request.unit)
-      : item.portion?.grams != null && item.portion.primary
-        ? (amount / item.portion.primary.amount) * item.portion.grams
-        : undefined;
+      : gramsFromResolution(item.portion, direct);
     return {
       ok: true,
       ingredient: referenceIngredient(request, amount, request.unit, direct.points, grams),
@@ -152,6 +156,28 @@ export function resolveIngredient(
   }
 
   return { ok: false, reason: "needs_bridge", unit: request.unit, bridgeUnit: portionUnit };
+}
+
+/**
+ * Grams for a NON-weight amount of a reference portion, derived from the very
+ * scale the reference engine used plus the portion's explicit gram
+ * equivalence. Taking the scale from the engine means the measure that
+ * actually matched decides — a count stated in an alternative measure
+ * ("1 כף / 3 כפיות") is no longer scaled by the primary measure's amount.
+ *
+ * Returns undefined rather than a guess when the portion states no grams, or
+ * for a "0 at any quantity" portion whose scale is a constant 1. The points
+ * are unaffected either way: they always come from the engine. Grams are only
+ * carried in the snapshot (and, for an estimated ingredient, are the basis).
+ */
+function gramsFromResolution(
+  portion: ReferencePortion | null | undefined,
+  resolution: Resolution,
+): number | undefined {
+  if (!portion || portion.family === "any" || portion.grams == null) return undefined;
+  const scale = resolution.scale;
+  if (scale == null || !Number.isFinite(scale) || scale <= 0) return undefined;
+  return scale * portion.grams;
 }
 
 function referenceIngredient(
@@ -246,6 +272,8 @@ export function buildDish(input: {
   finalWeightG: number;
   usualServingWeightG?: number;
   createdBy?: Dish["createdBy"];
+  /** Preserved across an edit: editing an archived dish must not un-archive it. */
+  isActive?: boolean;
 }): Dish {
   const totals = dishTotals(input.ingredients, input.finalWeightG);
   const dish: Dish = {
@@ -256,7 +284,7 @@ export function buildDish(input: {
     totalPoints: totals.totalPoints,
     finalWeightG: input.finalWeightG,
     pointsPerGram: totals.pointsPerGram,
-    isActive: true,
+    isActive: input.isActive ?? true,
     hasEstimatedIngredient: totals.hasEstimatedIngredient,
   };
   if (input.usualServingWeightG != null) dish.usualServingWeightG = input.usualServingWeightG;

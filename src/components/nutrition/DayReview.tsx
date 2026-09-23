@@ -10,7 +10,7 @@ import { countEntries } from "@/lib/activity";
 import { coffeeSummary } from "@/lib/coffee";
 import { formatQuantity } from "@/lib/quantity";
 import { cn } from "@/lib/utils";
-import { formatPoints, pointsForDay, pointsForEntry } from "@/lib/points";
+import { formatPoints, isEstimatedBasis, pointsForDay, pointsForEntry } from "@/lib/points";
 import { ESTIMATED_SHORT } from "@/lib/label-estimator";
 
 interface Props {
@@ -272,7 +272,7 @@ function SlotRow({
               <span className="shrink-0 text-[11px] font-medium text-primary">
                 {pointsForEntry(e) == null ? "ללא ניקוד" : `${formatPoints(pointsForEntry(e))} נק׳`}
                 {/* DEC-037 — estimated / dish provenance stays visible in history. */}
-                {e.pointsBasis === "estimated:label" && (
+                {isEstimatedBasis(e.pointsBasis) && (
                   <span className="mr-1 text-info">· {ESTIMATED_SHORT}</span>
                 )}
                 {e.dishId && <span className="mr-1 text-muted-foreground">· תבשיל</span>}

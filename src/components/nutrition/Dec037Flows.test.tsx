@@ -3,10 +3,12 @@
  * the weight-bridge question and the "no target configured" state.
  */
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { StoreProvider, useStore } from "@/lib/store";
+import { resolveIngredient } from "@/lib/dishes";
+import { buildBridgeIndex } from "@/lib/weight-bridges";
 import { DEVICE_PROFILE_KEY } from "@/lib/device-profile";
 import { DishEditor } from "./DishEditor";
 import { LabelEstimatorForm } from "./LabelEstimatorForm";
@@ -252,5 +254,53 @@ describe("estimating a missing product from inside a meal", () => {
     expect(entry.pointsBasis).toBe("estimated:label");
     expect(entry.estimatedProductId).toBe(store!.estimatedProducts[0].id);
     expect(entry.pointsValue).toBeGreaterThan(0);
+
+    // An estimate is a DERIVED source with its own provenance — never the
+    // "old food, not in the database" state that DEC-036 legacy rows get.
+    expect(row).toHaveAttribute("data-legacy", "false");
+    expect(within(row).queryByText(/מאכל ישן/)).toBeNull();
+  });
+
+  it("a saved product and a saved dish are search results, not a 'nothing found'", async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <MealEditor slot="dinner" onClose={vi.fn()} />
+        <Probe />
+      </>,
+      { wrapper },
+    );
+    // A household product and a household dish, neither of them in the catalog.
+    act(() => {
+      store!.saveEstimatedProduct({
+        name: "ממרח מיוחד",
+        label: { basis: "per_100g", calories: 500 },
+      });
+    });
+    const ingredient = resolveIngredient(
+      {
+        sourceKind: "estimated",
+        product: store!.estimatedProducts[0],
+        amount: 100,
+        unit: "גרם",
+      },
+      buildBridgeIndex([]),
+    );
+    expect(ingredient.ok).toBe(true);
+    if (!ingredient.ok) return;
+    act(() => {
+      store!.saveDish({
+        name: "ממרח בתבשיל",
+        ingredients: [ingredient.ingredient],
+        finalWeightG: 200,
+      });
+    });
+
+    await user.type(screen.getByRole("textbox", { name: "חיפוש מאכל" }), "ממרח");
+    expect(await screen.findByTestId("search-result-estimated")).toBeInTheDocument();
+    expect(screen.getByTestId("search-result-dish")).toBeInTheDocument();
+    // The catalog has no "ממרח", but something WAS found — the household's own
+    // sources are results too, so the dead-end line must not be shown.
+    expect(screen.queryByText("לא נמצא מאכל תואם בקטלוג.")).toBeNull();
   });
 });

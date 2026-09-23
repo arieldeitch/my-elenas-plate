@@ -128,6 +128,17 @@ export function DishEditor({ dish, open, onClose, onSaved }: Props) {
     if (usual != null && (!Number.isFinite(usual) || usual <= 0)) {
       return setError("מנה רגילה: משקל בגרמים או ריק.");
     }
+    // A dish name is unique per household in the database (archived dishes
+    // included). Saving a second one would be refused for good and would take
+    // the servings logged from it with it, so it is refused here instead.
+    const clash = store.findDishByName(name, dish?.id);
+    if (clash) {
+      return setError(
+        clash.isActive
+          ? `כבר יש תבשיל בשם "${clash.name}" — אפשר לערוך אותו או לבחור שם אחר.`
+          : `תבשיל בשם "${clash.name}" נמצא בארכיון — אפשר להחזיר אותו מהארכיון או לבחור שם אחר.`,
+      );
+    }
     const saved = store.saveDish({
       id: dish?.id,
       name,

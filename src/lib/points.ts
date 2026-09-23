@@ -181,9 +181,18 @@ export type ScoreBasis =
   | "unscored:no_reference"
   | "unscored:ambiguous";
 
-/** True when the basis is a label-estimate rather than a canonical reference value. */
+/**
+ * True when the POINTS were estimated from a nutrition label instead of read
+ * from the canonical reference.
+ *
+ * `dish:weighed` / `dish:estimated` are deliberately NOT included: a dish
+ * basis records how the served WEIGHT was obtained, not how the dish was
+ * scored. A dish's points are an estimate only when it contains an estimated
+ * ingredient — a property of the dish (`Dish.hasEstimated`), which the UI
+ * shows separately.
+ */
 export function isEstimatedBasis(basis: string | undefined): boolean {
-  return basis === "estimated:label" || basis === "dish:estimated" || basis === "dish:weighed";
+  return basis === "estimated:label";
 }
 
 export interface ScoreContext {

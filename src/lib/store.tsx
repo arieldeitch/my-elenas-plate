@@ -149,6 +149,13 @@ interface StoreValue {
     finalWeightG: number;
     usualServingWeightG?: number;
   }) => Dish;
+  /**
+   * The dish that already owns this name (`dishes.normalized_name` is unique per
+   * household, archived rows included), excluding `exceptId`. The editor must
+   * check this before saving: a duplicate would be refused by the server for
+   * good, quarantining the dish AND every serving logged from it.
+   */
+  findDishByName: (name: string, exceptId?: string) => Dish | undefined;
   setDishActive: (dishId: string, isActive: boolean) => void;
   /** Saves a label-estimated product (reusable by both people). */
   saveEstimatedProduct: (input: {
@@ -192,13 +199,21 @@ interface StoreValue {
   getPointsBudgetInfo: (profile: ProfileId) => BudgetInfo;
   /** The active person's stored facts (DEC-034). */
   profileFacts: ProfileFacts;
-  /** Partial update of the active person's facts; `pointsBudgetOverride: null` = back to automatic. */
+  /** Partial update of the active person's facts; `pointsBudgetOverride: null` clears the target. */
   setProfileFacts: (patch: Partial<ProfileFacts>) => void;
   /** Sets the manual daily target (DEC-037: the only source); null clears it. */
   setPointsBudget: (budget: number | null) => void;
 
   weighIns: WeighIn[];
   addWeighIn: (w: Omit<WeighIn, "id">) => void;
+}
+
+/** Thrown by `saveDish` when another dish (active or archived) already has the name. */
+export class DuplicateDishNameError extends Error {
+  constructor(public readonly existing: Dish) {
+    super(`a dish named "${existing.name}" already exists`);
+    this.name = "DuplicateDishNameError";
+  }
 }
 
 const StoreCtx = createContext<StoreValue | null>(null);
@@ -322,6 +337,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // Merge rather than replace: a snapshot taken before a catalog update must
       // not shrink the catalog back to its older contents.
       setFoods(mergeCatalog(FOOD_CATALOG, saved.foods));
+      // DEC-037 — household-wide entities and the manual targets. Absent from a
+      // snapshot written before DEC-037, hence the defaults.
+      if (saved.profileFacts) setProfileFactsMap(saved.profileFacts);
+      setDishes(saved.dishes ?? []);
+      setEstimatedProducts(saved.estimatedProducts ?? []);
+      setWeightBridges(saved.weightBridges ?? []);
       // The device preference always wins over the snapshot's last-active profile.
       if (loadDeviceProfile() === null) setActiveProfile(saved.activeProfile);
     }
@@ -352,8 +373,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       favorites: favoritesMap,
       recents: recentsMap,
       foods,
+      profileFacts: profileFactsMap,
+      dishes,
+      estimatedProducts,
+      weightBridges,
     });
-  }, [hydrated, activeProfile, days, weighInsMap, favoritesMap, recentsMap, foods]);
+  }, [
+    hydrated,
+    activeProfile,
+    days,
+    weighInsMap,
+    favoritesMap,
+    recentsMap,
+    foods,
+    profileFactsMap,
+    dishes,
+    estimatedProducts,
+    weightBridges,
+  ]);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Never let the demo "saved" pulse fire on an unmounted provider.
@@ -666,8 +703,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return bridge;
   };
 
+  const findDishByName: StoreValue["findDishByName"] = (name, exceptId) => {
+    const key = normalizeFoodName(name);
+    // Archived dishes still hold the unique name in the database.
+    return dishes.find((d) => d.id !== exceptId && normalizeFoodName(d.name) === key);
+  };
+
   const saveDish: StoreValue["saveDish"] = (input) => {
     const existing = input.id ? dishes.find((d) => d.id === input.id) : undefined;
+    // The database enforces one dish per name per household; creating a second
+    // one locally would be quarantined permanently (23505) and would take its
+    // logged servings down with it (23503). Refuse it here instead.
+    const clash = findDishByName(input.name, existing?.id);
+    if (clash) {
+      throw new DuplicateDishNameError(clash);
+    }
     // Editing a dish creates the NEXT revision; the previous revision row stays
     // untouched, so a meal logged from it remains explainable (DEC-037 R9).
     const dish = buildDish({
@@ -678,6 +728,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       finalWeightG: input.finalWeightG,
       usualServingWeightG: input.usualServingWeightG,
       createdBy: existing?.createdBy ?? activeProfile,
+      isActive: existing?.isActive ?? true,
     });
     setDishes((prev) => [dish, ...prev.filter((d) => d.id !== dish.id)]);
     sync.enqueue([{ kind: "dish.upsert", dish, createdBy: dish.createdBy }]);
@@ -760,6 +811,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       weightBridges,
       dishesSupported,
       saveDish,
+      findDishByName,
       setDishActive,
       saveEstimatedProduct,
       saveWeightBridge,

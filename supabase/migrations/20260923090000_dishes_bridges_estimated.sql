@@ -147,14 +147,27 @@ end;
 $$;
 
 -- privileges + RLS (identical to the existing household tables) ----------------
+-- Every table: read/insert inside the household only, nothing for anon.
+-- `dish_versions` is APPEND-ONLY — an ingredient snapshot is the evidence a
+-- past meal is explained by, so no member may rewrite or erase one. It is
+-- therefore granted (and given policies for) select + insert only; the rows go
+-- away only with their dish, through the foreign key's cascade.
 do $$
 declare
   t text;
+  immutable_table boolean;
 begin
   foreach t in array array['estimated_products', 'weight_bridges', 'dishes', 'dish_versions']
   loop
+    immutable_table := (t = 'dish_versions');
     execute format('revoke all on table public.%I from anon;', t);
-    execute format('grant select, insert, update, delete on table public.%I to authenticated, service_role;', t);
+    if immutable_table then
+      execute format('revoke update, delete on table public.%I from authenticated;', t);
+      execute format('grant select, insert on table public.%I to authenticated;', t);
+      execute format('grant select, insert, update, delete on table public.%I to service_role;', t);
+    else
+      execute format('grant select, insert, update, delete on table public.%I to authenticated, service_role;', t);
+    end if;
     execute format('alter table public.%I enable row level security;', t);
 
     execute format('drop policy if exists %I_select on public.%I;', t, t);
@@ -167,16 +180,20 @@ begin
       'create policy %I_insert on public.%I for insert to authenticated with check (public.is_household_member(household_id));',
       t, t
     );
+    -- An append-only table gets no update / delete policy at all, so even a
+    -- future grant cannot silently make revisions mutable.
     execute format('drop policy if exists %I_update on public.%I;', t, t);
-    execute format(
-      'create policy %I_update on public.%I for update to authenticated using (public.is_household_member(household_id)) with check (public.is_household_member(household_id));',
-      t, t
-    );
     execute format('drop policy if exists %I_delete on public.%I;', t, t);
-    execute format(
-      'create policy %I_delete on public.%I for delete to authenticated using (public.is_household_member(household_id));',
-      t, t
-    );
+    if not immutable_table then
+      execute format(
+        'create policy %I_update on public.%I for update to authenticated using (public.is_household_member(household_id)) with check (public.is_household_member(household_id));',
+        t, t
+      );
+      execute format(
+        'create policy %I_delete on public.%I for delete to authenticated using (public.is_household_member(household_id));',
+        t, t
+      );
+    end if;
   end loop;
 end;
 $$;

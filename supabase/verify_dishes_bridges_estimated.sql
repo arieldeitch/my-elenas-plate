@@ -17,14 +17,18 @@ where n.nspname = 'public'
   and c.relname in ('dishes', 'dish_versions', 'estimated_products', 'weight_bridges')
 order by c.relname;
 
--- §3 Four policies per new table, all scoped to authenticated (expected: 16 rows).
+-- §3 Policies, all scoped to authenticated (expected: 14 rows — four each for
+-- dishes / estimated_products / weight_bridges, and SELECT + INSERT only for
+-- the append-only dish_versions).
 select tablename, policyname, cmd, roles
 from pg_policies
 where schemaname = 'public'
   and tablename in ('dishes', 'dish_versions', 'estimated_products', 'weight_bridges')
 order by tablename, cmd;
 
--- §4 Privileges: authenticated has CRUD, anon has NOTHING (expected: no anon row).
+-- §4 Privileges: anon has NOTHING (expected: no anon row); authenticated has
+-- SELECT/INSERT/UPDATE/DELETE on the three mutable tables and SELECT + INSERT
+-- only on dish_versions (a revision snapshot is never rewritten or erased).
 select grantee, table_name, privilege_type
 from information_schema.role_table_grants
 where table_schema = 'public'

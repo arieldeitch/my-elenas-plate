@@ -8,7 +8,7 @@ import { formatShortDate } from "@/lib/format";
 import { coffeeSummary } from "@/lib/coffee";
 import { canStep, formatQuantity, stepAmount, usualQuantity } from "@/lib/quantity";
 import { cn } from "@/lib/utils";
-import { formatPoints, pointsForEntry } from "@/lib/points";
+import { formatPoints, isEstimatedBasis, pointsForEntry } from "@/lib/points";
 import {
   getReferenceIndex,
   groupForFood,
@@ -189,6 +189,17 @@ export function MealEditor({ slot, onClose }: Props) {
     return canonical ? (store.foods.find((f) => f.id === canonical) ?? null) : null;
   }
 
+  /**
+   * "Legacy" means a food that no longer resolves to the canonical reference
+   * (DEC-036). A dish serving and a label-estimated entry are DERIVED sources
+   * with their own provenance — they must never be presented as broken legacy
+   * data (DEC-037 R11).
+   */
+  function isLegacyEntry(entry: FoodEntry): boolean {
+    if (entry.coffee || entry.dishId || entry.estimatedProductId) return false;
+    return !editableFood(entry);
+  }
+
   return (
     <div
       role="dialog"
@@ -261,13 +272,24 @@ export function MealEditor({ slot, onClose }: Props) {
                         isFavorite={store.favorites.includes(
                           store.resolveFoodId(e.foodId) ?? e.foodId,
                         )}
-                        legacy={!e.coffee && !editableFood(e)}
+                        legacy={isLegacyEntry(e)}
                         onToggleFavorite={() =>
                           store.toggleFavorite(store.resolveFoodId(e.foodId) ?? e.foodId)
                         }
                         onEdit={() => {
                           if (e.coffee) {
                             setView({ kind: "coffee", editing: e });
+                            return;
+                          }
+                          // A dish serving / estimated entry keeps its snapshot:
+                          // it is re-logged rather than re-scored in place.
+                          if (e.dishId || e.estimatedProductId) {
+                            toast(
+                              e.dishId
+                                ? "מנה מתבשיל נשמרת עם הניקוד שנרשם — לכמות אחרת אפשר למחוק ולרשום מחדש"
+                                : "פריט בהערכה נשמר עם הניקוד שנרשם — לכמות אחרת אפשר למחוק ולרשום מחדש",
+                              { duration: 4000 },
+                            );
                             return;
                           }
                           const food = editableFood(e);
@@ -486,7 +508,7 @@ function EntryRow({
           <div className="text-[11px] font-medium text-primary">
             {pointValue == null ? "ללא ניקוד" : `${formatPoints(pointValue)} נק׳`}
             {/* DEC-037 — an estimated / dish value is never shown as a canonical one. */}
-            {entry.pointsBasis === "estimated:label" && (
+            {isEstimatedBasis(entry.pointsBasis) && (
               <span className="mr-1 text-info" data-testid="entry-estimated">
                 · {ESTIMATED_SHORT}
               </span>
