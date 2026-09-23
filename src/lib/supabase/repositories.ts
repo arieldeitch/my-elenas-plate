@@ -504,16 +504,17 @@ export async function bumpRecent(
 // idempotent upserts keyed by the client-generated uuid.
 
 /**
- * Whether the DEC-037 tables exist yet (migration 20260923090000). One cheap
- * request on activation; a missing relation answers with SQLSTATE 42P01, which
- * is the only definite "no" — network errors stay unknown (null).
+ * SQLSTATE for "relation does not exist": the ONLY definite signal that the
+ * DEC-037 migration (20260923090000) has not been applied yet. Any other error
+ * is a transport/permission problem and must not turn the feature off.
  */
-export async function dishesSchemaAvailable(householdId: string): Promise<boolean | null> {
-  const sb = requireSupabase();
-  const { error } = await sb.from("dishes").select("id").eq("household_id", householdId).limit(1);
-  if (!error) return true;
-  if (error.code === "42P01") return false;
-  return null;
+export const UNDEFINED_TABLE = "42P01";
+
+/** True when an error means "that table is not there yet". */
+export function isMissingRelation(err: unknown): boolean {
+  return (
+    typeof err === "object" && err !== null && (err as { code?: string }).code === UNDEFINED_TABLE
+  );
 }
 
 export async function loadEstimatedProducts(

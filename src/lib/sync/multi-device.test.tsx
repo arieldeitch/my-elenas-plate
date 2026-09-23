@@ -578,12 +578,14 @@ describe("reference snapshots follow the FINAL entry state (DEC-036); never esti
   });
 });
 
-describe("profile facts & personalised budget — isolation and realtime (DEC-034)", () => {
-  it("Ariel's facts and weigh-in change only Ariel's budget; Elena's arrive via realtime and change only hers", async () => {
+describe("manual daily target — isolation, realtime and no automatic value (DEC-037)", () => {
+  it("Ariel's target is his alone, body facts never move it, and Elena's arrives via realtime", async () => {
     const A = await mountDevice(USER_A, "me");
-    const fallback = A.result.current.getPointsBudget("me");
-    expect(A.result.current.getPointsBudgetInfo("me").source).toBe("fallback");
+    // DEC-037: with no manual target there is NO number at all.
+    expect(A.result.current.getPointsBudget("me")).toBeNull();
+    expect(A.result.current.getPointsBudgetInfo("me").source).toBe("none");
 
+    // Body facts are stored and synced, but they are not the target.
     act(() =>
       A.result.current.setProfileFacts({
         sexAtBirth: "male",
@@ -597,59 +599,140 @@ describe("profile facts & personalised budget — isolation and realtime (DEC-03
     const alena = fake.rows("profiles").find((p) => p.id === ALENA)!;
     expect(ariel).toMatchObject({ sex_at_birth: "male", birth_date: "1980-06-15", height_cm: 178 });
     expect(alena.sex_at_birth).toBeUndefined();
-    expect(A.result.current.getPointsBudgetInfo("me")).toMatchObject({
-      source: "fallback",
-      missing: ["weight"],
-    });
+    expect(A.result.current.getPointsBudget("me")).toBeNull();
 
+    // A weigh-in does not create a target either.
     act(() => A.result.current.addWeighIn({ dateISO: today(), weightKg: 84 }));
-    await waitFor(() =>
-      expect(A.result.current.getPointsBudgetInfo("me").source).toBe("personalized"),
-    );
-    const personalised = A.result.current.getPointsBudget("me");
-    expect(personalised).not.toBe(fallback);
-    expect(A.result.current.getPointsBudgetInfo("elena").source).toBe("fallback");
+    await waitFor(() => expect(A.result.current.syncState).toBe("saved"));
+    expect(A.result.current.getPointsBudget("me")).toBeNull();
 
-    act(() => A.result.current.setProfileFacts({ pointsBudgetOverride: 31 }));
+    // The manual target is the only thing that sets it, and it is per profile.
+    act(() => A.result.current.setPointsBudget(27));
     expect(A.result.current.getPointsBudgetInfo("me")).toMatchObject({
-      budget: 31,
-      source: "override",
+      budget: 27,
+      source: "manual",
     });
-    act(() => A.result.current.setProfileFacts({ pointsBudgetOverride: null }));
-    expect(A.result.current.getPointsBudget("me")).toBe(personalised);
+    expect(A.result.current.getPointsBudget("elena")).toBeNull();
+    await waitFor(() => expect(A.result.current.syncState).toBe("saved"));
+    expect(fake.rows("profiles").find((p) => p.id === ARIEL)!.points_budget_override).toBe(27);
+    expect(fake.rows("profiles").find((p) => p.id === ALENA)!.points_budget_override).toBeFalsy();
+
+    // Clearing goes back to "no target", never to an automatic number.
+    act(() => A.result.current.setPointsBudget(null));
+    expect(A.result.current.getPointsBudget("me")).toBeNull();
     await waitFor(() => expect(A.result.current.syncState).toBe("saved"));
     expect(fake.rows("profiles").find((p) => p.id === ARIEL)!.points_budget_override).toBeNull();
 
-    // Elena (device B) completes her facts and weighs in; the realtime events
-    // refresh the partner budget on A. Ariel's own number does not move.
+    // Elena sets hers on her own device; the realtime event updates only her.
+    act(() => A.result.current.setPointsBudget(27));
+    await waitFor(() => expect(A.result.current.syncState).toBe("saved"));
     Object.assign(fake.rows("profiles").find((p) => p.id === ALENA)!, {
-      sex_at_birth: "female",
-      birth_date: "1990-01-01",
-      height_cm: 165,
-      goal_mode: "maintain",
-      points_budget_override: null,
-    });
-    fake.rows("weigh_ins").push({
-      id: "w-b",
-      household_id: HOUSEHOLD,
-      profile_id: ALENA,
-      log_date: today(),
-      weight_kg: 62,
-      created_at: new Date().toISOString(),
+      points_budget_override: 31,
     });
     fake.emit("profiles", "UPDATE", { id: ALENA, slug: "alena", household_id: HOUSEHOLD });
-    fake.emit("weigh_ins", "INSERT", {
-      id: "w-b",
-      profile_id: ALENA,
-      log_date: today(),
-      weight_kg: 62,
-    });
-    await waitFor(() =>
-      expect(A.result.current.getPointsBudgetInfo("elena").source).toBe("personalized"),
-    );
-    expect(A.result.current.getPointsBudget("me")).toBe(personalised);
+    await waitFor(() => expect(A.result.current.getPointsBudget("elena")).toBe(31));
+    expect(A.result.current.getPointsBudget("me")).toBe(27);
     expect(fake.channels.size).toBe(1);
     A.unmount();
+  });
+});
+
+describe("dishes / estimated products / bridges sync (DEC-037 R10)", () => {
+  it("a dish, a product and a bridge reach the server once and land on the partner's device", async () => {
+    const A = await mountDevice(USER_A, "me");
+    act(() => {
+      A.result.current.saveEstimatedProduct({
+        name: "קרקר מהסופר",
+        label: { basis: "per_100g", calories: 400 },
+      });
+    });
+    act(() => {
+      A.result.current.saveWeightBridge({
+        sourceKind: "reference",
+        sourceKey: "טחינה",
+        unit: "כף",
+        gramsPerUnit: 15,
+        provenance: "user_measured",
+      });
+    });
+    act(() => {
+      A.result.current.saveDish({
+        name: "תבשיל עדשים",
+        ingredients: [
+          {
+            sourceKind: "reference",
+            name: "עדשים",
+            amount: 200,
+            unit: "גרם",
+            basisText: "100 גרם",
+            points: 6,
+          },
+        ],
+        finalWeightG: 800,
+        usualServingWeightG: 250,
+      });
+    });
+    await waitFor(() => expect(A.result.current.syncState).toBe("saved"));
+
+    const dishRow = fake.rows("dishes")[0];
+    expect(fake.rows("dishes")).toHaveLength(1);
+    expect(dishRow).toMatchObject({
+      household_id: HOUSEHOLD,
+      name: "תבשיל עדשים",
+      revision: 1,
+      total_points: 6,
+      final_weight_g: 800,
+      created_by_profile_id: ARIEL,
+    });
+    expect(fake.rows("dish_versions")).toHaveLength(1);
+    expect(fake.rows("dish_versions")[0]).toMatchObject({ dish_id: dishRow.id, revision: 1 });
+    expect(fake.rows("estimated_products")[0]).toMatchObject({
+      name: "קרקר מהסופר",
+      label_basis: "per_100g",
+      label_calories: 400,
+      created_by_profile_id: ARIEL,
+    });
+    expect(fake.rows("weight_bridges")[0]).toMatchObject({
+      source_kind: "reference",
+      source_key: "טחינה",
+      unit: "כף",
+      grams_per_unit: 15,
+      provenance: "user_measured",
+    });
+
+    // Editing the dish adds a SECOND immutable version, never a second dish.
+    act(() => {
+      A.result.current.saveDish({
+        id: dishRow.id,
+        name: "תבשיל עדשים",
+        ingredients: [
+          {
+            sourceKind: "reference",
+            name: "עדשים",
+            amount: 400,
+            unit: "גרם",
+            basisText: "100 גרם",
+            points: 12,
+          },
+        ],
+        finalWeightG: 800,
+      });
+    });
+    await waitFor(() => expect(A.result.current.syncState).toBe("saved"));
+    expect(fake.rows("dishes")).toHaveLength(1);
+    expect(fake.rows("dish_versions")).toHaveLength(2);
+    expect(fake.rows("dishes")[0].revision).toBe(2);
+
+    // The partner's device hydrates them (household-wide, not day-scoped).
+    const B = await mountDevice(USER_B, "elena");
+    await waitFor(() => expect(B.result.current.dishes).toHaveLength(1));
+    expect(B.result.current.dishes[0]).toMatchObject({ name: "תבשיל עדשים", revision: 2 });
+    expect(B.result.current.estimatedProducts).toHaveLength(1);
+    expect(B.result.current.weightBridges).toHaveLength(1);
+    // …and no duplicate was created by the hydrate/replay.
+    expect(fake.rows("dishes")).toHaveLength(1);
+    A.unmount();
+    B.unmount();
   });
 });
 
@@ -660,7 +743,7 @@ describe("network budget (reads / writes / subscriptions)", () => {
     const activationWrites = writes();
     // profiles + foods + points-budget refresh + own day (6 incl. daily_steps + latest goal)
     // + weigh-ins + prefs + partner day (6) ≈ 17
-    expect(activationReads).toBeLessThanOrEqual(17);
+    expect(activationReads).toBeLessThanOrEqual(20);
     expect(activationWrites).toBe(0);
     expect(fake.channels.size).toBe(1);
     // Profile facts arrive with the bootstrap read — exactly ONE profiles query.

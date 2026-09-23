@@ -358,54 +358,70 @@ describe("age from birth date", () => {
     expect(ageFromBirthDate("2000-02-29", "2025-02-28")).toBe(24);
     expect(ageFromBirthDate("2000-02-29", "2025-03-01")).toBe(25);
   });
-  it("the budget changes on the birthday without any stored age", () => {
+  it("DEC-037: the age no longer influences the ACTIVE target (the seam keeps working)", () => {
     const facts = {
       sexAtBirth: "male" as const,
       birthDate: "1966-09-19",
       heightCm: 178,
       goalMode: "lose" as const,
     };
-    const before = resolvePointsBudget(facts, 82, "2026-09-18");
-    const after = resolvePointsBudget(facts, 82, "2026-09-19");
-    expect(before.source).toBe("personalized");
-    expect(after.budget).toBeLessThanOrEqual(before.budget);
+    // The active target is manual-only, so a birthday changes nothing.
+    expect(resolvePointsBudget(facts, 82, "2026-09-18").budget).toBeNull();
+    expect(resolvePointsBudget(facts, 82, "2026-09-19").budget).toBeNull();
+    // The parked BMR seam still reacts to age, for the future lookup table.
+    const before = calculatePersonalizedPointsBudget({
+      sexAtBirth: "male",
+      age: ageFromBirthDate("1966-09-19", "2026-09-18"),
+      heightCm: 178,
+      weightKg: 82,
+      goalMode: "lose",
+    });
+    const after = calculatePersonalizedPointsBudget({
+      sexAtBirth: "male",
+      age: ageFromBirthDate("1966-09-19", "2026-09-19"),
+      heightCm: 178,
+      weightKg: 82,
+      goalMode: "lose",
+    });
+    expect(after).toBeLessThanOrEqual(before);
   });
 });
 
-describe("resolvePointsBudget: override → personalised → fallback", () => {
+describe("resolvePointsBudget: MANUAL ONLY (DEC-037)", () => {
   const complete = {
     sexAtBirth: "female" as const,
     birthDate: "1986-01-01",
     heightCm: 165,
     goalMode: "lose" as const,
   };
-  it("missing facts → documented fallback, listing what is missing; never blocks", () => {
+  it("no manual target → no budget at all; the missing facts are still reported for the future seam", () => {
     expect(resolvePointsBudget(undefined, undefined)).toEqual({
-      budget: BUDGET_V2.FALLBACK_DAILY_POINTS,
-      source: "fallback",
+      budget: null,
+      source: "none",
       missing: ["sex", "birthDate", "height", "weight"],
     });
     expect(resolvePointsBudget(complete, undefined).missing).toEqual(["weight"]);
     expect(resolvePointsBudget({ ...complete, heightCm: null }, 70).missing).toEqual(["height"]);
   });
-  it("complete facts + latest weight → personalised", () => {
+  it("complete facts + a latest weight still produce NO automatic budget", () => {
     const r = resolvePointsBudget(complete, 70, "2026-09-19");
-    expect(r.source).toBe("personalized");
-    expect(r.missing).toEqual([]);
-    expect(r.budget).toBeGreaterThanOrEqual(BUDGET_V2.MIN_DAILY_POINTS);
+    expect(r.source).toBe("none");
+    expect(r.budget).toBeNull();
+    expect(r.budget).not.toBe(BUDGET_V2.FALLBACK_DAILY_POINTS);
   });
-  it("a manual override wins; clearing it returns to automatic", () => {
-    expect(resolvePointsBudget({ ...complete, pointsBudgetOverride: 31 }, 70)).toEqual({
+  it("the manual target is the budget; clearing it returns to 'no target', not to automatic", () => {
+    expect(resolvePointsBudget({ ...complete, pointsBudgetOverride: 31 }, 70)).toMatchObject({
       budget: 31,
-      source: "override",
-      missing: [],
+      source: "manual",
     });
-    expect(resolvePointsBudget({ ...complete, pointsBudgetOverride: null }, 70).source).toBe(
-      "personalized",
-    );
+    expect(resolvePointsBudget({ ...complete, pointsBudgetOverride: null }, 70)).toMatchObject({
+      budget: null,
+      source: "none",
+    });
   });
-  it("the old v1 default 30 is never treated as a chosen target (no override → not 30)", () => {
-    expect(resolvePointsBudget({}, undefined).budget).not.toBe(30);
+  it("neither the old v1 default 30 nor the v2 fallback 23 can appear", () => {
+    expect(resolvePointsBudget({}, undefined).budget).toBeNull();
+    expect(resolvePointsBudget({ sexAtBirth: "female" }, 70).budget).toBeNull();
   });
 });
 

@@ -22,6 +22,9 @@ import aliasFile from "@/data/points-reference/aliases.v1.json";
 const MIGRATIONS = join(process.cwd(), "supabase", "migrations");
 const REFERENCE_MIGRATION = "20260921120000_points_reference.sql";
 const ALIAS_MIGRATION = "20260922090000_reference_only_foods.sql";
+// DEC-037 depends on food_reference_items (a FK), which this fresh database only
+// gets from the wrappers under test — so it is applied by its own suite, not here.
+const LATER_MIGRATION = "20260923090000_dishes_bridges_estimated.sql";
 const SKIP = new Set([
   "20260723090300_realtime.sql",
   "20260725190000_cleanup_mock_data_and_seed_food_catalog.sql",
@@ -306,7 +309,13 @@ describe("production apply wrapper (owner-run SQL)", () => {
         );
       `);
       for (const file of readdirSync(MIGRATIONS).sort()) {
-        if (SKIP.has(file) || file === REFERENCE_MIGRATION || file === ALIAS_MIGRATION) continue;
+        if (
+          SKIP.has(file) ||
+          file === REFERENCE_MIGRATION ||
+          file === ALIAS_MIGRATION ||
+          file === LATER_MIGRATION
+        )
+          continue;
         await fresh.exec(readFileSync(join(MIGRATIONS, file), "utf8"));
       }
       const wrapper = readFileSync(

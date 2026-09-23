@@ -35,8 +35,8 @@ import type { ProfileFacts } from "../points";
 import { getSession, onAuthChange } from "../supabase/auth";
 import {
   bootstrapHousehold,
-  dishesSchemaAvailable,
   foodsSchemaSupportsReferenceLink,
+  isMissingRelation,
   loadDishes,
   loadEstimatedProducts,
   loadProfileFacts,
@@ -193,20 +193,23 @@ export function useSupabaseSync(args: Args): SyncControls {
       const id = profileIdFor(ctx, local);
       if (id) localById.set(id, local);
     }
-    const available = await dishesSchemaAvailable(ctx.householdId);
-    if (available != null) setSchemaDishes(available);
-    if (available === false) return;
     try {
+      // Three parallel reads; their own failure is the schema probe, so the
+      // activation costs no extra round trip before the migration is applied.
       const [dishes, products, bridges] = await Promise.all([
         loadDishes(ctx.householdId, localById),
         loadEstimatedProducts(ctx.householdId, localById),
         loadWeightBridges(ctx.householdId, localById),
       ]);
+      setSchemaDishes(true);
       args.setDishes(dishes);
       args.setEstimatedProducts(products);
       args.setWeightBridges(bridges);
     } catch (err) {
-      console.warn("hydrate dishes/estimated/bridges failed", err);
+      // "relation does not exist" = the migration is not applied yet; the UI
+      // then explains it instead of queueing a write that can never succeed.
+      if (isMissingRelation(err)) setSchemaDishes(false);
+      else console.warn("hydrate dishes/estimated/bridges failed", err);
     }
     // args setters are stable state setters from the store.
     // eslint-disable-next-line react-hooks/exhaustive-deps
