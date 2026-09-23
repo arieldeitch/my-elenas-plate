@@ -106,7 +106,9 @@ export function PartnerGlance({ onOpen }: Props = {}) {
             className="text-[11px] font-semibold text-primary tabular-nums"
             data-testid="partner-points"
           >
-            {formatPoints(partnerPoints)}/{formatPoints(partnerBudget)} נק׳
+            {partnerBudget == null
+              ? `${formatPoints(partnerPoints)} נק׳`
+              : `${formatPoints(partnerPoints)}/${formatPoints(partnerBudget)} נק׳`}
           </span>
           {(workout || fasting || steps) && (
             <span

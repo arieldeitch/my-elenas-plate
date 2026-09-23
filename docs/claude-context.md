@@ -1,7 +1,7 @@
 # Claude Context
 
 Fast-start context for Claude Code. The latest user instruction always overrides older docs.
-Updated 2026-09-22 (DEC-036 reference-only foods merged to `main`; migration 20260922090000 prepared + proven on PGlite, NOT applied to production; DEC-035 migration IS applied and live on `919f75e`).
+Updated 2026-09-23 (DEC-037 manual target + dishes + weight bridges + label estimator on `feat/unified-points-dishes-label-estimator`; migration 20260923090000 prepared and proven on PGlite, NOT applied to production; DEC-036 migration applied and live on `919f75e`).
 
 ## Start state
 
@@ -11,6 +11,19 @@ Updated 2026-09-22 (DEC-036 reference-only foods merged to `main`; migration 202
   M1 status: `docs/claude-tasks/M1_STATUS.md`; **M1 release entrypoint:**
   `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md`; latest run record:
   `docs/claude-tasks/RUN_2026-09-19_POINTS_V2_HARDENING.md` (previous: `RUN_2026-09-19_STEPS_UX.md`, `RUN_2026-09-18_RELIABILITY_HARDENING.md`).
+- **DEC-037 (2026-09-23) — manual daily target, dishes, weight bridges, label estimates.**
+  The daily target is MANUAL only (`resolvePointsBudget` → the per-profile value or `null`; no BMR,
+  no 23/30 fallback; "יעד לא הוגדר" is a real state). Three derived household entities, never written
+  into the canonical reference: `dishes` + immutable `dish_versions` (logged by weight:
+  `points_per_gram = total / final_weight_g`), `weight_bridges` (explicit "1 unit = N grams" per
+  source identity, never inferred) and `estimated_products` (`label-estimate-v1`: per-100 g or
+  per-serving+weight label values, normalised deterministically through the existing transparent
+  nutrition model, always shown as "הערכה"). Engines: `src/lib/{dishes,weight-bridges,label-estimator}.ts`;
+  scoring enters through `scoreDetails` (dish → estimated → reference). Dedicated `/dishes` area in the
+  bottom navigation. Migration `20260923090000_dishes_bridges_estimated` + `apply_…_production.sql` +
+  `verify_…` are an owner gate; until it is applied the client says so and queues nothing.
+  Run record: `docs/claude-runs/RUN_2026-09-23_UNIFIED_POINTS_DISHES_LABEL_ESTIMATOR_REPORT.md`;
+  ADR: `docs/adr/ADR-2026-09-23-dishes-bridges-estimated.md`.
 - **DEC-036 (2026-09-22) — the reference is the ONLY source of the food list (`docs/POINTS_REFERENCE.md §0`).**
   `src/lib/points-reference/canonical.ts` builds the active list from the reference alone
   (`resolveCatalog`); legacy catalog foods appear only through explicit link / verified alias
@@ -149,7 +162,7 @@ seeded. Nothing was ever broken in the migration.
 Not a repository audit, and not a migration:
 
 1. Read `docs/claude-context.md`.
-2. Read `docs/claude-tasks/RUN_2026-09-22_REFERENCE_ONLY_FOODS.md` (latest run record; previous `RUN_2026-09-21_POINTS_REFERENCE.md`) and
+2. Read `docs/claude-runs/RUN_2026-09-23_UNIFIED_POINTS_DISHES_LABEL_ESTIMATOR_REPORT.md` (latest run record; previous `docs/claude-tasks/RUN_2026-09-22_REFERENCE_ONLY_FOODS.md`) and
    `docs/claude-tasks/M1_RELEASE_ACCEPTANCE.md` (release state).
 3. Read `docs/project-status.md` and `docs/todo.md`.
 4. Check the current branch, HEAD and `git status` (read-only).

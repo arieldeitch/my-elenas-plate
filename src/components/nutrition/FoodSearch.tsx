@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, Star, Clock, Plus, X, Coffee, SlidersHorizontal } from "lucide-react";
+import { Search, Star, Clock, Plus, X, ChefHat, Coffee, SlidersHorizontal } from "lucide-react";
 import type { Food } from "@/lib/domain";
 import { useStore } from "@/lib/store";
 import { buildFoodSearchIndex, findFoodByName, searchFoodsDetailed } from "@/lib/food-search";
 import { normalizeFoodName } from "@/lib/food-normalize";
 import { formatQuantity, usualQuantity } from "@/lib/quantity";
 import { formatPoints } from "@/lib/points";
+import { formatPointsPerGram } from "@/lib/dishes";
+import { ESTIMATED_SHORT } from "@/lib/label-estimator";
 import {
   formatPortion,
   getReferenceIndex,
@@ -54,13 +56,27 @@ interface Props {
    */
   onChoose: (food: Food, source: "typed" | "quick") => "added" | "opened";
   onCreate: (name: string) => void;
+  /** DEC-037 — the typed name is not in the reference: estimate it from its label. */
+  onEstimateFromLabel?: (name: string) => void;
+  /** DEC-037 — log a serving of a household dish into this meal. */
+  onChooseDish?: (dishId: string) => void;
+  /** DEC-037 — log a label-estimated product into this meal. */
+  onChooseEstimated?: (productId: string) => void;
   /** Fast path straight into the coffee editor. */
   onAddCoffee?: () => void;
   /** Focus the search box on mount (default true). Off when the meal already has entries. */
   autoFocus?: boolean;
 }
 
-export function FoodSearch({ onChoose, onCreate, onAddCoffee, autoFocus = true }: Props) {
+export function FoodSearch({
+  onChoose,
+  onCreate,
+  onEstimateFromLabel,
+  onChooseDish,
+  onChooseEstimated,
+  onAddCoffee,
+  autoFocus = true,
+}: Props) {
   function choose(food: Food, source: "typed" | "quick") {
     if (onChoose(food, source) === "added") {
       setRaw("");
@@ -68,7 +84,7 @@ export function FoodSearch({ onChoose, onCreate, onAddCoffee, autoFocus = true }
       inputRef.current?.focus();
     }
   }
-  const { foods, favorites, recents } = useStore();
+  const { foods, favorites, recents, dishes, estimatedProducts } = useStore();
   const [raw, setRaw] = useState("");
   const [q, setQ] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -110,6 +126,24 @@ export function FoodSearch({ onChoose, onCreate, onAddCoffee, autoFocus = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, q, recents, favorites]);
   const exact = findFoodByName(index, q);
+  // DEC-037 — the household's own sources are searched alongside the reference,
+  // and are always visibly marked (dish / estimate), never mixed into it.
+  const dishMatches = useMemo(() => {
+    const key = normalizeFoodName(q);
+    if (!key) return [];
+    return dishes.filter((d) => normalizeFoodName(d.name).includes(key)).slice(0, 5);
+  }, [dishes, q]);
+  const estimatedMatches = useMemo(() => {
+    const key = normalizeFoodName(q);
+    if (!key) return [];
+    return estimatedProducts.filter((p) => normalizeFoodName(p.name).includes(key)).slice(0, 5);
+  }, [estimatedProducts, q]);
+  // "Nothing matched" means nothing at all was offered — a household dish or an
+  // estimated product IS a result, even though it is not in the catalog.
+  const nothingListed =
+    results.length === 0 &&
+    (!onChooseDish || dishMatches.length === 0) &&
+    (!onChooseEstimated || estimatedMatches.length === 0);
 
   return (
     <div className="flex flex-col gap-3">
@@ -239,6 +273,51 @@ export function FoodSearch({ onChoose, onCreate, onAddCoffee, autoFocus = true }
               </button>
             );
           })}
+          {onChooseDish &&
+            dishMatches.map((dish) => (
+              <button
+                key={dish.id}
+                onClick={() => onChooseDish(dish.id)}
+                data-testid="search-result-dish"
+                className="flex w-full items-center gap-3 rounded-xl border border-border bg-card px-3 py-3 text-right hover:border-primary/40"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-medium">
+                    {dish.name}
+                    <span className="mr-2 rounded-full bg-primary-soft px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                      תבשיל
+                    </span>
+                  </div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    {formatPointsPerGram(dish.pointsPerGram)}
+                  </div>
+                </div>
+                <ChefHat className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+              </button>
+            ))}
+
+          {onChooseEstimated &&
+            estimatedMatches.map((product) => (
+              <button
+                key={product.id}
+                onClick={() => onChooseEstimated(product.id)}
+                data-testid="search-result-estimated"
+                className="flex w-full items-center gap-3 rounded-xl border border-info/30 bg-info-soft/30 px-3 py-3 text-right hover:border-info/60"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-medium">
+                    {product.name}
+                    <span className="mr-2 rounded-full bg-card px-1.5 py-0.5 text-[10px] font-semibold text-info">
+                      {ESTIMATED_SHORT}
+                    </span>
+                  </div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    {formatPoints(product.pointsPer100g)} נק׳ ל-100 גרם
+                  </div>
+                </div>
+              </button>
+            ))}
+
           {!exact && (
             <button
               onClick={() => onCreate(raw.trim())}
@@ -247,7 +326,17 @@ export function FoodSearch({ onChoose, onCreate, onAddCoffee, autoFocus = true }
               <Plus className="h-4 w-4" />“{raw.trim()}” לא במאגר — קישור לשם אישי
             </button>
           )}
-          {results.length === 0 && (
+          {!exact && onEstimateFromLabel && (
+            <button
+              onClick={() => onEstimateFromLabel(raw.trim())}
+              data-testid="search-estimate-from-label"
+              className="flex w-full items-center gap-2 rounded-xl border border-dashed border-info/50 bg-info-soft/40 px-3 py-3 text-right font-medium text-info hover:bg-info-soft/60"
+            >
+              <Plus className="h-4 w-4" />
+              הערכת מוצר מלייבל
+            </button>
+          )}
+          {nothingListed && (
             <div className="text-sm text-muted-foreground py-4 text-center">
               לא נמצא מאכל תואם בקטלוג.
             </div>

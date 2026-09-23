@@ -11,3 +11,6 @@ src/lib/supabase/database.generated.ts
 src/data/points-reference/
 docs/POINTS_REFERENCE_IMPORT_REPORT.md
 docs/POINTS_REFERENCE_RECONCILIATION.md
+# Owner-authored run briefs: inputs to a run, kept verbatim.
+docs/claude-tasks/RUN_2026-09-23_UNIFIED_POINTS_DISHES_LABEL_ESTIMATOR.md
+docs/claude-tasks/RUN_2026-09-23_UNIFIED_POINTS_DISHES_LABEL_ESTIMATOR_ONE_PAGER.md

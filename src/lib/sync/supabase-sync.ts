@@ -18,6 +18,7 @@ import { MEAL_SLOTS } from "../domain";
 import { requireSupabase } from "../supabase/client";
 import { entryToRow, slotToSlug, statusToDb, type Preference } from "../supabase/mappers";
 import {
+  archiveDish,
   bumpRecent,
   deleteEntry,
   deleteFasting,
@@ -29,8 +30,11 @@ import {
   setMealStatus,
   upsertFasting,
   upsertDailySteps,
+  upsertDish,
+  upsertEstimatedProduct,
   upsertFood,
   upsertWeighIn,
+  upsertWeightBridge,
   upsertWorkout,
   updateProfileFacts,
   type HouseholdContext,
@@ -170,6 +174,26 @@ export async function applyOperation(ctx: HouseholdContext, op: Operation): Prom
       await bumpRecent(householdId, profileId, op.foodId, op.at);
       return;
     }
+    // DEC-037 — household-wide derived entities.
+    case "dish.upsert": {
+      const creator = op.createdBy ? (profileIdFor(ctx, op.createdBy) ?? null) : null;
+      await upsertDish(householdId, op.dish, creator);
+      return;
+    }
+    case "dish.archive": {
+      await archiveDish(op.dishId, op.isActive);
+      return;
+    }
+    case "estimated.upsert": {
+      const creator = op.createdBy ? (profileIdFor(ctx, op.createdBy) ?? null) : null;
+      await upsertEstimatedProduct(householdId, op.product, creator);
+      return;
+    }
+    case "bridge.upsert": {
+      const creator = op.createdBy ? (profileIdFor(ctx, op.createdBy) ?? null) : null;
+      await upsertWeightBridge(householdId, op.bridge, creator);
+      return;
+    }
   }
 }
 
@@ -272,6 +296,11 @@ export const REALTIME_TABLES = [
   "foods",
   "food_preferences",
   "profiles",
+  // DEC-037 — the partner's device must see a new dish / product / bridge.
+  "dishes",
+  "dish_versions",
+  "estimated_products",
+  "weight_bridges",
 ] as const;
 export type RealtimeTable = (typeof REALTIME_TABLES)[number];
 

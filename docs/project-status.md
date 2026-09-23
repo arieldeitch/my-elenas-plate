@@ -1,6 +1,6 @@
 # Project Status
 
-**Date:** 2026-09-22 (DEC-036 reference-only foods on `main`; DEC-035 applied + live on `919f75e`; migration `20260922090000` prepared, NOT applied to production; publish of the new `main` pending)
+**Date:** 2026-09-23 (DEC-037 manual target + dishes + bridges + label estimator on `feat/unified-points-dishes-label-estimator`; migration `20260923090000` prepared, NOT applied; DEC-036 applied and live on `919f75e`)
 **Branch:** `main` — points v2-il (vegetables 0, fruit positive, calibrated/nutrition/category hierarchy) + personalised daily budget (Mifflin-St Jeor backbone) + keyboard/quantity fixes. Production schema `20260919100000` is applied/verified; Lovable publish of current main has been triggered.
 **Supabase project:** `rqgoiuztphkcvbwtbxbj` (production) · isolated branch `uyroeumwmjhrcbkesmgb`
 **Stage:** **Feature work paused. M1 = YELLOW only until live verification: DEC-031 + hardening are applied, owner reports Supabase "Allow anonymous sign-ins" = ON, and current main is published. Next: fresh-device smoke + §3b on two phones → M1 CLOSED → M2-7 (`M2_7_PILOT.md`).**
@@ -8,6 +8,20 @@
 **Pilot-ready code checkpoint:** tag `pilot-ready-2026-07-24` → `29ac1d5`.
 
 > Rule: nothing is listed as "working" unless it was actually run/verified.
+
+## 2026-09-23 (fifteenth run) — manual target, dishes, weight bridges, label estimator (DEC-037)
+
+Full record: `docs/claude-runs/RUN_2026-09-23_UNIFIED_POINTS_DISHES_LABEL_ESTIMATOR_REPORT.md`.
+The daily target became manual-only (no BMR / no 23-30 fallback; "יעד לא הוגדר" is a real state and
+logging still works). Added the dedicated `/dishes` area (list / create / edit as a new revision /
+archive / log a serving), explicit weight bridges ("1 כף = 15 גרם" per source identity, never
+inferred), and a separate label-estimated product layer (`label-estimate-v1`) usable directly and
+as a dish ingredient — every estimated value marked in UI and in the stored basis. Dish servings log
+by weight from `points_per_gram`, with the dish revision recorded, so editing a dish or a product
+never changes a saved meal. Migration `20260923090000` (4 tables + 5 nullable columns, household
+RLS + realtime) proven on PGlite incl. cross-household negative tests and an idempotent owner
+wrapper; NOT applied to production. Gate: typecheck 0 · lint 0 errors · vitest 508/16 · hermetic
+Playwright 10/10 · build OK.
 
 ## 2026-09-22 (fourteenth run) — the reference is the ONLY source of the food list (DEC-036)
 

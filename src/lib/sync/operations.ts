@@ -28,6 +28,9 @@ import type {
   StepLog,
   WeighIn,
   WorkoutLog,
+  Dish,
+  EstimatedProduct,
+  WeightBridge,
 } from "../domain";
 
 export type Operation =
@@ -44,7 +47,13 @@ export type Operation =
   | { kind: "weighin.insert"; profile: ProfileId; weighIn: WeighIn }
   | { kind: "food.upsert"; food: Food }
   | { kind: "pref.favorite"; profile: ProfileId; foodId: string; isFavorite: boolean }
-  | { kind: "pref.recent"; profile: ProfileId; foodId: string; at: string };
+  | { kind: "pref.recent"; profile: ProfileId; foodId: string; at: string }
+  // DEC-037 — household-wide derived entities. Each is idempotent and keyed by
+  // the client-generated uuid, so a replay after reconnect cannot duplicate one.
+  | { kind: "dish.upsert"; dish: Dish; createdBy?: ProfileId }
+  | { kind: "dish.archive"; dishId: string; isActive: boolean }
+  | { kind: "estimated.upsert"; product: EstimatedProduct; createdBy?: ProfileId }
+  | { kind: "bridge.upsert"; bridge: WeightBridge; createdBy?: ProfileId };
 
 export type OperationKind = Operation["kind"];
 
@@ -82,6 +91,16 @@ export function coalesceKey(op: Operation): string {
       return `pref.favorite:${op.profile}:${op.foodId}`;
     case "pref.recent":
       return `pref.recent:${op.profile}:${op.foodId}`;
+    case "dish.upsert":
+      // Per dish AND revision: editing a dish is a new immutable version, so a
+      // pending edit must not swallow the revision that is still unsent.
+      return `dish:${op.dish.id}:${op.dish.revision}`;
+    case "dish.archive":
+      return `dish.archive:${op.dishId}`;
+    case "estimated.upsert":
+      return `estimated:${op.product.id}`;
+    case "bridge.upsert":
+      return `bridge:${op.bridge.sourceKind}:${op.bridge.sourceKey}:${op.bridge.unit}`;
   }
 }
 

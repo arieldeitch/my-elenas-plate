@@ -200,6 +200,16 @@ export function pendingDayKeys(): Set<string> {
   return keys;
 }
 
+/**
+ * True when the queue still holds an unsent op of any of these kinds. Used by
+ * the household-wide hydrates (dishes / estimated products / bridges), which
+ * are not profile-scoped: the server list simply would not contain a row that
+ * has not been sent yet, so replacing local state with it would lose it.
+ */
+export function hasPendingKinds(kinds: Set<string>): boolean {
+  return pending().some((m) => kinds.has(m.op.kind));
+}
+
 /** True when any unsent op targets this local profile (weigh-ins, prefs, days). */
 export function hasPendingForProfile(profile: string, kinds?: Set<string>): boolean {
   return pending().some(

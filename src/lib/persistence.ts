@@ -7,7 +7,16 @@
  * to reappear in — or be pushed to — the cloud. SSR-safe: every access is
  * guarded so storage being unavailable is non-fatal.
  */
-import type { DayData, Food, ProfileId, WeighIn } from "./domain";
+import type {
+  DayData,
+  Dish,
+  EstimatedProduct,
+  Food,
+  ProfileId,
+  WeighIn,
+  WeightBridge,
+} from "./domain";
+import type { ProfileFacts } from "./points";
 import { getBuildInfo } from "./build-info";
 
 const STORAGE_KEY = "elenas-plate:v1";
@@ -23,6 +32,16 @@ export interface PersistedState {
   favorites: PerProfile<string[]>;
   recents: PerProfile<string[]>;
   foods: Food[];
+  /**
+   * Optional since DEC-037 — an older snapshot simply has none of them, which
+   * is why the version stays 1: reading it back yields the same empty state
+   * the app starts with. `profileFacts` carries the MANUAL daily target, which
+   * is now the only budget source and must survive a demo-mode reload.
+   */
+  profileFacts?: PerProfile<ProfileFacts>;
+  dishes?: Dish[];
+  estimatedProducts?: EstimatedProduct[];
+  weightBridges?: WeightBridge[];
 }
 
 export function loadState(): PersistedState | null {

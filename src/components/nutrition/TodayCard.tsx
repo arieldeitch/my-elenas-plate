@@ -109,33 +109,33 @@ export function TodayCard({ onOpenCalendar, onOpenReview, onOpenPoints }: Props)
         data-testid="today-points"
         className={cn(
           "mt-2 flex w-full items-center justify-between rounded-xl border px-3 py-2 text-right",
-          remaining < 0 ? "border-warn/45 bg-warn-soft" : "border-border bg-secondary/55",
+          remaining != null && remaining < 0
+            ? "border-warn/45 bg-warn-soft"
+            : "border-border bg-secondary/55",
           !onOpenPoints && "pointer-events-none",
         )}
-        aria-label={`נקודות ${formatPoints(points)} מתוך ${formatPoints(pointsBudget)}. ${
-          remaining >= 0
-            ? `נשארו ${formatPoints(remaining)}`
-            : `חריגה ${formatPoints(Math.abs(remaining))}`
-        }. ${
-          budgetInfo.source === "override"
-            ? "יעד מותאם אישית"
-            : budgetInfo.source === "fallback"
-              ? "השלמת פרטים להתאמת יעד הנקודות"
-              : "יעד אוטומטי"
-        }`}
+        aria-label={
+          remaining == null
+            ? `נצברו ${formatPoints(points)} נקודות. יעד יומי לא הוגדר — אפשר להגדיר אותו כאן`
+            : `נקודות ${formatPoints(points)} מתוך ${formatPoints(pointsBudget)}. ${
+                remaining >= 0
+                  ? `נשארו ${formatPoints(remaining)}`
+                  : `חריגה ${formatPoints(Math.abs(remaining))}`
+              }. יעד ידני`
+        }
         data-budget-source={budgetInfo.source}
       >
         <span>
           <span className="text-xs font-medium text-muted-foreground">נקודות</span>
           <span className="mr-2 font-bold tabular-nums text-foreground">
-            {formatPoints(points)} / {formatPoints(pointsBudget)}
+            {/* DEC-037: without a manual target nothing is compared to an invented number. */}
+            {remaining == null
+              ? formatPoints(points)
+              : `${formatPoints(points)} / ${formatPoints(pointsBudget)}`}
           </span>
-          {budgetInfo.source === "override" && (
-            <span className="mr-2 text-[11px] text-muted-foreground">יעד מותאם אישית</span>
-          )}
-          {budgetInfo.source === "fallback" && (
+          {remaining == null && (
             <span className="mr-2 text-[11px] text-info" data-testid="budget-setup-prompt">
-              השלמת פרטים להתאמת יעד הנקודות
+              יעד לא הוגדר
             </span>
           )}
           {unscored > 0 && (
@@ -147,12 +147,14 @@ export function TodayCard({ onOpenCalendar, onOpenReview, onOpenPoints }: Props)
         <span
           className={cn(
             "text-xs font-semibold",
-            remaining < 0 ? "text-warn-foreground" : "text-primary",
+            remaining != null && remaining < 0 ? "text-warn-foreground" : "text-primary",
           )}
         >
-          {remaining >= 0
-            ? `נשארו ${formatPoints(remaining)}`
-            : `חריגה ${formatPoints(Math.abs(remaining))}`}
+          {remaining == null
+            ? "הגדרת יעד"
+            : remaining >= 0
+              ? `נשארו ${formatPoints(remaining)}`
+              : `חריגה ${formatPoints(Math.abs(remaining))}`}
         </span>
       </button>
 

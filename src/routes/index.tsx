@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
 import { MEAL_SLOTS, type MealSlotId, type ProfileId } from "@/lib/domain";
 import { useStore } from "@/lib/store";
@@ -44,6 +44,7 @@ export const Route = createFileRoute("/")({
 function Home() {
   useKeyboardSafeViewport();
   const store = useStore();
+  const router = useRouter();
   const [openSlot, setOpenSlot] = useState<MealSlotId | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [weighOpen, setWeighOpen] = useState(false);
@@ -118,6 +119,7 @@ function Home() {
         active="home"
         onCalendar={() => setCalendarOpen(true)}
         onAdd={() => setOpenSlot(nextSlot)}
+        onDishes={() => router.navigate({ to: "/dishes" })}
       />
     </div>
   );

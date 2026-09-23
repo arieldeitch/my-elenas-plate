@@ -1,12 +1,26 @@
 # TODO
 
 Status legend: Done / In Progress / Blocked / Deferred / Not Started.
-Updated 2026-09-22. **Production bootstrap is complete** — Supabase project `rqgoiuztphkcvbwtbxbj`
+Updated 2026-09-23. **Production bootstrap is complete** — Supabase project `rqgoiuztphkcvbwtbxbj`
 holds 1 household, 2 profiles (אריאל/אלנה), 6 meal slots, RLS on 10 tables and 390 active foods
 (status `READY`). Rollback code checkpoint: tag `pilot-ready-2026-07-24` (`29ac1d5`).
 **M1 code is Done and merged to `main`; owner release actions A/B/C are complete; live preflight PASS on the served `0cd3673` (2026-09-18). DEC-031 (2026-09-18) removed the login: production now needs the device-join migration + "Allow anonymous sign-ins" + a republish (`supabase/DEPLOY.md`), then the two-minute path §3b on both phones (`M1_RELEASE_ACCEPTANCE.md`).**
 **T-034 was split on 2026-08-01** (DEC-023): the backend half is **Done**, the browser-dependent half
 (**T-034-UI**) is **Blocked** until a browser automation capability exists.
+
+## DEC-037 — manual target, dishes, weight bridges, label estimator (2026-09-23)
+
+- [x] Manual daily target is the only budget source; no automatic/fallback value anywhere.
+- [x] Dedicated `/dishes` area: list, search, create, edit (new revision), archive, log a serving by weight.
+- [x] Explicit weight bridges per source identity with provenance; gram conversion stays blocked without one.
+- [x] Label-estimated products (`label-estimate-v1`), usable directly and as dish ingredients, always marked.
+- [x] Mixed canonical + estimated dishes; history invariants covered by store + PGlite tests.
+- [x] Migration `20260923090000` + owner wrapper + verify script, proven on PGlite (incl. RLS negatives).
+- [ ] **Owner:** `verify_dishes_bridges_estimated.sql` → `apply_dishes_bridges_estimated_production.sql` →
+      verify again on `rqgoiuztphkcvbwtbxbj`, then publish `main` from Lovable → `npm run preflight -- --live`.
+- [ ] Ariel/Elena: enter each person's manual daily target once in the app (יעד יומי).
+- [ ] Future (explicitly out of scope here): the sex+weight target lookup table; the seam is
+      `resolvePointsBudget` + `calculatePersonalizedPointsBudget`.
 
 ## DEC-036 — reference-only food list (2026-09-22)
 

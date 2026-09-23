@@ -7,11 +7,14 @@ import { requireSupabase } from "./client";
 import type { ProfileFacts } from "../points";
 import type {
   DayData,
+  Dish,
+  EstimatedProduct,
   Food,
   MealSlotId,
   ProfileId,
   StepLog,
   WeighIn,
+  WeightBridge,
   WorkoutFeeling,
   WorkoutType,
 } from "../domain";
@@ -21,13 +24,24 @@ import type {
   FoodPreferenceRow,
   FoodRow,
   DailyStepRow,
+  DishRow,
+  DishVersionRow,
+  EstimatedProductRow,
   MealStatusRow,
   ProfileRow,
+  WeightBridgeRow,
 } from "./database.types";
 import {
+  dishFromRows,
+  dishToRow,
+  dishVersionToRow,
   entryToRow,
+  estimatedProductFromRow,
+  estimatedProductToRow,
   foodFromRow,
   foodToRow,
+  weightBridgeFromRow,
+  weightBridgeToRow,
   mealFromRows,
   preferenceFromRow,
   slotToSlug,
@@ -482,5 +496,148 @@ export async function bumpRecent(
       { household_id: householdId, profile_id: profileId, food_id: foodId, last_used_at: whenISO },
       { onConflict: "profile_id,food_id" },
     );
+  if (error) throw error;
+}
+
+// --- dishes / estimated products / weight bridges (DEC-037) ------------------
+// Household-wide entities: hydrated like `foods`, written through narrow,
+// idempotent upserts keyed by the client-generated uuid.
+
+/**
+ * The codes that definitely mean "that table is not there yet" — the only
+ * signal that a migration has not been applied. PostgREST answers an unknown
+ * relation from its schema cache with PGRST205 (verified against production on
+ * 2026-09-23), while a direct SQL path answers with SQLSTATE 42P01. Anything
+ * else is transport / permission and must NOT turn the feature off.
+ */
+export const MISSING_RELATION_CODES = ["42P01", "PGRST205"] as const;
+
+/** True when an error means "that table is not there yet". */
+export function isMissingRelation(err: unknown): boolean {
+  if (typeof err !== "object" || err === null) return false;
+  const code = (err as { code?: string }).code;
+  return MISSING_RELATION_CODES.includes(code as (typeof MISSING_RELATION_CODES)[number]);
+}
+
+export async function loadEstimatedProducts(
+  householdId: string,
+  localProfileById?: Map<string, ProfileId>,
+): Promise<EstimatedProduct[]> {
+  const sb = requireSupabase();
+  const { data, error } = await sb
+    .from("estimated_products")
+    .select("*")
+    .eq("household_id", householdId)
+    .order("created_at");
+  if (error) throw error;
+  return ((data ?? []) as EstimatedProductRow[]).map((row) =>
+    estimatedProductFromRow(row, localProfileById),
+  );
+}
+
+export async function upsertEstimatedProduct(
+  householdId: string,
+  product: EstimatedProduct,
+  createdByProfileId: string | null = null,
+): Promise<void> {
+  const sb = requireSupabase();
+  const { error } = await sb
+    .from("estimated_products")
+    .upsert(estimatedProductToRow(product, householdId, createdByProfileId), { onConflict: "id" });
+  if (error) throw error;
+}
+
+export async function loadWeightBridges(
+  householdId: string,
+  localProfileById?: Map<string, ProfileId>,
+): Promise<WeightBridge[]> {
+  const sb = requireSupabase();
+  const { data, error } = await sb
+    .from("weight_bridges")
+    .select("*")
+    .eq("household_id", householdId)
+    .order("created_at");
+  if (error) throw error;
+  return ((data ?? []) as WeightBridgeRow[]).map((row) =>
+    weightBridgeFromRow(row, localProfileById),
+  );
+}
+
+export async function upsertWeightBridge(
+  householdId: string,
+  bridge: WeightBridge,
+  createdByProfileId: string | null = null,
+): Promise<void> {
+  const sb = requireSupabase();
+  const { error } = await sb
+    .from("weight_bridges")
+    .upsert(weightBridgeToRow(bridge, householdId, createdByProfileId), {
+      onConflict: "household_id,source_kind,source_key,unit",
+    });
+  if (error) throw error;
+}
+
+/** Dishes + the ingredient snapshot of each dish's current revision. */
+export async function loadDishes(
+  householdId: string,
+  localProfileById?: Map<string, ProfileId>,
+): Promise<Dish[]> {
+  const sb = requireSupabase();
+  const { data, error } = await sb
+    .from("dishes")
+    .select("*")
+    .eq("household_id", householdId)
+    .order("created_at");
+  if (error) throw error;
+  const rows = (data ?? []) as DishRow[];
+  if (rows.length === 0) return [];
+  const { data: versions, error: vErr } = await sb
+    .from("dish_versions")
+    .select("*")
+    .eq("household_id", householdId)
+    .in(
+      "dish_id",
+      rows.map((d) => d.id),
+    );
+  if (vErr) throw vErr;
+  const current = new Map<string, DishVersionRow>();
+  for (const v of (versions ?? []) as DishVersionRow[]) {
+    const dish = rows.find((d) => d.id === v.dish_id);
+    if (dish && dish.revision === v.revision) current.set(v.dish_id, v);
+  }
+  return rows.map((row) => dishFromRows(row, current.get(row.id), localProfileById));
+}
+
+/**
+ * Writes the dish's current definition AND the immutable snapshot of that
+ * revision. Both are idempotent: the dish upserts on its id, the version on
+ * (dish_id, revision), so a queue replay cannot duplicate either.
+ */
+export async function upsertDish(
+  householdId: string,
+  dish: Dish,
+  createdByProfileId: string | null = null,
+): Promise<void> {
+  const sb = requireSupabase();
+  const { error } = await sb
+    .from("dishes")
+    .upsert(dishToRow(dish, householdId, createdByProfileId), { onConflict: "id" });
+  if (error) throw error;
+  // A revision snapshot is written ONCE and never rewritten (the table grants
+  // no update): a replay of the same queued op must therefore be ignored, not
+  // turned into an update that RLS would refuse.
+  const { error: vErr } = await sb
+    .from("dish_versions")
+    .upsert(dishVersionToRow(dish, householdId, createdByProfileId), {
+      onConflict: "dish_id,revision",
+      ignoreDuplicates: true,
+    });
+  if (vErr) throw vErr;
+}
+
+/** Soft archive: the dish leaves the active list, its history stays readable. */
+export async function archiveDish(dishId: string, isActive: boolean): Promise<void> {
+  const sb = requireSupabase();
+  const { error } = await sb.from("dishes").update({ is_active: isActive }).eq("id", dishId);
   if (error) throw error;
 }
