@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { X, Pencil, Trash2, Star, MinusCircle, RotateCcw, Check, Minus, Plus } from "lucide-react";
 import { toast } from "sonner";
-import type { Food, FoodEntry, MealSlotId } from "@/lib/domain";
+import type { Dish, EstimatedProduct, Food, FoodEntry, MealSlotId } from "@/lib/domain";
 import { MEAL_ICONS, MEAL_LABELS } from "@/lib/meal-slots";
 import { useStore, PROFILES } from "@/lib/store";
 import { formatShortDate } from "@/lib/format";
@@ -21,6 +21,10 @@ import { QuantitySelector } from "./QuantitySelector";
 import { CoffeeSelector } from "./CoffeeSelector";
 import { VariantPicker } from "./VariantPicker";
 import { PersonalAliasForm } from "./PersonalAliasForm";
+import { ESTIMATED_SHORT } from "@/lib/label-estimator";
+import { DishLogSheet } from "./DishLogSheet";
+import { LabelEstimatorForm } from "./LabelEstimatorForm";
+import { EstimatedQuantityForm } from "./EstimatedQuantityForm";
 
 interface Props {
   slot: MealSlotId | null;
@@ -37,7 +41,11 @@ type View =
   | { kind: "variant"; food: Food; group: ReferenceGroup }
   | { kind: "quantity"; food: Food; editing?: FoodEntry; referenceItem?: ReferenceItem }
   | { kind: "coffee"; editing?: FoodEntry }
-  | { kind: "alias"; name: string };
+  | { kind: "alias"; name: string }
+  // DEC-037 — the household's own sources, from inside the meal.
+  | { kind: "dish"; dish: Dish }
+  | { kind: "estimated"; product: EstimatedProduct }
+  | { kind: "label"; name: string };
 
 export function MealEditor({ slot, onClose }: Props) {
   const store = useStore();
@@ -283,6 +291,15 @@ export function MealEditor({ slot, onClose }: Props) {
                 <FoodSearch
                   onChoose={handleChoose}
                   onCreate={handleCreateFood}
+                  onEstimateFromLabel={(name) => setView({ kind: "label", name })}
+                  onChooseDish={(dishId) => {
+                    const dish = store.dishes.find((d) => d.id === dishId);
+                    if (dish) setView({ kind: "dish", dish });
+                  }}
+                  onChooseEstimated={(productId) => {
+                    const product = store.estimatedProducts.find((p) => p.id === productId);
+                    if (product) setView({ kind: "estimated", product });
+                  }}
                   onAddCoffee={() => setView({ kind: "coffee" })}
                   autoFocus={isEmpty}
                 />
@@ -306,6 +323,22 @@ export function MealEditor({ slot, onClose }: Props) {
                 // (several portions → the picker, otherwise the quantity screen).
                 if (handleChoose(food, "typed") === "added") setView({ kind: "meal" });
               }}
+              onCancel={() => setView({ kind: "meal" })}
+            />
+          )}
+
+          {view.kind === "label" && (
+            <LabelEstimatorForm
+              initialName={view.name}
+              onSaved={(product) => setView({ kind: "estimated", product })}
+              onCancel={() => setView({ kind: "meal" })}
+            />
+          )}
+
+          {view.kind === "estimated" && (
+            <EstimatedQuantityForm
+              product={view.product}
+              onSubmit={(entry) => handleAdd(entry)}
               onCancel={() => setView({ kind: "meal" })}
             />
           )}
@@ -340,6 +373,15 @@ export function MealEditor({ slot, onClose }: Props) {
             />
           )}
         </div>
+
+        {view.kind === "dish" && (
+          <DishLogSheet
+            dish={view.dish}
+            slot={slot}
+            onClose={() => setView({ kind: "meal" })}
+            onLogged={() => setView({ kind: "meal" })}
+          />
+        )}
 
         {/* Footer: one primary action. Empty meal → offer "skipped"; otherwise done. */}
         {view.kind === "meal" && meal.status !== "skipped" && (
@@ -443,6 +485,17 @@ function EntryRow({
           {entry.coffee && <div className="truncate text-xs text-muted-foreground">{detail}</div>}
           <div className="text-[11px] font-medium text-primary">
             {pointValue == null ? "ללא ניקוד" : `${formatPoints(pointValue)} נק׳`}
+            {/* DEC-037 — an estimated / dish value is never shown as a canonical one. */}
+            {entry.pointsBasis === "estimated:label" && (
+              <span className="mr-1 text-info" data-testid="entry-estimated">
+                · {ESTIMATED_SHORT}
+              </span>
+            )}
+            {entry.dishId && (
+              <span className="mr-1 text-muted-foreground" data-testid="entry-dish">
+                · תבשיל{entry.weightSource === "estimated" ? " · משקל בהערכה" : ""}
+              </span>
+            )}
             {legacy && <span className="text-muted-foreground"> · מאכל ישן, לא במאגר</span>}
           </div>
           {entry.coffee?.note && (

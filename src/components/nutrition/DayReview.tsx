@@ -11,6 +11,7 @@ import { coffeeSummary } from "@/lib/coffee";
 import { formatQuantity } from "@/lib/quantity";
 import { cn } from "@/lib/utils";
 import { formatPoints, pointsForDay, pointsForEntry } from "@/lib/points";
+import { ESTIMATED_SHORT } from "@/lib/label-estimator";
 
 interface Props {
   /** Which person's day to show first; null = closed. */
@@ -269,13 +270,12 @@ function SlotRow({
               <span className="min-w-0 flex-1 truncate text-foreground">{e.foodName}</span>
               <span className="shrink-0 text-[12px] text-muted-foreground">{entryDetail(e)}</span>
               <span className="shrink-0 text-[11px] font-medium text-primary">
-                {formatPoints(
-                  pointsForEntry(
-                    e,
-                    foods.find((f) => f.id === e.foodId),
-                  ),
-                )}{" "}
-                נק׳
+                {pointsForEntry(e) == null ? "ללא ניקוד" : `${formatPoints(pointsForEntry(e))} נק׳`}
+                {/* DEC-037 — estimated / dish provenance stays visible in history. */}
+                {e.pointsBasis === "estimated:label" && (
+                  <span className="mr-1 text-info">· {ESTIMATED_SHORT}</span>
+                )}
+                {e.dishId && <span className="mr-1 text-muted-foreground">· תבשיל</span>}
               </span>
               {timeOf(e) && (
                 <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums" dir="ltr">

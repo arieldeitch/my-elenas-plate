@@ -1,15 +1,17 @@
-import { CalendarDays, Home, Plus } from "lucide-react";
+import { CalendarDays, ChefHat, Home, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Props {
-  active?: "home" | "calendar";
+  active?: "home" | "calendar" | "dishes";
   onHome?: () => void;
   onCalendar?: () => void;
   onAdd?: () => void;
+  /** Navigate to the dedicated dishes area (DEC-037). */
+  onDishes?: () => void;
 }
 
-/** Deliberately only real destinations/actions: Home · Quick Add · Journal. */
-export function BottomNav({ active = "home", onHome, onCalendar, onAdd }: Props) {
+/** Deliberately only real destinations/actions: Home · Dishes · Quick Add · Journal. */
+export function BottomNav({ active = "home", onHome, onCalendar, onAdd, onDishes }: Props) {
   return (
     <nav
       dir="rtl"
@@ -17,12 +19,18 @@ export function BottomNav({ active = "home", onHome, onCalendar, onAdd }: Props)
       className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 backdrop-blur-md"
       style={{ boxShadow: "var(--shadow-banner)" }}
     >
-      <div className="mx-auto grid max-w-[820px] grid-cols-3 items-end px-5 pb-[calc(env(safe-area-inset-bottom)+6px)] pt-2">
+      <div className="mx-auto grid max-w-[820px] grid-cols-4 items-end px-3 pb-[calc(env(safe-area-inset-bottom)+6px)] pt-2 sm:px-5">
         <NavItem
           icon={<Home className="h-5 w-5" strokeWidth={2} />}
           label="בית"
           active={active === "home"}
           onClick={onHome}
+        />
+        <NavItem
+          icon={<ChefHat className="h-5 w-5" strokeWidth={1.75} />}
+          label="תבשילים"
+          active={active === "dishes"}
+          onClick={onDishes}
         />
         <button
           type="button"
