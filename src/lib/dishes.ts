@@ -173,11 +173,8 @@ export function resolveIngredient(
   const portionUnit = item.portion?.primary?.appUnit as Unit | undefined;
   const group = getReferenceIndex().groupsByKey.get(request.groupKey);
   const source = { kind: "reference" as const, key: request.groupKey };
-  const converted = convertQuantity(
-    item,
-    group,
-    { amount, unit: request.unit },
-    (unit) => findBridge(bridges, source, unit),
+  const converted = convertQuantity(item, group, { amount, unit: request.unit }, (unit) =>
+    findBridge(bridges, source, unit),
   );
   if (converted.kind === "converted") {
     const via = resolveReferenceItem(item, {
@@ -193,7 +190,14 @@ export function resolveIngredient(
         converted.conversion.kind === "bridge"
           ? findBridge(bridges, source, converted.conversion.unit)
           : undefined;
-      const ingredient = referenceIngredient(request, amount, request.unit, via.points, grams, bridge);
+      const ingredient = referenceIngredient(
+        request,
+        amount,
+        request.unit,
+        via.points,
+        grams,
+        bridge,
+      );
       ingredient.conversion = converted.conversion;
       return { ok: true, ingredient };
     }
@@ -205,31 +209,6 @@ export function resolveIngredient(
       reason: "needs_bridge",
       unit: request.unit,
       bridgeUnit: converted.bridgeUnit,
-    };
-  }
-
-  return { ok: false, reason: "needs_bridge", unit: request.unit, bridgeUnit: portionUnit };
-    }
-    const grams = gramsFromWeightUnit(amount, request.unit);
-    const units = grams / bridge.gramsPerUnit;
-    const viaBridge = resolveReferenceItem(item, {
-      mode: "measured",
-      amount: units,
-      unit: portionUnit,
-    });
-    if (viaBridge.kind === "blocked" || viaBridge.points == null) {
-      return { ok: false, reason: "unit_not_supported", unit: request.unit };
-    }
-    return {
-      ok: true,
-      ingredient: referenceIngredient(
-        request,
-        amount,
-        request.unit,
-        viaBridge.points,
-        grams,
-        bridge,
-      ),
     };
   }
 

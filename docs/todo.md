@@ -8,6 +8,32 @@ holds 1 household, 2 profiles (אריאל/אלנה), 6 meal slots, RLS on 10 tab
 **T-034 was split on 2026-08-01** (DEC-023): the backend half is **Done**, the browser-dependent half
 (**T-034-UI**) is **Blocked** until a browser automation capability exists.
 
+## DEC-038 — calculated products, private body area, reference unit conversions (2026-09-24)
+
+Implementation arrived via Lovable (`42fabb4`); this run reviewed and remediated it.
+
+- [x] Calculated product domain: 52/2000 → 26 / 13 / 7.8 raw, rounded only at the meal boundary;
+      kg ≡ g; a saved entry keeps its basis snapshot when the product is edited.
+- [x] `calculated_products` table, household RLS, archive frees the name for a replacement.
+- [x] Private body boundary in SQL: no direct `weigh_ins` access for `authenticated`, out of
+      realtime, bcrypt PIN, closed `body_privacy`, cross-profile denial — all proven on PGlite.
+- [x] PIN throttle bypass closed (unlock capability window); regression test asserts it.
+- [x] Reference-derived conversions with evidence rules, consistency tolerance, conflict rejection,
+      zero-point and review-row exclusion, and a rounding-uncertainty guard.
+- [x] Inferred conversions labelled "הערכה מהמאגר"; explicit/measured ones labelled differently.
+- [x] Unit picker offers grams wherever the engine can resolve them.
+- [x] `dishes.ts` build break from the merge removed; DEC-037/036 tests updated where DEC-038
+      deliberately supersedes them, keeping every must-block assertion.
+- [ ] **Private body UI — Not Started.** No area, no PIN entry/unlock, no trend view, no progress
+      feed, no profile switching inside it. This is the bulk of task section B.
+- [ ] **Private body data path — Not Started.** `repositories.ts` still calls
+      `.from("weigh_ins")`, `supabase-sync.ts` still syncs it, nothing calls the `body_*` RPCs.
+      Until this lands, migration `20260924090000` **must not be applied** (preflight warns).
+- [ ] **Calculated product UI / data path — Not Started.** No creation form, no search integration,
+      no repository or sync for `calculated_products`; the table would stay empty.
+- [ ] **Owner:** do NOT apply `20260924090000` and do NOT publish until the two data paths above
+      exist. Nothing else is required from the owner for this run.
+
 ## DEC-037 — manual target, dishes, weight bridges, label estimator (2026-09-23)
 
 - [x] Manual daily target is the only budget source; no automatic/fallback value anywhere.

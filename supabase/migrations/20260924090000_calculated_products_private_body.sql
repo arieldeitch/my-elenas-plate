@@ -38,9 +38,12 @@ create table if not exists public.calculated_products (
   created_by_profile_id uuid references public.profiles (id) on delete set null,
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  unique (household_id, normalized_name)
+  updated_at timestamptz not null default now()
 );
+-- Only one ACTIVE product may hold a name. An archived one keeps its row (and
+-- its history) and does not block naming the replacement the same thing.
+create unique index if not exists calculated_products_active_name_idx
+  on public.calculated_products (household_id, normalized_name) where is_active;
 create index if not exists calculated_products_household_idx
   on public.calculated_products (household_id) where is_active;
 
@@ -96,9 +99,15 @@ create table if not exists public.body_privacy (
   pin_hash text not null,
   failed_attempts integer not null default 0,
   locked_until timestamptz,
+  -- The unlock capability. Only body_unlock writes it, and every data RPC
+  -- requires it to be live; see body_require_pin for why the throttle needs it.
+  unlocked_until timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+-- Idempotent for a database that already has the pre-capability table.
+alter table public.body_privacy add column if not exists unlocked_until timestamptz;
+
 drop trigger if exists set_updated_at on public.body_privacy;
 create trigger set_updated_at before update on public.body_privacy
   for each row execute function public.set_updated_at();
@@ -130,7 +139,7 @@ returns uuid
 language plpgsql
 stable
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 declare
   hid uuid;
@@ -151,7 +160,7 @@ returns text
 language plpgsql
 volatile
 security definer
-set search_path = public, extensions
+set search_path = public, extensions, pg_temp
 as $$
 declare
   rec public.body_privacy%rowtype;
@@ -176,20 +185,38 @@ begin
 end;
 $$;
 
--- Internal: raises unless the PIN is correct. Only used by read/write paths.
+-- Internal: the gate every read/write path goes through.
+--
+-- It raises, and a raise rolls the whole transaction back — including any
+-- failed-attempt counter written on the way. That is why the throttle CANNOT
+-- live here: ten wrong PINs through a data RPC left failed_attempts at zero,
+-- so a 6-digit PIN was brute-forceable without limit.
+--
+-- The throttle therefore lives in body_unlock, which RETURNS its verdict so the
+-- counter commits, and this gate additionally requires the capability a
+-- successful unlock writes. Reaching a data RPC needs a live unlock, and the
+-- only way to get one is through the throttled path.
 create or replace function public.body_require_pin(p_profile_id uuid, p_pin text)
 returns void
 language plpgsql
 volatile
 security definer
-set search_path = public
+set search_path = public, extensions, pg_temp
 as $$
 declare
-  verdict text;
+  rec public.body_privacy%rowtype;
 begin
-  verdict := public.body_check_pin(p_profile_id, p_pin);
-  if verdict <> 'ok' then
-    raise exception 'body_pin_%', verdict using errcode = '28000';
+  perform public.body_profile_household(p_profile_id);
+  select * into rec from public.body_privacy where profile_id = p_profile_id;
+  if not found then raise exception 'body_pin_unset' using errcode = '28000'; end if;
+  if rec.locked_until is not null and rec.locked_until > now() then
+    raise exception 'body_pin_locked' using errcode = '28000';
+  end if;
+  if rec.unlocked_until is null or rec.unlocked_until <= now() then
+    raise exception 'body_pin_locked' using errcode = '28000';
+  end if;
+  if p_pin is null or crypt(p_pin, rec.pin_hash) <> rec.pin_hash then
+    raise exception 'body_pin_invalid' using errcode = '28000';
   end if;
 end;
 $$;
@@ -200,7 +227,7 @@ returns text
 language plpgsql
 stable
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 declare
   rec public.body_privacy%rowtype;
@@ -213,16 +240,45 @@ begin
 end;
 $$;
 
--- 'ok' | 'invalid' | 'locked' | 'unset' — a wrong PIN is counted, not raised.
+-- How long one successful unlock stays usable. Short enough that a forgotten
+-- phone relocks by itself, long enough to add a weigh-in and read the trend.
+create or replace function public.body_unlock_window()
+returns interval language sql immutable as $$ select interval '10 minutes' $$;
+
+-- The ONLY throttled entrance. Returns 'ok' | 'invalid' | 'locked' | 'unset'
+-- instead of raising, so the failed-attempt counter actually commits. On 'ok'
+-- it opens the capability window that body_require_pin insists on.
 create or replace function public.body_unlock(p_profile_id uuid, p_pin text)
 returns text
 language plpgsql
 volatile
 security definer
-set search_path = public
+set search_path = public, pg_temp
+as $$
+declare
+  verdict text;
+begin
+  verdict := public.body_check_pin(p_profile_id, p_pin);
+  if verdict = 'ok' then
+    update public.body_privacy
+      set unlocked_until = now() + public.body_unlock_window()
+      where profile_id = p_profile_id;
+  end if;
+  return verdict;
+end;
+$$;
+
+-- Explicit relock — leaving the area, switching profile, or signing out.
+create or replace function public.body_lock(p_profile_id uuid)
+returns void
+language plpgsql
+volatile
+security definer
+set search_path = public, pg_temp
 as $$
 begin
-  return public.body_check_pin(p_profile_id, p_pin);
+  perform public.body_profile_household(p_profile_id);
+  update public.body_privacy set unlocked_until = null where profile_id = p_profile_id;
 end;
 $$;
 
@@ -234,7 +290,7 @@ returns text
 language plpgsql
 volatile
 security definer
-set search_path = public, extensions
+set search_path = public, extensions, pg_temp
 as $$
 declare
   hid uuid;
@@ -248,7 +304,8 @@ begin
     verdict := public.body_check_pin(p_profile_id, p_current_pin);
     if verdict <> 'ok' then return verdict; end if;
     update public.body_privacy
-      set pin_hash = crypt(p_new_pin, gen_salt('bf', 10)), failed_attempts = 0, locked_until = null
+      set pin_hash = crypt(p_new_pin, gen_salt('bf', 10)), failed_attempts = 0,
+          locked_until = null, unlocked_until = null
       where profile_id = p_profile_id;
   else
     insert into public.body_privacy (profile_id, household_id, pin_hash)
@@ -266,7 +323,7 @@ returns table (
 language plpgsql
 volatile
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 begin
   perform public.body_require_pin(p_profile_id, p_pin);
@@ -286,7 +343,7 @@ returns uuid
 language plpgsql
 volatile
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 declare
   hid uuid;
@@ -318,7 +375,7 @@ returns void
 language plpgsql
 volatile
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 begin
   perform public.body_require_pin(p_profile_id, p_pin);
@@ -333,12 +390,15 @@ revoke all on function public.body_require_pin(uuid, text) from public, anon, au
 -- The public entry points: authenticated household members only.
 revoke all on function public.body_pin_status(uuid) from public, anon;
 revoke all on function public.body_unlock(uuid, text) from public, anon;
+revoke all on function public.body_lock(uuid) from public, anon;
+revoke all on function public.body_unlock_window() from public, anon, authenticated;
 revoke all on function public.body_set_pin(uuid, text, text) from public, anon;
 revoke all on function public.body_list_weigh_ins(uuid, text) from public, anon;
 revoke all on function public.body_save_weigh_in(uuid, text, uuid, date, text, numeric, numeric) from public, anon;
 revoke all on function public.body_delete_weigh_in(uuid, text, uuid) from public, anon;
 grant execute on function public.body_pin_status(uuid) to authenticated;
 grant execute on function public.body_unlock(uuid, text) to authenticated;
+grant execute on function public.body_lock(uuid) to authenticated;
 grant execute on function public.body_set_pin(uuid, text, text) to authenticated;
 grant execute on function public.body_list_weigh_ins(uuid, text) to authenticated;
 grant execute on function public.body_save_weigh_in(uuid, text, uuid, date, text, numeric, numeric) to authenticated;
@@ -351,7 +411,9 @@ grant execute on function public.body_delete_weigh_in(uuid, text, uuid) to authe
 --   drop function if exists public.body_save_weigh_in(uuid, text, uuid, date, text, numeric, numeric);
 --   drop function if exists public.body_list_weigh_ins(uuid, text);
 --   drop function if exists public.body_set_pin(uuid, text, text);
+--   drop function if exists public.body_lock(uuid);
 --   drop function if exists public.body_unlock(uuid, text);
+--   drop function if exists public.body_unlock_window();
 --   drop function if exists public.body_pin_status(uuid);
 --   drop function if exists public.body_require_pin(uuid, text);
 --   drop function if exists public.body_check_pin(uuid, text);

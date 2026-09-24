@@ -296,12 +296,76 @@ async function runLive() {
     await checkSupabaseReachable(manifest.supabaseHost);
 }
 
+/**
+ * DEC-038 deploy order. The migration takes every `authenticated` grant off
+ * `weigh_ins` and drops it from the realtime publication — correct, because one
+ * shared Auth account means profile_id is not a privacy boundary. But the
+ * client still reads and writes that table through PostgREST and still syncs
+ * it, and nothing calls the body_* RPCs that replace them.
+ *
+ * Applying the migration against that client does not degrade the private body
+ * area; it returns `permission denied` for every weigh-in the household
+ * already has, with no screen able to read them back. The two halves ship
+ * together or not at all, so the release says so out loud.
+ */
+function checkPrivateBodyDeployOrder() {
+  const read = (...parts: string[]) => {
+    try {
+      return readFileSync(join(process.cwd(), ...parts), "utf8");
+    } catch {
+      return "";
+    }
+  };
+  const migration = read(
+    "supabase",
+    "migrations",
+    "20260924090000_calculated_products_private_body.sql",
+  );
+  if (!migration) return;
+  const revokes =
+    /revoke\s+all\s+on\s+table\s+public\.weigh_ins\s+from\s+anon,\s*authenticated/i.test(migration);
+  if (!revokes) {
+    add("db:private-body-order", "PASS", "migration does not revoke direct weigh_ins access");
+    return;
+  }
+  const repositories = read("src", "lib", "supabase", "repositories.ts");
+  const sync = read("src", "lib", "sync", "supabase-sync.ts");
+  const usesTable = /\.from\(\s*["']weigh_ins["']\s*\)/.test(repositories);
+  const syncsTable = /["']weigh_ins["']/.test(sync);
+  const usesRpcs = /body_list_weigh_ins|body_save_weigh_in|body_delete_weigh_in/.test(repositories);
+  if (usesRpcs && !usesTable && !syncsTable) {
+    add(
+      "db:private-body-order",
+      "PASS",
+      "client is on the body_* RPCs; the migration may be applied",
+    );
+    return;
+  }
+  // WARN, not FAIL: publishing the client on its own is safe. It is APPLYING
+  // the migration that would break weigh-ins, and preflight cannot see whether
+  // anyone is about to do that — so it says so instead of blocking the build.
+  add(
+    "db:private-body-order",
+    "WARN",
+    [
+      "DO NOT APPLY migration 20260924090000 yet.",
+      "It revokes authenticated access to weigh_ins, but the client is not ready:",
+      `repositories.ts still queries the table (${usesTable}),`,
+      `supabase-sync.ts still lists it (${syncsTable}),`,
+      `body_* RPCs called anywhere (${usesRpcs}).`,
+      "Applying it now returns permission denied for every existing weigh-in.",
+      "Ship the private body UI and its data path in the same release.",
+    ].join(" "),
+  );
+}
+
 // ---------------------------------------------------------------- main
 (async () => {
   if (modeEnv) await runEnv();
   if (modeLocal) await runLocal();
   if (modeLive) await runLive();
 
+  checkPrivateBodyDeployOrder();
   add(
     "db:grants+ledger",
     "MANUAL",

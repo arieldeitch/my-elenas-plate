@@ -5,6 +5,7 @@ import { parseAmount, validateMeasured } from "@/lib/quantity";
 import { formatPoints, scoreDetails, SUBJECTIVE_LABEL } from "@/lib/points";
 import {
   BLOCK_MESSAGES,
+  convertibleUnits,
   formatPortion,
   getReferenceIndex,
   groupForFood,
@@ -14,6 +15,8 @@ import {
   selectableItems,
   type ReferenceRuntimeItem as ReferenceItem,
 } from "@/lib/points-reference";
+import { useStore } from "@/lib/store";
+import { buildBridgeIndex, findBridge } from "@/lib/weight-bridges";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -43,6 +46,7 @@ export function QuantitySelector({
   submitLabel = "הוספת המאכל",
 }: Props) {
   const index = getReferenceIndex();
+  const store = useStore();
   // The reference row this quantity is scored against: the explicit choice,
   // the row of the entry being edited, or the single row of the linked group.
   const item = useMemo(() => {
@@ -65,11 +69,23 @@ export function QuantitySelector({
   const [showAllUnits, setShowAllUnits] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // A reference portion offers only the units the engine can resolve safely;
-  // "יחידות נוספות" still exists so the person can see why a unit is refused.
-  const suggested = item
-    ? resolvableUnits(item.portion)
-    : (food.suggestedUnits ?? [food.defaultUnit ?? "יחידה"]);
+  // A reference portion offers the units the engine resolves directly, PLUS the
+  // ones DEC-038 can reach through a stored bridge or coherent same-group
+  // evidence. Without this second list the engine could score grams for
+  // "1 כף / 15 גרם" while the picker still hid grams behind "יחידות נוספות".
+  const bridgeIndex = useMemo(
+    () => buildBridgeIndex(store.weightBridges ?? []),
+    [store.weightBridges],
+  );
+  const suggested = useMemo(() => {
+    if (!item) return food.suggestedUnits ?? [food.defaultUnit ?? "יחידה"];
+    const direct = resolvableUnits(item.portion);
+    const group = index.groupsByKey.get(item.normalizedName);
+    const extra = convertibleUnits(item, group, (u) =>
+      Boolean(findBridge(bridgeIndex, { kind: "reference", key: item.normalizedName }, u)),
+    );
+    return [...direct, ...extra.filter((u) => !direct.includes(u))];
+  }, [item, food.suggestedUnits, food.defaultUnit, index, bridgeIndex]);
   const unitList = showAllUnits ? ALL_UNITS : suggested.length > 0 ? suggested : ALL_UNITS;
   const parsedPreviewAmount = parseAmount(amount);
   const quantity =
@@ -79,7 +95,7 @@ export function QuantitySelector({
   const preview = scoreDetails(
     { ...quantity, referenceItemId: item?.id, coffee: undefined },
     food,
-    { reference: index },
+    { reference: index, bridges: bridgeIndex },
   );
   const resolution = item ? resolveReferenceItem(item, quantity) : null;
   // DEC-036: no reference row → nothing can be saved with a value here.

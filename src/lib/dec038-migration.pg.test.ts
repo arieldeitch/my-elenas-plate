@@ -47,6 +47,14 @@ async function asUser<T>(sub: string, fn: () => Promise<T>): Promise<T> {
   }
 }
 
+/** Opens the capability window a data RPC requires. Returns the unlock verdict. */
+async function unlock(profile: string, pin: string, user = DEVICE_A): Promise<string> {
+  const r = await asUser(user, () =>
+    db.query<{ v: string }>(`select public.body_unlock('${profile}', '${pin}') as v`),
+  );
+  return r.rows[0].v;
+}
+
 async function fails(sql: string, user = DEVICE_A): Promise<string> {
   try {
     await asUser(user, () => db.query(sql));
@@ -138,9 +146,16 @@ describe("DEC-038 private body boundary", () => {
     expect(await fails(`select * from public.body_list_weigh_ins('${ariel}', '123456')`)).toMatch(
       /body_pin_unset/,
     );
-    expect(await fails(`select public.body_set_pin('${ariel}', '12a4')`)).toMatch(/body_pin_format/);
+    expect(await fails(`select public.body_set_pin('${ariel}', '12a4')`)).toMatch(
+      /body_pin_format/,
+    );
 
     await asUser(DEVICE_A, () => db.query(`select public.body_set_pin('${ariel}', '123456')`));
+    // Setting the PIN does not unlock: the capability is taken explicitly.
+    expect(await fails(`select * from public.body_list_weigh_ins('${ariel}', '123456')`)).toMatch(
+      /body_pin_locked/,
+    );
+    expect(await unlock(ariel, "123456")).toBe("ok");
     const rows = await asUser(DEVICE_A, () =>
       db.query<{ id: string; weight_kg: string }>(
         `select * from public.body_list_weigh_ins('${ariel}', '123456')`,
@@ -158,6 +173,8 @@ describe("DEC-038 private body boundary", () => {
 
   it("a wrong PIN and the other profile's PIN are refused for reads and writes", async () => {
     await asUser(DEVICE_A, () => db.query(`select public.body_set_pin('${elena}', '654321')`));
+    expect(await unlock(ariel, "123456")).toBe("ok");
+    expect(await unlock(elena, "654321")).toBe("ok");
     expect(await fails(`select * from public.body_list_weigh_ins('${ariel}', '000000')`)).toMatch(
       /body_pin_invalid/,
     );
@@ -185,6 +202,8 @@ describe("DEC-038 private body boundary", () => {
   });
 
   it("weight is required, body fat optional; delete is scoped to the owner", async () => {
+    expect(await unlock(elena, "654321")).toBe("ok");
+    expect(await unlock(ariel, "123456")).toBe("ok");
     expect(
       await fails(
         `select public.body_save_weigh_in('${elena}', '654321', null, '2026-09-03', '07:30', null, null)`,
@@ -201,6 +220,58 @@ describe("DEC-038 private body boundary", () => {
     );
     const still = await db.query(`select 1 from public.weigh_ins where id = '${id}'`);
     expect(still.rows).toHaveLength(1);
+  });
+
+  it("a wrong PIN at a DATA rpc still counts: the throttle cannot be bypassed", async () => {
+    // Regression. body_require_pin raises, and a raise rolls back any counter
+    // written on the way, so ten wrong PINs through body_list_weigh_ins used to
+    // leave failed_attempts at 0 — an unlimited brute force of a 6-digit PIN.
+    // A data RPC now needs the capability that only the throttled body_unlock
+    // can grant, so guessing has to go through the counted path.
+    await asUser(DEVICE_A, () => db.query(`select public.body_set_pin('${ariel}', '123456')`));
+    expect(await unlock(ariel, "123456")).toBe("ok");
+    for (let i = 0; i < 10; i++) {
+      expect(await fails(`select * from public.body_list_weigh_ins('${ariel}', '000000')`)).toMatch(
+        /body_pin_invalid/,
+      );
+    }
+    // Guessing through the only throttled entrance does lock, and the lock then
+    // also closes the data path.
+    for (let i = 0; i < 5; i++) expect(await unlock(ariel, "000000")).toBe("invalid");
+    expect(await unlock(ariel, "123456")).toBe("locked");
+    expect(await fails(`select * from public.body_list_weigh_ins('${ariel}', '123456')`)).toMatch(
+      /body_pin_locked/,
+    );
+    // Clear the lock for the tests that follow.
+    await db.query(
+      `update public.body_privacy set failed_attempts = 0, locked_until = null where profile_id = '${ariel}'`,
+    );
+  });
+
+  it("an expired or explicitly closed window locks the area again", async () => {
+    expect(await unlock(ariel, "123456")).toBe("ok");
+    await asUser(DEVICE_A, () => db.query(`select public.body_lock('${ariel}')`));
+    expect(await fails(`select * from public.body_list_weigh_ins('${ariel}', '123456')`)).toMatch(
+      /body_pin_locked/,
+    );
+    expect(await unlock(ariel, "123456")).toBe("ok");
+    await db.query(
+      `update public.body_privacy set unlocked_until = now() - interval '1 second' where profile_id = '${ariel}'`,
+    );
+    expect(await fails(`select * from public.body_list_weigh_ins('${ariel}', '123456')`)).toMatch(
+      /body_pin_locked/,
+    );
+    // One profile's window never opens the other's.
+    expect(await unlock(ariel, "123456")).toBe("ok");
+    await asUser(DEVICE_A, () => db.query(`select public.body_lock('${elena}')`));
+    expect(await fails(`select * from public.body_list_weigh_ins('${elena}', '654321')`)).toMatch(
+      /body_pin_locked/,
+    );
+  });
+
+  it("body_lock and the window helper keep their grants", async () => {
+    expect(await fails("select public.body_unlock_window()")).toMatch(/permission denied/);
+    expect(await fails(`select public.body_lock('${ariel}')`, STRANGER)).toMatch(/body_forbidden/);
   });
 
   it("five wrong unlocks lock the area; another household is forbidden", async () => {
@@ -241,6 +312,46 @@ describe("DEC-038 calculated products", () => {
          values ('${household}', 'x', 'x', 1, 0, 0)`,
       ),
     ).toMatch(/check constraint/);
+  });
+
+  it("an archived product frees its name; two active ones cannot share it", async () => {
+    await asUser(DEVICE_A, () =>
+      db.query(
+        `insert into public.calculated_products
+           (household_id, name, normalized_name, total_points, total_weight_g, points_per_gram)
+         values ('${household}', 'מרק ירקות', 'מרק ירקות', 20, 1000, 0.02)`,
+      ),
+    );
+    expect(
+      await fails(
+        `insert into public.calculated_products
+           (household_id, name, normalized_name, total_points, total_weight_g, points_per_gram)
+         values ('${household}', 'מרק ירקות', 'מרק ירקות', 21, 1000, 0.021)`,
+      ),
+    ).toMatch(/calculated_products_active_name_idx|duplicate key/);
+    await asUser(DEVICE_A, () =>
+      db.query(
+        `update public.calculated_products set is_active = false where normalized_name = 'מרק ירקות'`,
+      ),
+    );
+    // The archived row still exists, so old history can still explain itself.
+    const archived = await asUser(DEVICE_A, () =>
+      db.query("select 1 from public.calculated_products where normalized_name = 'מרק ירקות'"),
+    );
+    expect(archived.rows).toHaveLength(1);
+    await asUser(DEVICE_A, () =>
+      db.query(
+        `insert into public.calculated_products
+           (household_id, name, normalized_name, total_points, total_weight_g, points_per_gram)
+         values ('${household}', 'מרק ירקות', 'מרק ירקות', 21, 1000, 0.021)`,
+      ),
+    );
+    const rows = await asUser(DEVICE_A, () =>
+      db.query(
+        "select is_active from public.calculated_products where normalized_name = 'מרק ירקות'",
+      ),
+    );
+    expect(rows.rows).toHaveLength(2);
   });
 
   it("food_entries gains nullable provenance columns", async () => {

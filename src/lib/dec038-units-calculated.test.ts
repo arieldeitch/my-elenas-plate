@@ -11,6 +11,7 @@ import type { ReferenceRuntimeDataset } from "./points-reference/types";
 import { buildBridgeIndex } from "./weight-bridges";
 import {
   buildCalculatedProduct,
+  calculatedRawPoints,
   calculatedServingPoints,
   validateCalculatedInput,
 } from "./calculated-products";
@@ -50,9 +51,12 @@ const weight = (grams: number) => ({
 
 // טחינה: explicit cell "1 כף / 15 גרם" = 2 points
 const tahini = item("טחינה", 2, { family: "count", primary: count(1, "כף"), grams: 15 });
-// חומוס: a count row (1 כף = 1 נק׳) and a weight row (100 גרם = 5 נק׳) → 20 g/כף estimate
-const hummusSpoon = item("חומוס", 1, { family: "count", primary: count(1, "כף") });
-const hummusWeight = item("חומוס", 5, weight(100));
+// חומוס: a count row (1 כף = 4 נק׳) and a weight row (100 גרם = 20 נק׳) → 20 g/כף.
+// The point VALUES matter, not just the ratio: published points are rounded to
+// half a point, so a 1-point row carries ±25% on its own and cannot support a
+// weight. These do — see "evidence too rounded" below for the other side.
+const hummusSpoon = item("חומוס", 4, { family: "count", primary: count(1, "כף") });
+const hummusWeight = item("חומוס", 20, weight(100));
 // ריבה: inconsistent siblings (1 כף = 2 → 20 g, and 100 g = 5 / 100 g = 20 → 40 g vs 10 g)
 const jamSpoon = item("ריבה", 2, { family: "count", primary: count(1, "כף") });
 const jamW1 = item("ריבה", 5, weight(100));
@@ -109,7 +113,7 @@ describe("DEC-038 reference unit conversion", () => {
       gramsPerUnit: 20,
     });
     const s = scoreDetails(measured(hummusSpoon.id, 60, "גרם"), undefined, { reference: index });
-    expect(s.pointsValue).toBe(3);
+    expect(s.pointsValue).toBe(12); // 60 g = 3 כף × 4 נק׳
     expect(s.pointsBasis).toBe("reference:estimated_conversion");
     expect(s.basisSnapshot?.conversion?.kind).toBe("reference_estimate");
     expect(s.basisSnapshot?.conversion?.evidenceRows).toEqual([
@@ -118,11 +122,32 @@ describe("DEC-038 reference unit conversion", () => {
     ]);
     // the reverse direction: 2 כפות against the 100 g row
     const back = scoreDetails(measured(hummusWeight.id, 2, "כף"), undefined, { reference: index });
-    expect(back.pointsValue).toBe(2);
+    expect(back.pointsValue).toBe(8); // 2 כף = 40 g of the 100 g = 20 נק׳ row
     expect(back.pointsBasis).toBe("reference:estimated_conversion");
     expect(convertibleUnits(hummusSpoon, index.groupsByKey.get("חומוס"), () => false)).toContain(
       "גרם",
     );
+  });
+
+  it("4b. evidence too rounded to divide is not evidence", () => {
+    // Real case from the dataset this rule came from — דבש, where 100 גרם = 9 נק׳:
+    //   1 כף   = 2 נק׳ → 22.2 g (true ≈ 21 g)  — usable
+    //   1 כפית = 1 נק׳ → 11.1 g (true ≈ 7 g)   — 59% out, and nothing else to
+    // compare it against, because one count row against one weight row always
+    // "agrees" with itself. So the pair's own rounding noise decides.
+    const thinSpoon = item("ממרח", 1, { family: "count", primary: count(1, "כפית") });
+    const thinWeight = item("ממרח", 9, weight(100));
+    const thin = buildReferenceIndex({
+      source: { id: "t", version: "t1", fileName: "t", sha256: "t", sheet: "t" },
+      items: [thinSpoon, thinWeight],
+    });
+    expect(referenceEstimateForUnit(thin.groupsByKey.get("ממרח")!, "כפית").kind).toBe(
+      "insufficient",
+    );
+    // and the scorer refuses rather than inventing a weight
+    const s = scoreDetails(measured(thinSpoon.id, 30, "גרם"), undefined, { reference: thin });
+    expect(s.pointsValue).toBeNull();
+    expect(s.pointsBasis).toBe("reference:blocked");
   });
 
   it("5. inconsistent siblings refuse inference; a manual bridge then works", () => {
@@ -161,7 +186,10 @@ describe("DEC-038 reference unit conversion", () => {
       reference: index,
       bridges: buildBridgeIndex([bridge]),
     });
-    expect(s.pointsValue).toBe(2);
+    // The bridge says 30 g per כף, so 60 g is 2 כף × 4 נק׳ = 8. Inference would
+    // have said 20 g per כף and therefore 12, so the number itself proves which
+    // one was used.
+    expect(s.pointsValue).toBe(8);
     expect(s.basisSnapshot?.conversion).toMatchObject({ kind: "bridge", gramsPerUnit: 30 });
   });
 
@@ -204,7 +232,13 @@ describe("DEC-038 calculated products", () => {
 
   it("1. 52 points / 2000 g → 1000 g = 26, 300 g scales deterministically", () => {
     expect(soup.pointsPerGram).toBe(0.026);
+    // RAW, before any rounding: this is the basis the acceptance contract names.
+    expect(calculatedRawPoints(soup, 1000)).toBe(26);
+    expect(calculatedRawPoints(soup, 500)).toBe(13);
+    expect(calculatedRawPoints(soup, 300)).toBeCloseTo(7.8, 10);
+    // Rounding happens at the meal-log boundary and nowhere earlier.
     expect(calculatedServingPoints(soup, 1000)).toBe(26);
+    expect(calculatedServingPoints(soup, 500)).toBe(13);
     expect(calculatedServingPoints(soup, 300)).toBe(8); // 7.8 → 8 at the meal boundary
     const s = scoreDetails(
       {
@@ -235,6 +269,7 @@ describe("DEC-038 calculated products", () => {
       weightUnit: "ק״ג",
     });
     expect(g).toEqual(kg);
+    expect(g.ok && g.pointsPerGram).toBe(0.026);
     const ctx = { calculatedProducts: new Map([["soup", soup]]) };
     const base = {
       foodId: "soup",

@@ -21,19 +21,56 @@
  *   4. otherwise blocked — the UI offers the explicit bridge form.
  */
 import type { ConversionSnapshot, Unit, WeightBridge } from "../domain";
-import { UNIT_FAMILY, UNIT_TO_GRAMS } from "../points-config";
+import { POINTS_ROUNDING_STEP, UNIT_FAMILY, UNIT_TO_GRAMS } from "../points-config";
 import type { ReferencePortion, ReferenceRuntimeItem } from "./types";
 
 /** Max relative spread (max/min − 1) between sibling estimates. */
 export const INFERENCE_TOLERANCE = 0.15;
 /** Minimum points of an evidence row (rounding-noise guard). */
 export const MIN_EVIDENCE_POINTS = 1;
+/**
+ * Published points are rounded to POINTS_ROUNDING_STEP, so a row stating p
+ * points really means p ± STEP/2. Dividing one such row by another multiplies
+ * that noise: grams-per-unit derived from a 1-point row can be out by a
+ * quarter before anything else goes wrong. Real example from the dataset —
+ * דבש, where 100 g = 9 points is the weight row:
+ *
+ *   1 כף  = 2 points → 22.2 g/כף   (true ≈ 21 g, so ~6% out)   uncertainty 0.15
+ *   1 כפית = 1 point  → 11.1 g/כפית (true ≈ 7 g,  so ~59% out)  uncertainty 0.28
+ *
+ * The spread check cannot catch the second one, because a single count row
+ * against a single weight row yields exactly one estimate and therefore
+ * "agrees" with itself. So each pair carries its own uncertainty and a pair
+ * that is too noisy is not evidence at all.
+ */
+export const MAX_ESTIMATE_UNCERTAINTY = 0.2;
+
+/** Relative uncertainty a published points value carries from half-point rounding. */
+function pointsUncertainty(points: number): number {
+  return points > 0 ? POINTS_ROUNDING_STEP / 2 / points : Number.POSITIVE_INFINITY;
+}
 
 export const CONVERSION_LABEL: Record<ConversionSnapshot["kind"], string> = {
   source_explicit: "לפי המאגר · המרה מפורשת במאגר",
   bridge: "לפי המאגר · המרה שנשמרה",
   reference_estimate: "הערכה מהמאגר",
 };
+
+/**
+ * What the person reads under a converted quantity. An inferred conversion says
+ * so ("הערכה מהמאגר"); a weight stated in the reference cell itself, or one the
+ * household measured, must never wear that label — they are facts, not guesses.
+ */
+export function describeConversion(conversion: ConversionSnapshot): string {
+  const rate = `1 ${conversion.unit} ≈ ${formatGrams(conversion.gramsPerUnit)} גרם`;
+  return conversion.kind === "reference_estimate"
+    ? `${CONVERSION_LABEL.reference_estimate} · ${rate}`
+    : `${CONVERSION_LABEL[conversion.kind]} · 1 ${conversion.unit} = ${formatGrams(conversion.gramsPerUnit)} גרם`;
+}
+
+function formatGrams(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
 
 /** Minimal group shape (avoids importing the index module). */
 export interface ConversionGroup {
@@ -44,6 +81,8 @@ export interface ConversionGroup {
 export type EstimateResult =
   | { kind: "ok"; gramsPerUnit: number; evidenceRows: number[] }
   | { kind: "none" }
+  /** Evidence exists but is too rounded to derive a weight from. */
+  | { kind: "insufficient" }
   | { kind: "inconsistent"; estimates: number[] };
 
 function isWeight(unit: Unit): boolean {
@@ -83,25 +122,37 @@ export function referenceEstimateForUnit(group: ConversionGroup, unit: Unit): Es
   if (isWeight(unit)) return { kind: "none" };
   const rows = group.items.filter(isEvidence);
   const estimates: Array<{ value: number; rows: number[] }> = [];
-  const countRows: Array<{ ppu: number; row: number }> = [];
-  const weightRows: Array<{ ppg: number; row: number }> = [];
+  const countRows: Array<{ ppu: number; row: number; points: number }> = [];
+  const weightRows: Array<{ ppg: number; row: number; points: number }> = [];
   for (const item of rows) {
     const explicit = explicitGramsPerUnit(item, unit);
     if (explicit != null) {
+      // Stated in the cell itself — a fact, not a ratio, so no rounding noise.
       estimates.push({ value: explicit, rows: [item.sourceRow] });
       continue;
     }
     const m = countMeasure(item.portion, unit);
     if (m && item.portion?.grams == null)
-      countRows.push({ ppu: item.points / m.amount, row: item.sourceRow });
+      countRows.push({ ppu: item.points / m.amount, row: item.sourceRow, points: item.points });
     if (item.portion?.grams != null && item.portion.grams > 0) {
-      weightRows.push({ ppg: item.points / item.portion.grams, row: item.sourceRow });
+      weightRows.push({
+        ppg: item.points / item.portion.grams,
+        row: item.sourceRow,
+        points: item.points,
+      });
     }
   }
+  let noisyPairs = 0;
   for (const c of countRows) {
-    for (const w of weightRows) estimates.push({ value: c.ppu / w.ppg, rows: [c.row, w.row] });
+    for (const w of weightRows) {
+      if (pointsUncertainty(c.points) + pointsUncertainty(w.points) > MAX_ESTIMATE_UNCERTAINTY) {
+        noisyPairs += 1;
+        continue;
+      }
+      estimates.push({ value: c.ppu / w.ppg, rows: [c.row, w.row] });
+    }
   }
-  if (estimates.length === 0) return { kind: "none" };
+  if (estimates.length === 0) return noisyPairs > 0 ? { kind: "insufficient" } : { kind: "none" };
   const values = estimates.map((e) => e.value).sort((a, b) => a - b);
   if (values[values.length - 1] / values[0] - 1 > INFERENCE_TOLERANCE) {
     return { kind: "inconsistent", estimates: values };
@@ -122,7 +173,7 @@ export type ConversionOutcome =
     }
   | {
       kind: "blocked";
-      reason: "no_evidence" | "inconsistent" | "not_applicable";
+      reason: "no_evidence" | "inconsistent" | "insufficient_evidence" | "not_applicable";
       /** The count unit a bridge would be stated in ("1 כף = ? גרם"). */
       bridgeUnit?: Unit;
     };
@@ -147,7 +198,9 @@ export function convertQuantity(
 
   const gramsPerUnitFor = (
     unit: Unit,
-  ): { snapshot: ConversionSnapshot } | { blocked: "no_evidence" | "inconsistent" } => {
+  ):
+    | { snapshot: ConversionSnapshot }
+    | { blocked: "no_evidence" | "inconsistent" | "insufficient_evidence" } => {
     const bridge = bridgeFor(unit);
     if (bridge) {
       return {
@@ -171,7 +224,8 @@ export function convertQuantity(
         },
       };
     }
-    return { blocked: est.kind === "inconsistent" ? "inconsistent" : "no_evidence" };
+    if (est.kind === "inconsistent") return { blocked: "inconsistent" };
+    return { blocked: est.kind === "insufficient" ? "insufficient_evidence" : "no_evidence" };
   };
 
   // A. grams against a count portion without a stated weight.
