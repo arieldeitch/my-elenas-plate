@@ -15,6 +15,8 @@
  * historical snapshots and for the personalised daily budget (unchanged).
  */
 import type {
+  BasisSnapshot,
+  CalculatedProduct,
   DayData,
   Dish,
   EstimatedProduct,
@@ -24,6 +26,8 @@ import type {
   Unit,
 } from "./domain";
 import {
+  convertQuantity,
+  sourceExplicitConversion,
   applyBenefit,
   benefitEligibility,
   coffeeReferenceGroup,
@@ -34,8 +38,9 @@ import {
   type Resolution,
 } from "./points-reference";
 import { dishServingPoints } from "./dishes";
+import { calculatedBasisOf, calculatedServingPoints, toGrams } from "./calculated-products";
 import { estimatedPointsForGrams } from "./label-estimator";
-import { resolveGrams, type BridgeIndex } from "./weight-bridges";
+import { findBridge, resolveGrams, type BridgeIndex } from "./weight-bridges";
 import {
   BUDGET_V2,
   CATEGORY_PORTION_POINTS_V2,
@@ -178,6 +183,13 @@ export type ScoreBasis =
   | "dish:estimated"
   | "estimated:label"
   | "estimated:blocked"
+  // DEC-038 — manually calculated product; reference quantities reached
+  // through a stored bridge or an estimate from the reference itself.
+  | "calculated:weighed"
+  | "calculated:estimated"
+  | "calculated:blocked"
+  | "reference:bridged"
+  | "reference:estimated_conversion"
   | "unscored:no_reference"
   | "unscored:ambiguous";
 
@@ -205,6 +217,8 @@ export interface ScoreContext {
   estimatedProducts?: Map<string, EstimatedProduct>;
   /** DEC-037 — explicit gram bridges, for estimated products logged by a non-weight unit. */
   bridges?: BridgeIndex;
+  /** DEC-038 — manually calculated products by id. */
+  calculatedProducts?: Map<string, CalculatedProduct>;
 }
 
 type ScorableEntry = EntryQuantity &
@@ -220,6 +234,8 @@ type ScorableEntry = EntryQuantity &
       | "estimatedProductId"
       | "consumedWeightG"
       | "weightSource"
+      | "calculatedProductId"
+      | "calculatedRevision"
     >
   >;
 
@@ -231,6 +247,9 @@ export interface Scored {
   basePoints: number | null;
   referenceItemId?: string;
   benefitRule?: FoodEntry["benefitRule"];
+  /** DEC-038 — always present (possibly undefined) so a re-score clears a stale one. */
+  basisSnapshot?: BasisSnapshot;
+  calculatedRevision?: number;
 }
 
 /** Model version stamped on every reference-based snapshot (DEC-036). */
@@ -243,7 +262,12 @@ function toRequested(entry: EntryQuantity) {
 }
 
 function unscored(
-  basis: "reference:blocked" | "estimated:blocked" | "unscored:no_reference" | "unscored:ambiguous",
+  basis:
+    | "reference:blocked"
+    | "estimated:blocked"
+    | "calculated:blocked"
+    | "unscored:no_reference"
+    | "unscored:ambiguous",
   referenceItemId?: string,
 ): Scored {
   const out: Scored = {
@@ -251,6 +275,7 @@ function unscored(
     pointsModelVersion: POINTS_MODEL_REFERENCE,
     pointsBasis: basis,
     basePoints: null,
+    basisSnapshot: undefined,
   };
   if (referenceItemId) out.referenceItemId = referenceItemId;
   return out;
@@ -283,6 +308,7 @@ export function scoreDetails(entry: ScorableEntry, food?: Food, ctx: ScoreContex
       pointsModelVersion: POINTS_MODEL_REFERENCE,
       pointsBasis: entry.weightSource === "estimated" ? "dish:estimated" : "dish:weighed",
       basePoints: points,
+      basisSnapshot: undefined,
     };
   }
 
@@ -311,6 +337,27 @@ export function scoreDetails(entry: ScorableEntry, food?: Food, ctx: ScoreContex
       pointsModelVersion: POINTS_MODEL_REFERENCE,
       pointsBasis: "estimated:label",
       basePoints: points,
+      basisSnapshot: undefined,
+    };
+  }
+
+  // 3. DEC-038 — a manually calculated product: points/gram × grams. Weight
+  //    units only. The basis actually used is copied into the entry, so an
+  //    edit of the product can never change this meal.
+  if (entry.calculatedProductId) {
+    const product = ctx.calculatedProducts?.get(entry.calculatedProductId);
+    if (!product) return unscored("unscored:no_reference");
+    const grams =
+      entry.mode === "measured" ? toGrams(Number(entry.amount ?? 0), entry.unit as Unit) : null;
+    if (grams == null) return unscored("calculated:blocked");
+    const points = calculatedServingPoints(product, grams);
+    return {
+      pointsValue: points,
+      pointsModelVersion: POINTS_MODEL_REFERENCE,
+      pointsBasis: entry.weightSource === "estimated" ? "calculated:estimated" : "calculated:weighed",
+      basePoints: points,
+      calculatedRevision: product.revision,
+      basisSnapshot: { calculated: calculatedBasisOf(product) },
     };
   }
 
@@ -331,7 +378,36 @@ export function scoreDetails(entry: ScorableEntry, food?: Food, ctx: ScoreContex
   }
   if (!item) return unscored("unscored:no_reference");
 
-  const r: Resolution = resolveReferenceItem(item, requested);
+  let r: Resolution = resolveReferenceItem(item, requested);
+  let basis: ScoreBasis = `reference:${r.kind}` as ScoreBasis;
+  let basisSnapshot: BasisSnapshot | undefined;
+  if (r.kind !== "blocked" && requested.mode === "measured") {
+    const explicit = sourceExplicitConversion(item, requested.unit);
+    if (explicit) basisSnapshot = { conversion: explicit };
+  }
+  // DEC-038 — the engine refused a cross-family quantity: try a stored bridge
+  // of this reference food, then a coherent estimate from the same group.
+  if ((r.kind === "blocked" || r.points == null) && requested.mode === "measured") {
+    const group = index.groupsByKey.get(item.normalizedName);
+    const bridgeFor = (unit: Unit) =>
+      group ? findBridge(ctx.bridges ?? new Map(), { kind: "reference", key: group.key }, unit) : undefined;
+    const converted = convertQuantity(item, group, requested, bridgeFor);
+    if (converted.kind === "converted") {
+      const viaConversion = resolveReferenceItem(item, {
+        mode: "measured",
+        amount: converted.amount,
+        unit: converted.unit,
+      });
+      if (viaConversion.kind !== "blocked" && viaConversion.points != null) {
+        r = viaConversion;
+        basis =
+          converted.conversion.kind === "bridge"
+            ? "reference:bridged"
+            : "reference:estimated_conversion";
+        basisSnapshot = { conversion: converted.conversion };
+      }
+    }
+  }
   if (r.kind === "blocked" || r.points == null) return unscored("reference:blocked", item.id);
   const benefit = item.benefits?.find((b) => b.rule === entry.benefitRule);
   const eligibility =
@@ -342,9 +418,10 @@ export function scoreDetails(entry: ScorableEntry, food?: Food, ctx: ScoreContex
   const scored: Scored = {
     pointsValue: applied.appliedPoints,
     pointsModelVersion: POINTS_MODEL_REFERENCE,
-    pointsBasis: `reference:${r.kind}` as ScoreBasis,
+    pointsBasis: basis,
     basePoints: applied.basePoints,
     referenceItemId: item.id,
+    basisSnapshot,
   };
   if (applied.benefitRule) scored.benefitRule = applied.benefitRule;
   return scored;

@@ -26,6 +26,7 @@ export type {
 export * from "./engine";
 export { formatPortion } from "./quantity-parse";
 export * from "./canonical";
+export * from "./unit-conversion";
 
 export interface ReferenceGroup {
   /** normalized display name — the search / link key. */
