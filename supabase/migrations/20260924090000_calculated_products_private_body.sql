@@ -31,9 +31,9 @@ create table if not exists public.calculated_products (
   normalized_name text not null,
   revision integer not null default 1 check (revision >= 1),
   -- Exactly what the person entered: total points and total prepared weight.
-  total_points numeric not null check (total_points > 0),
+  total_points numeric not null check (total_points >= 0),
   total_weight_g numeric not null check (total_weight_g > 0),
-  points_per_gram numeric not null check (points_per_gram > 0),
+  points_per_gram numeric not null check (points_per_gram >= 0),
   method_version text not null default 'external-calc-v1',
   created_by_profile_id uuid references public.profiles (id) on delete set null,
   is_active boolean not null default true,

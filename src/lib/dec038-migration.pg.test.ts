@@ -146,7 +146,9 @@ describe("DEC-038 private body boundary", () => {
     expect(await fails(`select * from public.body_list_weigh_ins('${ariel}', '123456')`)).toMatch(
       /body_pin_unset/,
     );
-    expect(await fails(`select public.body_set_pin('${ariel}', '12a4')`)).toMatch(/body_pin_format/);
+    expect(await fails(`select public.body_set_pin('${ariel}', '12a4')`)).toMatch(
+      /body_pin_format/,
+    );
 
     await asUser(DEVICE_A, () => db.query(`select public.body_set_pin('${ariel}', '123456')`));
     // Setting the PIN does not unlock: the capability is taken explicitly.
@@ -229,9 +231,9 @@ describe("DEC-038 private body boundary", () => {
     await asUser(DEVICE_A, () => db.query(`select public.body_set_pin('${ariel}', '123456')`));
     expect(await unlock(ariel, "123456")).toBe("ok");
     for (let i = 0; i < 10; i++) {
-      expect(
-        await fails(`select * from public.body_list_weigh_ins('${ariel}', '000000')`),
-      ).toMatch(/body_pin_invalid/);
+      expect(await fails(`select * from public.body_list_weigh_ins('${ariel}', '000000')`)).toMatch(
+        /body_pin_invalid/,
+      );
     }
     // Guessing through the only throttled entrance does lock, and the lock then
     // also closes the data path.
@@ -269,9 +271,7 @@ describe("DEC-038 private body boundary", () => {
 
   it("body_lock and the window helper keep their grants", async () => {
     expect(await fails("select public.body_unlock_window()")).toMatch(/permission denied/);
-    expect(await fails(`select public.body_lock('${ariel}')`, STRANGER)).toMatch(
-      /body_forbidden/,
-    );
+    expect(await fails(`select public.body_lock('${ariel}')`, STRANGER)).toMatch(/body_forbidden/);
   });
 
   it("five wrong unlocks lock the area; another household is forbidden", async () => {
@@ -347,7 +347,9 @@ describe("DEC-038 calculated products", () => {
       ),
     );
     const rows = await asUser(DEVICE_A, () =>
-      db.query("select is_active from public.calculated_products where normalized_name = 'מרק ירקות'"),
+      db.query(
+        "select is_active from public.calculated_products where normalized_name = 'מרק ירקות'",
+      ),
     );
     expect(rows.rows).toHaveLength(2);
   });

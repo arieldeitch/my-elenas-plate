@@ -11,6 +11,7 @@ import type { ReferenceRuntimeDataset } from "./points-reference/types";
 import { buildBridgeIndex } from "./weight-bridges";
 import {
   buildCalculatedProduct,
+  calculatedRawPoints,
   calculatedServingPoints,
   validateCalculatedInput,
 } from "./calculated-products";
@@ -231,7 +232,13 @@ describe("DEC-038 calculated products", () => {
 
   it("1. 52 points / 2000 g → 1000 g = 26, 300 g scales deterministically", () => {
     expect(soup.pointsPerGram).toBe(0.026);
+    // RAW, before any rounding: this is the basis the acceptance contract names.
+    expect(calculatedRawPoints(soup, 1000)).toBe(26);
+    expect(calculatedRawPoints(soup, 500)).toBe(13);
+    expect(calculatedRawPoints(soup, 300)).toBeCloseTo(7.8, 10);
+    // Rounding happens at the meal-log boundary and nowhere earlier.
     expect(calculatedServingPoints(soup, 1000)).toBe(26);
+    expect(calculatedServingPoints(soup, 500)).toBe(13);
     expect(calculatedServingPoints(soup, 300)).toBe(8); // 7.8 → 8 at the meal boundary
     const s = scoreDetails(
       {
@@ -262,6 +269,7 @@ describe("DEC-038 calculated products", () => {
       weightUnit: "ק״ג",
     });
     expect(g).toEqual(kg);
+    expect(g.ok && g.pointsPerGram).toBe(0.026);
     const ctx = { calculatedProducts: new Map([["soup", soup]]) };
     const base = {
       foodId: "soup",
