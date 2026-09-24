@@ -92,7 +92,8 @@ export function referenceEstimateForUnit(group: ConversionGroup, unit: Unit): Es
       continue;
     }
     const m = countMeasure(item.portion, unit);
-    if (m && item.portion?.grams == null) countRows.push({ ppu: item.points / m.amount, row: item.sourceRow });
+    if (m && item.portion?.grams == null)
+      countRows.push({ ppu: item.points / m.amount, row: item.sourceRow });
     if (item.portion?.grams != null && item.portion.grams > 0) {
       weightRows.push({ ppg: item.points / item.portion.grams, row: item.sourceRow });
     }
@@ -176,7 +177,8 @@ export function convertQuantity(
   // A. grams against a count portion without a stated weight.
   if (isWeight(quantity.unit) && portion.grams == null) {
     const p = portion.primary;
-    if (!p || p.family !== "count" || !p.appUnit) return { kind: "blocked", reason: "not_applicable" };
+    if (!p || p.family !== "count" || !p.appUnit)
+      return { kind: "blocked", reason: "not_applicable" };
     const unit = p.appUnit as Unit;
     const found = gramsPerUnitFor(unit);
     if ("blocked" in found) return { kind: "blocked", reason: found.blocked, bridgeUnit: unit };
@@ -215,7 +217,9 @@ export function sourceExplicitConversion(
   const p = item.portion?.primary;
   if (!isWeight(requestUnit) || !p || p.family !== "count" || !p.appUnit) return undefined;
   const g = explicitGramsPerUnit(item, p.appUnit as Unit);
-  return g == null ? undefined : { kind: "source_explicit", unit: p.appUnit as Unit, gramsPerUnit: g };
+  return g == null
+    ? undefined
+    : { kind: "source_explicit", unit: p.appUnit as Unit, gramsPerUnit: g };
 }
 
 /** Units a group can resolve once bridges / estimates are considered. */

@@ -354,7 +354,8 @@ export function scoreDetails(entry: ScorableEntry, food?: Food, ctx: ScoreContex
     return {
       pointsValue: points,
       pointsModelVersion: POINTS_MODEL_REFERENCE,
-      pointsBasis: entry.weightSource === "estimated" ? "calculated:estimated" : "calculated:weighed",
+      pointsBasis:
+        entry.weightSource === "estimated" ? "calculated:estimated" : "calculated:weighed",
       basePoints: points,
       calculatedRevision: product.revision,
       basisSnapshot: { calculated: calculatedBasisOf(product) },
@@ -390,7 +391,9 @@ export function scoreDetails(entry: ScorableEntry, food?: Food, ctx: ScoreContex
   if ((r.kind === "blocked" || r.points == null) && requested.mode === "measured") {
     const group = index.groupsByKey.get(item.normalizedName);
     const bridgeFor = (unit: Unit) =>
-      group ? findBridge(ctx.bridges ?? new Map(), { kind: "reference", key: group.key }, unit) : undefined;
+      group
+        ? findBridge(ctx.bridges ?? new Map(), { kind: "reference", key: group.key }, unit)
+        : undefined;
     const converted = convertQuantity(item, group, requested, bridgeFor);
     if (converted.kind === "converted") {
       const viaConversion = resolveReferenceItem(item, {

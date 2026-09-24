@@ -207,7 +207,14 @@ describe("DEC-038 calculated products", () => {
     expect(calculatedServingPoints(soup, 1000)).toBe(26);
     expect(calculatedServingPoints(soup, 300)).toBe(8); // 7.8 → 8 at the meal boundary
     const s = scoreDetails(
-      { foodId: "soup", foodName: "מרק עוף", mode: "measured", amount: 300, unit: "גרם", calculatedProductId: "soup" },
+      {
+        foodId: "soup",
+        foodName: "מרק עוף",
+        mode: "measured",
+        amount: 300,
+        unit: "גרם",
+        calculatedProductId: "soup",
+      },
       undefined,
       { calculatedProducts: new Map([["soup", soup]]) },
     );
@@ -217,25 +224,63 @@ describe("DEC-038 calculated products", () => {
   });
 
   it("2. kg and g entry are equivalent", () => {
-    const g = validateCalculatedInput({ name: "מרק", totalPoints: 52, totalWeight: 2000, weightUnit: "גרם" });
-    const kg = validateCalculatedInput({ name: "מרק", totalPoints: 52, totalWeight: 2, weightUnit: "ק״ג" });
+    const g = validateCalculatedInput({
+      name: "מרק",
+      totalPoints: 52,
+      totalWeight: 2000,
+      weightUnit: "גרם",
+    });
+    const kg = validateCalculatedInput({
+      name: "מרק",
+      totalPoints: 52,
+      totalWeight: 2,
+      weightUnit: "ק״ג",
+    });
     expect(g).toEqual(kg);
     const ctx = { calculatedProducts: new Map([["soup", soup]]) };
-    const base = { foodId: "soup", foodName: "מרק", mode: "measured" as const, calculatedProductId: "soup" };
+    const base = {
+      foodId: "soup",
+      foodName: "מרק",
+      mode: "measured" as const,
+      calculatedProductId: "soup",
+    };
     expect(scoreDetails({ ...base, amount: 0.3, unit: "ק״ג" }, undefined, ctx).pointsValue).toBe(
       scoreDetails({ ...base, amount: 300, unit: "גרם" }, undefined, ctx).pointsValue,
     );
-    expect(validateCalculatedInput({ name: "x", totalPoints: 5, totalWeight: 0, weightUnit: "גרם" }).ok).toBe(false);
-    expect(validateCalculatedInput({ name: "x", totalPoints: Number.NaN, totalWeight: 5, weightUnit: "גרם" }).ok).toBe(false);
+    expect(
+      validateCalculatedInput({ name: "x", totalPoints: 5, totalWeight: 0, weightUnit: "גרם" }).ok,
+    ).toBe(false);
+    expect(
+      validateCalculatedInput({
+        name: "x",
+        totalPoints: Number.NaN,
+        totalWeight: 5,
+        weightUnit: "גרם",
+      }).ok,
+    ).toBe(false);
   });
 
   it("history: a saved snapshot is untouched when the product is edited", () => {
     const saved = scoreEntry(
-      { id: "e1", foodId: "soup", foodName: "מרק", mode: "measured" as const, amount: 1000, unit: "גרם" as const, calculatedProductId: "soup" },
+      {
+        id: "e1",
+        foodId: "soup",
+        foodName: "מרק",
+        mode: "measured" as const,
+        amount: 1000,
+        unit: "גרם" as const,
+        calculatedProductId: "soup",
+      },
       undefined,
       { calculatedProducts: new Map([["soup", soup]]) },
     );
-    const edited = buildCalculatedProduct({ id: "soup", name: "מרק עוף", revision: 2, totalPoints: 80, totalWeightG: 2000 });
+    const edited = buildCalculatedProduct({
+      id: "soup",
+      name: "מרק עוף",
+      revision: 2,
+      totalPoints: 80,
+      totalWeightG: 2000,
+    });
     // nothing re-reads the product for an already-saved entry
     expect(saved.pointsValue).toBe(26);
     expect(saved.calculatedRevision).toBe(1);
@@ -245,7 +290,14 @@ describe("DEC-038 calculated products", () => {
 
   it("a non-weight unit is refused, never guessed", () => {
     const s = scoreDetails(
-      { foodId: "soup", foodName: "מרק", mode: "measured", amount: 1, unit: "קערה", calculatedProductId: "soup" },
+      {
+        foodId: "soup",
+        foodName: "מרק",
+        mode: "measured",
+        amount: 1,
+        unit: "קערה",
+        calculatedProductId: "soup",
+      },
       undefined,
       { calculatedProducts: new Map([["soup", soup]]) },
     );

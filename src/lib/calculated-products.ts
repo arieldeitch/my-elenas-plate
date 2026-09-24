@@ -76,7 +76,10 @@ export function buildCalculatedProduct(input: {
 }
 
 /** Unrounded points for a weight (used inside a dish, where only the total rounds). */
-export function calculatedRawPoints(product: Pick<CalculatedProduct, "pointsPerGram">, grams: number) {
+export function calculatedRawPoints(
+  product: Pick<CalculatedProduct, "pointsPerGram">,
+  grams: number,
+) {
   return product.pointsPerGram * grams;
 }
 
