@@ -115,6 +115,9 @@ export type Database = {
       }
       food_entries: {
         Row: {
+          basis_snapshot: Json | null
+          calculated_product_id: string | null
+          calculated_revision: number | null
           amount: number | null
           coffee: Json | null
           created_at: string
@@ -143,6 +146,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          basis_snapshot?: Json | null
+          calculated_product_id?: string | null
+          calculated_revision?: number | null
           amount?: number | null
           coffee?: Json | null
           created_at?: string
@@ -171,6 +177,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          basis_snapshot?: Json | null
+          calculated_product_id?: string | null
+          calculated_revision?: number | null
           amount?: number | null
           coffee?: Json | null
           created_at?: string
@@ -373,6 +382,54 @@ export type Database = {
           sha256?: string
           sheet?: string | null
           version?: string
+        }
+        Relationships: []
+      }
+      calculated_products: {
+        Row: {
+          created_at: string
+          created_by_profile_id: string | null
+          household_id: string
+          id: string
+          is_active: boolean
+          method_version: string
+          name: string
+          normalized_name: string
+          points_per_gram: number
+          revision: number
+          total_points: number
+          total_weight_g: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_profile_id?: string | null
+          household_id: string
+          id?: string
+          is_active?: boolean
+          method_version?: string
+          name: string
+          normalized_name: string
+          points_per_gram: number
+          revision?: number
+          total_points: number
+          total_weight_g: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by_profile_id?: string | null
+          household_id?: string
+          id?: string
+          is_active?: boolean
+          method_version?: string
+          name?: string
+          normalized_name?: string
+          points_per_gram?: number
+          revision?: number
+          total_points?: number
+          total_weight_g?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -976,6 +1033,39 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      body_delete_weigh_in: {
+        Args: { p_id: string; p_pin: string; p_profile_id: string }
+        Returns: undefined
+      }
+      body_list_weigh_ins: {
+        Args: { p_pin: string; p_profile_id: string }
+        Returns: {
+          body_fat_pct: number | null
+          created_at: string
+          id: string
+          measured_at: string | null
+          measured_on: string
+          weight_kg: number
+        }[]
+      }
+      body_pin_status: { Args: { p_profile_id: string }; Returns: string }
+      body_save_weigh_in: {
+        Args: {
+          p_body_fat_pct?: number | null
+          p_id: string | null
+          p_measured_at: string | null
+          p_measured_on: string
+          p_pin: string
+          p_profile_id: string
+          p_weight_kg: number
+        }
+        Returns: string
+      }
+      body_set_pin: {
+        Args: { p_current_pin?: string | null; p_new_pin: string; p_profile_id: string }
+        Returns: string
+      }
+      body_unlock: { Args: { p_pin: string; p_profile_id: string }; Returns: string }
       bootstrap_household: { Args: never; Returns: string }
       is_household_member: { Args: { hid: string }; Returns: boolean }
     }

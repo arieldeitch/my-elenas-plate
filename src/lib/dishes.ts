@@ -17,11 +17,26 @@
  * reference identity (`weight-bridges.ts`), otherwise the ingredient is
  * blocked and the UI must ask for the bridge.
  */
-import type { Dish, DishIngredient, EstimatedProduct, Unit, WeightBridge } from "./domain";
+import type {
+  CalculatedProduct,
+  Dish,
+  DishIngredient,
+  EstimatedProduct,
+  Unit,
+  WeightBridge,
+} from "./domain";
+import {
+  calculatedBasisOf,
+  calculatedRawPoints,
+  describeCalculatedBasis,
+  toGrams,
+} from "./calculated-products";
 import { estimatedPointsForGrams } from "./label-estimator";
 import { roundHalf } from "./points";
 import {
+  convertQuantity,
   formatPortion,
+  getReferenceIndex,
   resolveReferenceItem,
   type ReferencePortion,
   type ReferenceRuntimeItem,
@@ -51,6 +66,13 @@ export type IngredientRequest =
   | {
       sourceKind: "estimated";
       product: EstimatedProduct;
+      amount: number;
+      unit: Unit;
+    }
+  | {
+      // DEC-038 — a manually calculated product, weight units only.
+      sourceKind: "calculated";
+      product: CalculatedProduct;
       amount: number;
       unit: Unit;
     };
@@ -90,6 +112,27 @@ export function resolveIngredient(
   const amount = Number(request.amount);
   if (!Number.isFinite(amount) || amount <= 0) return { ok: false, reason: "invalid_amount" };
 
+  if (request.sourceKind === "calculated") {
+    const grams = toGrams(amount, request.unit);
+    if (grams == null) return { ok: false, reason: "unit_not_supported", unit: request.unit };
+    const p = request.product;
+    return {
+      ok: true,
+      ingredient: {
+        sourceKind: "calculated",
+        name: p.name,
+        calculatedProductId: p.id,
+        calculatedBasis: calculatedBasisOf(p),
+        amount,
+        unit: request.unit,
+        basisText: describeCalculatedBasis(p),
+        gramsUsed: grams,
+        // Full precision inside the dish; only the logged serving rounds.
+        points: calculatedRawPoints(p, grams),
+      },
+    };
+  }
+
   if (request.sourceKind === "estimated") {
     const source = { kind: "estimated" as const, key: request.product.id };
     if (isWeightUnit(request.unit)) {
@@ -124,13 +167,48 @@ export function resolveIngredient(
     };
   }
 
-  // 2. weighed grams against a non-weight portion → explicit bridge, never a guess.
+  // 2. DEC-038 — a cross-family quantity: a stored bridge of this reference
+  //    food first, then a coherent estimate from the SAME reference group.
+  //    Never another food / variant. The conversion used is snapshotted.
   const portionUnit = item.portion?.primary?.appUnit as Unit | undefined;
-  if (isWeightUnit(request.unit) && portionUnit) {
-    const source = { kind: "reference" as const, key: request.groupKey };
-    const bridge = findBridge(bridges, source, portionUnit);
-    if (!bridge) {
-      return { ok: false, reason: "needs_bridge", unit: request.unit, bridgeUnit: portionUnit };
+  const group = getReferenceIndex().groupsByKey.get(request.groupKey);
+  const source = { kind: "reference" as const, key: request.groupKey };
+  const converted = convertQuantity(
+    item,
+    group,
+    { amount, unit: request.unit },
+    (unit) => findBridge(bridges, source, unit),
+  );
+  if (converted.kind === "converted") {
+    const via = resolveReferenceItem(item, {
+      mode: "measured",
+      amount: converted.amount,
+      unit: converted.unit,
+    });
+    if (via.kind !== "blocked" && via.points != null) {
+      const grams = isWeightUnit(request.unit)
+        ? gramsFromWeightUnit(amount, request.unit)
+        : amount * converted.conversion.gramsPerUnit;
+      const bridge =
+        converted.conversion.kind === "bridge"
+          ? findBridge(bridges, source, converted.conversion.unit)
+          : undefined;
+      const ingredient = referenceIngredient(request, amount, request.unit, via.points, grams, bridge);
+      ingredient.conversion = converted.conversion;
+      return { ok: true, ingredient };
+    }
+    return { ok: false, reason: "unit_not_supported", unit: request.unit };
+  }
+  if (converted.kind === "blocked" && converted.bridgeUnit) {
+    return {
+      ok: false,
+      reason: "needs_bridge",
+      unit: request.unit,
+      bridgeUnit: converted.bridgeUnit,
+    };
+  }
+
+  return { ok: false, reason: "needs_bridge", unit: request.unit, bridgeUnit: portionUnit };
     }
     const grams = gramsFromWeightUnit(amount, request.unit);
     const units = grams / bridge.gramsPerUnit;
