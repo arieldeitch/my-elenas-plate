@@ -208,8 +208,6 @@ describe("DEC-038 calculated products", () => {
     expect(calculatedServingPoints(soup, 300)).toBe(8); // 7.8 → 8 at the meal boundary
     const s = scoreDetails(
       {
-        foodId: "soup",
-        foodName: "מרק עוף",
         mode: "measured",
         amount: 300,
         unit: "גרם",
@@ -291,8 +289,6 @@ describe("DEC-038 calculated products", () => {
   it("a non-weight unit is refused, never guessed", () => {
     const s = scoreDetails(
       {
-        foodId: "soup",
-        foodName: "מרק",
         mode: "measured",
         amount: 1,
         unit: "קערה",
