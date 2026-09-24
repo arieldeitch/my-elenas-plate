@@ -9,6 +9,39 @@
 
 > Rule: nothing is listed as "working" unless it was actually run/verified.
 
+## 2026-09-24 (sixteenth run) — DEC-038 review + remediation of the Lovable merge
+
+Full record: `docs/claude-runs/RUN_2026-09-24_DEC038_REVIEW_REMEDIATION_REPORT.md`.
+The DEC-038 implementation landed on `main` through Lovable (`42fabb4`). This run reviewed it
+rather than rebuilding it, and `main` turned out not to compile: `resolveIngredient` in
+`dishes.ts` still carried the old weight-bridge block after the new `convertQuantity` path
+replaced it, so a stray brace closed the function early and tsc reported TS1128 twice.
+
+Two defects behind that were substantive. **The PIN throttle could be bypassed entirely**:
+`body_require_pin` raised on a wrong PIN, and the raise rolled back the failed-attempt counter
+written moments earlier — proven on PGlite, ten wrong PINs through `body_list_weigh_ins` left
+`failed_attempts = 0` and the area never locked, so a 6-digit PIN was brute-forceable without
+limit. `body_unlock` is now the only throttled entrance and opens a ten-minute server-side
+capability window that every data RPC requires. **The reference inference invented precision**:
+it divided one half-point-rounded points value by another, and a single count row against a single
+weight row produced exactly one estimate, so the spread check compared it with itself. On real
+data that scored 1 כפית of דבש at 11.1 g against a true ~7 g. Each pair now carries its own
+rounding uncertainty and a pair that is too noisy is not evidence.
+
+Also: the unit picker now offers grams wherever the engine can resolve them (`convertibleUnits`
+existed and was imported only by a test, so the feature was invisible in the app), and inferred
+conversions are labelled "הערכה מהמאגר" in the dish editor while stated or measured ones are not.
+
+**The private body UI does not exist.** Lovable delivered the domain layer, the migration and
+tests; no component, repository or sync path was added. The migration revokes `authenticated`
+access to `weigh_ins`, and the client still reads and writes that table, so applying it now would
+return `permission denied` for every existing weigh-in with no screen able to read them back.
+`release-preflight` warns about exactly that (`db:private-body-order`) until both halves land.
+
+Gate: typecheck 0 · lint 0 errors (9 pre-existing warnings) · vitest 538/16 skipped ·
+hermetic Playwright 10/10 · build OK · preflight PASS (1 deliberate warning).
+Migration `20260924090000` **NOT applied**; nothing published; no live data touched.
+
 ## 2026-09-23 (fifteenth run) — manual target, dishes, weight bridges, label estimator (DEC-037)
 
 Full record: `docs/claude-runs/RUN_2026-09-23_UNIFIED_POINTS_DISHES_LABEL_ESTIMATOR_REPORT.md`.

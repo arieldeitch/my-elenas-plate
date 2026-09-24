@@ -1037,6 +1037,7 @@ export type Database = {
         Args: { p_id: string; p_pin: string; p_profile_id: string }
         Returns: undefined
       }
+      body_lock: { Args: { p_profile_id: string }; Returns: undefined }
       body_list_weigh_ins: {
         Args: { p_pin: string; p_profile_id: string }
         Returns: {
