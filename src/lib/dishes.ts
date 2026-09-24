@@ -209,31 +209,6 @@ export function resolveIngredient(
   }
 
   return { ok: false, reason: "needs_bridge", unit: request.unit, bridgeUnit: portionUnit };
-    }
-    const grams = gramsFromWeightUnit(amount, request.unit);
-    const units = grams / bridge.gramsPerUnit;
-    const viaBridge = resolveReferenceItem(item, {
-      mode: "measured",
-      amount: units,
-      unit: portionUnit,
-    });
-    if (viaBridge.kind === "blocked" || viaBridge.points == null) {
-      return { ok: false, reason: "unit_not_supported", unit: request.unit };
-    }
-    return {
-      ok: true,
-      ingredient: referenceIngredient(
-        request,
-        amount,
-        request.unit,
-        viaBridge.points,
-        grams,
-        bridge,
-      ),
-    };
-  }
-
-  return { ok: false, reason: "needs_bridge", unit: request.unit, bridgeUnit: portionUnit };
 }
 
 /**
