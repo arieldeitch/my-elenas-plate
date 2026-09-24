@@ -7,6 +7,7 @@ import { parseAmount } from "@/lib/quantity";
 import { formatPoints } from "@/lib/points";
 import { buildFoodSearchIndex, searchFoodsDetailed } from "@/lib/food-search";
 import {
+  describeConversion,
   formatPortion,
   getReferenceIndex,
   resolvableUnits,
@@ -244,8 +245,11 @@ export function DishEditor({ dish, open, onClose, onSaved }: Props) {
                           </div>
                           <div className="truncate text-[11px] text-muted-foreground">
                             {ing.amount} {ing.unit}
-                            {ing.bridge ? ` · ${describeBridge(ing.bridge)}` : ""} ·{" "}
-                            {formatPoints(ing.points)} נק׳
+                            {ing.bridge ? ` · ${describeBridge(ing.bridge)}` : ""}
+                            {!ing.bridge && ing.conversion
+                              ? ` · ${describeConversion(ing.conversion)}`
+                              : ""}{" "}
+                            · {formatPoints(ing.points)} נק׳
                           </div>
                         </div>
                         <button

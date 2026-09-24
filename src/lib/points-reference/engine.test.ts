@@ -176,15 +176,34 @@ describe("6. no cup→gram conversion without an explicit reference", () => {
     expect(resolveReferenceItem(soup, { mode: "measured", amount: 3, unit: "כפית" }).reason).toBe(
       "count_unit_mismatch",
     );
-    // A blocked resolution never falls back to an invented number.
+    // The ENGINE still refuses: it never invents a number of its own.
+    // DEC-038 adds a layer above it, and only where the same reference group
+    // carries the evidence — see the two cases below.
     const scored = scoreDetails({
       mode: "measured",
       amount: 100,
       unit: "גרם",
       referenceItemId: cupOnly.id,
     });
-    expect(scored.pointsBasis).toBe("reference:blocked");
-    expect(scored.pointsValue).toBeNull(); // unscored, never estimated
+    // אגוז מלך טחון has 1 כף / 8 גרם = 2 נק׳ alongside the cup row, so grams
+    // per cup follow from the group itself. It is scored, and it is labelled.
+    expect(scored.pointsBasis).toBe("reference:estimated_conversion");
+    expect(scored.pointsValue).not.toBeNull();
+    expect(scored.basisSnapshot?.conversion).toMatchObject({
+      kind: "reference_estimate",
+      unit: "כוס",
+    });
+
+    // With no such evidence the answer is still "no", not a guess: אבוקדו is a
+    // single gram-only row, so a cup of it cannot be scored at all.
+    const stillBlocked = scoreDetails({
+      mode: "measured",
+      amount: 1,
+      unit: "כוס",
+      referenceItemId: gramOnly.id,
+    });
+    expect(stillBlocked.pointsBasis).toBe("reference:blocked");
+    expect(stillBlocked.pointsValue).toBeNull();
   });
 });
 

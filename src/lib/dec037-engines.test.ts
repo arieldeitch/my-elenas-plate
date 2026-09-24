@@ -257,12 +257,17 @@ describe("R3/R4/R7 — dish ingredients resolve only through safe paths", () => 
       unit: "גרם" as const,
     };
 
-    // 8. without a bridge the same request is BLOCKED, never guessed.
-    const blocked = resolveIngredient(request, buildBridgeIndex([]));
-    expect(blocked.ok).toBe(false);
-    if (blocked.ok) return;
-    expect(blocked.reason).toBe("needs_bridge");
-    expect(blocked.bridgeUnit).toBe("כף");
+    // 8. DEC-038: without a bridge this is no longer a dead end. דבש carries
+    // 100 גרם = 9 נק׳ next to 1 כף = 2 נק׳, so the group itself says roughly
+    // how much a spoon weighs. The result is scored but marked as an estimate.
+    const inferred = resolveIngredient(request, buildBridgeIndex([]));
+    expect(inferred.ok).toBe(true);
+    if (!inferred.ok) return;
+    expect(inferred.ingredient.conversion).toMatchObject({
+      kind: "reference_estimate",
+      unit: "כף",
+    });
+    expect(inferred.ingredient.bridge).toBeUndefined();
 
     const bridge: WeightBridge = {
       id: "b2",
@@ -281,10 +286,16 @@ describe("R3/R4/R7 — dish ingredients resolve only through safe paths", () => 
     expect(ok.ingredient.bridge).toEqual({ unit: "כף", gramsPerUnit: 15, provenance: "label" });
     expect(ok.ingredient.points).toBeGreaterThan(0);
 
-    // a bridge for ANOTHER identity is not applied to this one
+    // A bridge for ANOTHER identity is still never applied to this one. Under
+    // DEC-038 the request no longer dead-ends, so the proof is sharper than
+    // "blocked": the foreign 15 g/כף must not appear anywhere in the result.
     const otherBridge: WeightBridge = { ...bridge, id: "b3", sourceKey: "משהו אחר" };
-    const stillBlocked = resolveIngredient(request, buildBridgeIndex([otherBridge]));
-    expect(stillBlocked.ok).toBe(false);
+    const noLeak = resolveIngredient(request, buildBridgeIndex([otherBridge]));
+    expect(noLeak.ok).toBe(true);
+    if (!noLeak.ok) return;
+    expect(noLeak.ingredient.bridge).toBeUndefined();
+    expect(noLeak.ingredient.conversion?.kind).toBe("reference_estimate");
+    expect(noLeak.ingredient.conversion?.gramsPerUnit).not.toBe(15);
   });
 
   it("a bridge belongs to the FOOD, so it serves every variation of the same name", () => {
