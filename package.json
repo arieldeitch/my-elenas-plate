@@ -17,10 +17,7 @@
     "e2e:hermetic": "playwright test -c playwright.hermetic.config.ts",
     "catalog:seed": "vite-node -c vitest.config.ts scripts/generate-catalog-seed.ts",
     "preflight": "vite-node scripts/release-preflight.ts",
-    "format": "prettier --write .",
-    "points:import": "vite-node -c vitest.config.ts scripts/points-reference/import.ts",
-    "points:seed": "vite-node -c vitest.config.ts scripts/points-reference/generate-seed.ts",
-    "points:reconcile": "vite-node -c vitest.config.ts scripts/points-reference/reconcile.ts"
+    "format": "prettier --write ."
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -80,7 +77,7 @@
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
     "@eslint/js": "^9.32.0",
-    "@lovable.dev/vite-tanstack-config": "2.13.1",
+    "@lovable.dev/vite-tanstack-config": "2.23.1",
     "@playwright/test": "^1.61.1",
     "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",
@@ -103,7 +100,6 @@
     "typescript-eslint": "^8.56.1",
     "vite": "^8.0.16",
     "vitest": "^3.2.7",
-    "vitest-axe": "^0.1.0",
-    "xlsx": "0.18.5"
+    "vitest-axe": "^0.1.0"
   }
 }
