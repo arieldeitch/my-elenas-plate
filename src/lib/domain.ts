@@ -214,6 +214,15 @@ export interface FoodEntry {
   consumedWeightG?: number;
   /** Whether those grams were weighed or estimated by the person. */
   weightSource?: WeightSource;
+  /** DEC-038 — the manually calculated product (and its revision) this entry was scored from. */
+  calculatedProductId?: string;
+  calculatedRevision?: number;
+  /**
+   * DEC-038 — write-once provenance of HOW the snapshot was computed (the
+   * calculated basis, or the unit conversion that was used). Never read back
+   * to re-score a saved entry.
+   */
+  basisSnapshot?: BasisSnapshot;
   /**
    * When the entry was logged (ISO). Set locally at creation and read back from
    * the row's `created_at`; never sent on writes (the database owns it). Used
@@ -330,7 +339,7 @@ export interface EstimatedProduct {
 
 /** One ingredient as it was when the dish revision was saved. Write-once. */
 export interface DishIngredient {
-  sourceKind: PointsSourceKind;
+  sourceKind: PointsSourceKind | "calculated";
   /** User-visible name at save time. */
   name: string;
   /** Reference row identity (reference ingredients). */
@@ -350,6 +359,11 @@ export interface DishIngredient {
   gramsUsed?: number;
   /** The bridge COPY used to reach grams, if one was needed. */
   bridge?: { unit: Unit; gramsPerUnit: number; provenance: BridgeProvenance };
+  /** DEC-038 — the conversion used (explicit source cell / stored bridge / reference estimate). */
+  conversion?: ConversionSnapshot;
+  /** DEC-038 — calculated product identity + the basis it was scored with. */
+  calculatedProductId?: string;
+  calculatedBasis?: CalculatedBasis;
   /** Points this ingredient contributed to the dish total. */
   points: number;
 }
@@ -372,3 +386,57 @@ export interface Dish {
 
 /** How the consumed weight of a dish serving was obtained. */
 export type WeightSource = "weighed" | "estimated";
+
+// --- DEC-038: calculated products and conversion provenance -------------------
+
+/**
+ * A household product whose TOTAL points were calculated outside the app
+ * ("מרק עוף: 52 נקודות לכל 2 ק״ג"). Its own derived source: never written into
+ * the canonical reference, never a label estimate. Logged by weight only.
+ */
+export interface CalculatedProduct {
+  id: string;
+  name: string;
+  revision: number;
+  totalPoints: number;
+  totalWeightG: number;
+  /** totalPoints / totalWeightG at full precision; rounded only when logging. */
+  pointsPerGram: number;
+  methodVersion: string;
+  createdBy?: ProfileId;
+  isActive?: boolean;
+}
+
+/** The exact basis a calculated serving was scored with (copied into the entry). */
+export interface CalculatedBasis {
+  revision: number;
+  totalPoints: number;
+  totalWeightG: number;
+  pointsPerGram: number;
+  methodVersion: string;
+}
+
+/**
+ * How a quantity in one unit was turned into the reference portion's unit.
+ *  - source_explicit: the reference cell itself says "1 כף / 15 גרם";
+ *  - bridge: a stored "1 כף = N גרם" fact (package label / measured by us);
+ *  - reference_estimate: derived from sibling rows of the SAME reference food
+ *    ("הערכה מהמאגר") — an estimate, never a physical density fact.
+ */
+export type ConversionKind = "source_explicit" | "bridge" | "reference_estimate";
+
+export interface ConversionSnapshot {
+  kind: ConversionKind;
+  /** The count unit the grams were related to ("כף", "יחידה"). */
+  unit: Unit;
+  gramsPerUnit: number;
+  /** Bridge provenance, when kind = bridge. */
+  provenance?: BridgeProvenance;
+  /** Source rows the estimate was derived from, when kind = reference_estimate. */
+  evidenceRows?: number[];
+}
+
+export interface BasisSnapshot {
+  calculated?: CalculatedBasis;
+  conversion?: ConversionSnapshot;
+}
