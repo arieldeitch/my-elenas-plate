@@ -52,3 +52,5 @@ export type FastingLogRow = T["fasting_logs"]["Row"];
 export type WorkoutLogRow = T["workout_logs"]["Row"];
 export type WeighInRow = T["weigh_ins"]["Row"];
 export type DailyStepRow = T["daily_steps"]["Row"];
+export type CalculatedProductRow = T["calculated_products"]["Row"];
+export type CalculatedProductInsert = T["calculated_products"]["Insert"];
